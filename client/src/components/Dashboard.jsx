@@ -14,6 +14,7 @@ const TABS = [
   {id:'emi',label:'🏦 EMI'},
   {id:'disbursement',label:'💳 Loan Disbursement'},
   {id:'creditCard',label:'💳 Credit Card'},
+  {id:'stock',label:'📈 Stock Market'},
   {id:'investments',label:'📈 Investments'},
   {id:'appLoans',label:'📱 App Loans'},
   {id:'transfers',label:'🔄 Transfers'},
@@ -329,6 +330,103 @@ export default function Dashboard({ result, onReset }) {
     )
   }
 
+  const StockMarketTab = () => {
+    const [query, setQuery] = useState('')
+    const [sort, setSort] = useState('date_desc')
+    const [dir, setDir] = useState('ALL')
+    const [platform, setPlatform] = useState('ALL')
+
+    const sorters = {
+      date_desc: (x, y) => new Date(y.date) - new Date(x.date),
+      date_asc: (x, y) => new Date(x.date) - new Date(y.date),
+      amount_desc: (x, y) => (y.amount || 0) - (x.amount || 0),
+      amount_asc: (x, y) => (x.amount || 0) - (y.amount || 0),
+      platform_asc: (x, y) => norm(x.platform).localeCompare(norm(y.platform)),
+    }
+
+    const base = a.stock_market || []
+    const platforms = useMemo(() => Array.from(new Set(base.map(x => x.platform || 'Stock Market'))).sort(), [base])
+
+    const rows = useMemo(() => {
+      const q = norm(query).trim()
+      return base
+        .filter(r => dir === 'ALL' ? true : (r.direction || '') === dir)
+        .filter(r => platform === 'ALL' ? true : (r.platform || 'Stock Market') === platform)
+        .filter(r => !q || `${r.date} ${r.direction} ${r.platform} ${r.description} ${r.utr} ${r.reference_id}`.toLowerCase().includes(q))
+        .slice()
+        .sort(sorters[sort] || sorters.date_desc)
+    }, [base, query, sort, dir, platform])
+
+    const debitTotal = useMemo(() => rows.filter(r => r.direction === 'debit').reduce((s, r) => s + (r.amount || 0), 0), [rows])
+    const creditTotal = useMemo(() => rows.filter(r => r.direction === 'credit').reduce((s, r) => s + (r.amount || 0), 0), [rows])
+
+    return (
+      <div style={{padding:24}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:600,color:'var(--text-primary)'}}>Stock Market Transactions</div>
+            <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{rows.length} transactions</div>
+          </div>
+          <div style={{display:'flex',gap:14,alignItems:'baseline'}}>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontSize:11,color:'var(--text-muted)'}}>Credits</div>
+              <div style={{fontSize:16,fontWeight:700,color:'var(--green)',fontFamily:'JetBrains Mono,monospace'}}>{f(creditTotal)}</div>
+            </div>
+            <div style={{textAlign:'right'}}>
+              <div style={{fontSize:11,color:'var(--text-muted)'}}>Debits</div>
+              <div style={{fontSize:16,fontWeight:700,color:'var(--red)',fontFamily:'JetBrains Mono,monospace'}}>{f(debitTotal)}</div>
+            </div>
+          </div>
+        </div>
+
+        <Controls
+          query={query}
+          setQuery={setQuery}
+          sort={sort}
+          setSort={setSort}
+          sortOptions={[
+            {id:'date_desc',label:'Date ↓'},
+            {id:'date_asc',label:'Date ↑'},
+            {id:'amount_desc',label:'Amount ↓'},
+            {id:'amount_asc',label:'Amount ↑'},
+            {id:'platform_asc',label:'Platform A→Z'},
+          ]}
+          extra={(
+            <>
+              <select className="ctrl" value={dir} onChange={e=>setDir(e.target.value)}>
+                <option value="ALL">All directions</option>
+                <option value="debit">debit</option>
+                <option value="credit">credit</option>
+              </select>
+              <select className="ctrl" value={platform} onChange={e=>setPlatform(e.target.value)}>
+                <option value="ALL">All platforms</option>
+                {platforms.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </>
+          )}
+          onResetControls={()=>{ setQuery(''); setSort('date_desc'); setDir('ALL'); setPlatform('ALL') }}
+        />
+
+        {rows.length ? (
+          <table>
+            <thead><tr><th>Date</th><th>Direction</th><th>Platform</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+            <tbody>
+              {rows.map((x,i)=>(
+                <tr key={i}>
+                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.date}</td>
+                  <td>{badge(x.direction || '—', x.direction==='credit' ? 'green' : x.direction==='debit' ? 'red' : 'gray')}</td>
+                  <td style={{color:'var(--text-primary)',fontWeight:600}}>{x.platform || 'Stock Market'}</td>
+                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{(x.description || '').slice(0, 110)}</td>
+                  <td style={{textAlign:'right'}}><span className={x.direction==='credit'?'amount-credit':'amount-debit'}>{f(x.amount)}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : <div style={{textAlign:'center',padding:'40px 20px',color:'var(--text-muted)',fontSize:13}}>No stock market transactions found</div>}
+      </div>
+    )
+  }
+
   const EMITab = () => {
     const [query, setQuery] = useState('')
     const [sort, setSort] = useState('date_desc')
@@ -495,6 +593,7 @@ export default function Dashboard({ result, onReset }) {
         {tab==='emi' && <EMITab />}
         {tab==='disbursement' && <DisbursementTab />}
         {tab==='creditCard' && <CreditCardTab />}
+        {tab==='stock' && <StockMarketTab />}
         {tab==='investments' && <InvestmentsTab a={a} />}
         {tab==='appLoans' && <AppLoansTab a={a} />}
         {tab==='transfers' && <TransfersTab a={a} />}

@@ -34,6 +34,7 @@ const NACH_PATTERNS = [
 ];
 
 const APP_LOAN_PATTERNS = [
+  // Popular Loan Apps
   { regex: /KREDITBEE|KREDIT BEE/i, name: 'KreditBee' },
   { regex: /LAZYPAY|LAZY PAY/i, name: 'LazyPay' },
   { regex: /MONEYTAP|MONEY TAP/i, name: 'MoneyTap' },
@@ -41,17 +42,29 @@ const APP_LOAN_PATTERNS = [
   { regex: /MPOKKET|M POKKET/i, name: 'mPokket' },
   { regex: /PAYSENSE|PAY SENSE/i, name: 'PaySense' },
   { regex: /CASHE\b/i, name: 'CASHe' },
-  { regex: /EARLY.*SALARY|EARLYSALARY/i, name: 'EarlySalary' },
+  { regex: /EARLYSALARY|EARLY.*SALARY|FIBE/i, name: 'Fibe' },
   { regex: /STASHFIN/i, name: 'StashFin' },
-  { regex: /FIBE\b/i, name: 'Fibe' },
   { regex: /SLICE\b/i, name: 'Slice' },
   { regex: /JUPITER\b/i, name: 'Jupiter' },
-  { regex: /FINAGLE/i, name: 'Finagle (Kotak)' },
   { regex: /NIRA\b/i, name: 'Nira' },
-  { regex: /RING\b.*LOAN|KISSHT/i, name: 'Kissht/Ring' },
-  { regex: /FREO\b|FREOPAY/i, name: 'Freo' },
   { regex: /SMARTCOIN/i, name: 'SmartCoin' },
-  { regex: /PREFR\b/i, name: 'Prefr' },
+  { regex: /KISSHT|RING\b/i, name: 'Kissht/Ring' },
+  { regex: /FREO|FREOPAY/i, name: 'Freo' },
+  { regex: /ZESTMONEY|ZEST MONEY/i, name: 'ZestMoney' },
+  { regex: /AXIO|CAPITALFLOAT/i, name: 'Axio' },
+  { regex: /DHANI/i, name: 'Dhani' },
+  { regex: /INDIALENDS/i, name: 'IndiaLends' },
+  { regex: /LOANTAP/i, name: 'LoanTap' },
+  { regex: /KRAZYBEE/i, name: 'KrazyBee' },
+  { regex: /KREDITZY|KREDITZY/i, name: 'Kreditzy' },
+  { regex: /RUPEEK/i, name: 'Rupeek' },
+  { regex: /BHARATPE.*LOAN/i, name: 'BharatPe Loan' },
+  { regex: /LENDINGKART/i, name: 'Lendingkart' },
+  { regex: /FINNABLE/i, name: 'Finnable' },
+  { regex: /OXYZO/i, name: 'Oxyzo' },
+  { regex: /UGRO/i, name: 'UGRO Capital' },
+  { regex: /INDIFI/i, name: 'Indifi' },
+  { regex: /FAIRCENT/i, name: 'Faircent' },
 ];
 
 const SIP_PATTERNS = [
@@ -66,6 +79,53 @@ const SIP_PATTERNS = [
   { regex: /MOTILAL.*OSWAL|MOTILAL/i, platform: 'Motilal Oswal' },
   { regex: /INVESCO/i, platform: 'Invesco MF' },
 ];
+
+
+
+
+const STOCK_MARKET_PATTERNS = [
+  // --- Original & Top Discount Brokers ---
+  { regex: /ZERODHA|KITE\b|KITEAPP|COIN\b/i, platform: 'Zerodha' },
+  { regex: /UPSTOX|UPSTX/i, platform: 'Upstox' },
+  { regex: /GROWW/i, platform: 'Groww' },
+  { regex: /ANGEL\s*ONE|ANGEL\s*BROKING|ANGELBRK/i, platform: 'Angel One' },
+  { regex: /FYERS/i, platform: 'Fyers' },
+  { regex: /5PAISA|FIVE\s*PAISA/i, platform: '5paisa' },
+  { regex: /DHAN\b|RAISE\s*FIN/i, platform: 'Dhan' },
+  { regex: /PAYTM\s*MONEY|PAYTMMONEY/i, platform: 'Paytm Money' },
+  { regex: /ALICE\s*BLUE/i, platform: 'Alice Blue' },
+  { regex: /SHOONYA|FINVASIA/i, platform: 'Shoonya by Finvasia' },
+  { regex: /PROSTOCKS/i, platform: 'ProStocks' },
+  { regex: /SAMCO/i, platform: 'Samco' },
+  { regex: /INDMONEY/i, platform: 'INDmoney' },
+
+  // --- Banking Brokers ---
+  { regex: /ICICI\s*DIRECT|ICICIDIRECT/i, platform: 'ICICI Direct' },
+  { regex: /HDFC\s*SEC|HDFCSEC|HDFC\s*SKY/i, platform: 'HDFC Securities' },
+  { regex: /KOTAK\s*SEC|KOTAKSEC|KOTAK\s*NEO/i, platform: 'Kotak Securities' },
+  { regex: /AXIS\s*DIRECT|AXISDIRECT/i, platform: 'Axis Direct' },
+  { regex: /SBI\s*SEC|SBI\s*SECURITIES/i, platform: 'SBI Securities' },
+  { regex: /IDBI\s*DIRECT|IDBIDIRECT/i, platform: 'IDBI Direct' },
+
+  // --- Institutional, Full-Service & Wealth Managers ---
+  { regex: /NUVAMA|NUVAMA\s*WEALTH|EDELWEISS\s*BROKING|EDELWEISS\s*SEC/i, platform: 'Nuvama' },
+  { regex: /SHAREKHAN/i, platform: 'Sharekhan' },
+  { regex: /MOTILAL\s*OSWAL|MOTILAL|MOSL/i, platform: 'Motilal Oswal' },
+  { regex: /PRITHVI\s*EXCHANGE|PRITHVI\s*FIN|PRITHVI\s*SHARE|PRITHVI\s*TRADE/i, platform: 'Prithvi' },
+  { regex: /CHOICE\s*FINX|CHOICE\s*BROKING/i, platform: 'Choice FinX' },
+  { regex: /VENTURA/i, platform: 'Ventura Wealth' },
+  { regex: /SMC\s*GLOBAL|SMC\s*EASY/i, platform: 'SMC Global' },
+  { regex: /GEOJIT/i, platform: 'Geojit' },
+  { regex: /IIFL|INDIA\s*INFOLINE/i, platform: 'IIFL Markets' },
+  { regex: /ANAND\s*RATHI/i, platform: 'Anand Rathi' },
+  { regex: /NIRMAL\s*BANG/i, platform: 'Nirmal Bang' },
+  { regex: /TRADEBULLS/i, platform: 'Tradebulls' },
+  { regex: /BAJAJ\s*FIN|BAJAJ\s*SECURITIES/i, platform: 'Bajaj Financial Securities' },
+  { regex: /BONANZA\s*ONLINE|BONANZA\s*PORTFOLIO/i, platform: 'Bonanza' },
+  { regex: /RELIGARE|DYNAMI/i, platform: 'Religare' },
+  { regex: /ARIHANT\s*CAP/i, platform: 'Arihant Capital' }
+];
+
 
 const INSURANCE_PATTERNS = [
   { regex: /LIC\b|LICINDIA|LIC.*PREM/i, provider: 'LIC', type: 'life' },
@@ -154,16 +214,47 @@ function parseDate(str) {
   return s.split(' ')[0];
 }
 
+function inferSalaryEmployer(desc) {
+  const s = (desc || '').toString();
+  const upper = s.toUpperCase();
+
+  for (const [key, name] of Object.entries(SALARY_SOURCE_MAP)) {
+    if (upper.includes(key)) return name;
+  }
+
+  const fromMarkers = [
+    /(?:SALARY|PAYROLL|WAGES|STIPEND)\s*(?:FOR\s*[A-Z]{3,9}\s*\d{2,4})?\s*[:\-\/]*\s*([A-Z0-9 &.,()]{3,80})/i,
+    /(?:NEFT|IMPS|RTGS|UPI)\s*[:\-\/]*\s*(?:SALARY|PAYROLL)\s*[:\-\/]*\s*([A-Z0-9 &.,()]{3,80})/i,
+    /(?:SAL|SALARY)\s*[:\-\/]\s*([A-Z0-9 &.,()]{3,80})/i,
+  ];
+  for (const re of fromMarkers) {
+    const m = s.match(re);
+    if (m && m[1]) {
+      const cleaned = m[1]
+        .replace(/\b(?:SALARY|PAYROLL|WAGES|STIPEND|FOR|MONTH|MTH|NEFT|IMPS|RTGS|UPI|NACH|ACH|ECS)\b/gi, ' ')
+        .replace(/\b(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)\b/gi, ' ')
+        .replace(/\b20\d{2}\b/g, ' ')
+        .replace(/\b\d{1,2}\b/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (cleaned.length >= 3) return cleaned.slice(0, 60);
+    }
+  }
+
+  const nachToken = inferAutoDebitLender(s);
+  if (nachToken) return nachToken;
+
+  const m = upper.match(/\b(?:SALARY|PAYROLL|WAGES|STIPEND)\b[\s:\-\/]*([A-Z][A-Z0-9 &]{2,50})/);
+  if (m && m[1]) return m[1].replace(/\s+/g, ' ').trim().slice(0, 60);
+
+  return 'Salary Credit';
+}
+
 function detectSalary(desc, amount) {
   const d = desc.toUpperCase();
   for (const kw of SALARY_KEYWORDS) {
     if (new RegExp(kw, 'i').test(d)) {
-      // find employer name
-      let employer = 'Unknown Employer';
-      for (const [key, name] of Object.entries(SALARY_SOURCE_MAP)) {
-        if (d.includes(key)) { employer = name; break; }
-      }
-      return employer;
+      return inferSalaryEmployer(desc);
     }
   }
   return null;
@@ -324,9 +415,31 @@ function detectAppLoan(desc) {
 }
 
 function detectSIP(desc) {
+  const d = (desc || '').toUpperCase();
+  const isMf = /\bMF\b|MUTUAL|SIP|FOLIO|AMC\b|CAMS\b|KFIN|KARVY/i.test(d);
+  const stockKw = /\bNSE\b|\bBSE\b|EQUITY|STOCK|SHARE|BROKING|DP\s*CHARGES|DEMAT|CDSL|NSDL|PAYOUT|PAYIN|MARGIN|\bFNO\b|F&O|FUTURES|OPTIONS|INTRADAY|DELIVERY|\bIPO\b/i.test(d);
+  if (stockKw) return null;
   for (const p of SIP_PATTERNS) {
-    if (p.regex.test(desc)) return p.platform;
+    if (!p.regex.test(desc)) continue;
+    if (!isMf && /GROWW|ZERODHA|PAYTM|MOTILAL/i.test(p.platform)) continue;
+    return p.platform;
   }
+  return null;
+}
+
+function detectStockMarket(desc) {
+  if (!desc) return null;
+  const d = desc.toUpperCase();
+  const isMf = /\bMF\b|MUTUAL|SIP|FOLIO|AMC\b|CAMS\b|KFIN|KARVY/i.test(d);
+  const stockKw = /\bNSE\b|\bBSE\b|EQUITY|STOCK|SHARE|BROKING|DP\s*CHARGES|DEMAT|CDSL|NSDL|PAYOUT|PAYIN|MARGIN|\bFNO\b|F&O|FUTURES|OPTIONS|INTRADAY|DELIVERY|\bIPO\b/i.test(d);
+
+  for (const p of STOCK_MARKET_PATTERNS) {
+    if (!p.regex.test(desc)) continue;
+    if (isMf && !stockKw) return null;
+    return { platform: p.platform };
+  }
+
+  if (stockKw && !isMf) return { platform: 'Stock Market' };
   return null;
 }
 
@@ -357,7 +470,31 @@ function detectAPY(desc) {
 }
 
 function detectCreditCard(desc) {
-  return /6079\d+|CREDIT.*CARD.*PAY|CC.*PAY|CARD.*DUE/i.test(desc);
+  const text = desc.toUpperCase();
+
+  const patterns = [
+    /CREDIT\s*CARD/,
+    /CRDT\s*CARD/,
+    /CARD\s*PAYMENT/,
+    /CARD\s*PMT/,
+    /CARD\s*DUE/,
+    /CC\s*PAY/,
+    /CC\s*PMT/,
+    /CC\s*PAYMENT/,
+    /CREDITCARD/,
+    /CARD\s*BILL/,
+    /BILLDESK.*CARD/,
+    /EASYPAY.*CARD/,
+    /PAYTM.*CARD/,
+    /CRED/,
+    /CHEQ/,
+    /CREDIT\s*CARD\s*BILL/,
+    /VISA.*PAYMENT/,
+    /MASTERCARD.*PAYMENT/,
+    /RUPAY.*PAYMENT/,
+  ];
+
+  return patterns.some(pattern => pattern.test(text));
 }
 
 function detectPF(desc) {
@@ -407,6 +544,7 @@ function analyzeTransactions(transactions) {
     pf_credits: [],
     loan_disbursements: [],
     credit_card_payments: [],
+    stock_market: [],
     apy_pension: [],
     family_transfers: { out: [], in: [] },
     monthly_summary: {},
@@ -479,6 +617,12 @@ function analyzeTransactions(transactions) {
         continue;
       }
 
+      const smCredit = detectStockMarket(desc);
+      if (smCredit) {
+        result.stock_market.push({ date, direction: 'credit', platform: smCredit.platform, amount: credit, description: desc, ...meta });
+        continue;
+      }
+
       // Family transfer IN
       const transferDir = detectTransfer(desc);
       if (transferDir === 'in') {
@@ -520,6 +664,12 @@ function analyzeTransactions(transactions) {
       const ins = detectInsurance(desc);
       if (ins) {
         result.insurance.push({ date, provider: ins.provider, policy_type: ins.type, amount: debit, description: desc });
+        continue;
+      }
+
+      const smDebit = detectStockMarket(desc);
+      if (smDebit) {
+        result.stock_market.push({ date, direction: 'debit', platform: smDebit.platform, amount: debit, description: desc, ...meta });
         continue;
       }
 
