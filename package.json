@@ -1,0 +1,11 @@
+{
+  "name": "bank-statement-analyzer",
+  "version": "2.0.0",
+  "description": "Bank Statement Analyzer — Rule-Based, No AI required",
+  "private": true,
+  "scripts": {
+    "install:all": "cd server && npm install && cd ../client && npm install",
+    "start:server": "cd server && node index.js",
+    "start:client": "cd client && npm run dev"
+  }
+}

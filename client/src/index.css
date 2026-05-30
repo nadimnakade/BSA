@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #0a0c10;
+  --bg-secondary: #111318;
+  --bg-card: #161a22;
+  --bg-hover: #1e2330;
+  --border: #252a35;
+  --border-bright: #303848;
+  --text-primary: #e8eaf0;
+  --text-secondary: #8892a4;
+  --text-muted: #4a5568;
+  --green: #22c55e;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --blue: #3b82f6;
+  --teal: #14b8a6;
+  --purple: #a855f7;
+}
+
+[data-theme="light"] {
+  --bg-primary: #f7f8fb;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #f1f3f8;
+  --border: #e6e9f0;
+  --border-bright: #d6dbe6;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --green: #16a34a;
+  --red: #dc2626;
+  --amber: #d97706;
+  --blue: #2563eb;
+  --teal: #0d9488;
+  --purple: #7c3aed;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg-primary); color: var(--text-primary); font-family: 'DM Sans', sans-serif; min-height: 100vh; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; }
+
+.badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 4px; font-size: 11px; font-weight: 500; font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: .05em; }
+.badge-green  { background: rgba(34,197,94,.12);  color: var(--green);  border: 1px solid rgba(34,197,94,.2); }
+.badge-red    { background: rgba(239,68,68,.12);  color: var(--red);    border: 1px solid rgba(239,68,68,.2); }
+.badge-amber  { background: rgba(245,158,11,.12); color: var(--amber);  border: 1px solid rgba(245,158,11,.2); }
+.badge-blue   { background: rgba(59,130,246,.12); color: var(--blue);   border: 1px solid rgba(59,130,246,.2); }
+.badge-teal   { background: rgba(20,184,166,.12); color: var(--teal);   border: 1px solid rgba(20,184,166,.2); }
+.badge-purple { background: rgba(168,85,247,.12); color: var(--purple); border: 1px solid rgba(168,85,247,.2); }
+.badge-gray   { background: rgba(74,85,104,.15);  color: var(--text-secondary); border: 1px solid rgba(74,85,104,.25); }
+
+.amount-credit { color: var(--green);  font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; }
+.amount-debit  { color: var(--red);    font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; }
+.amount-invest { color: var(--amber);  font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; }
+
+.tab-btn { padding: 7px 14px; border-radius: 7px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid transparent; background: transparent; color: var(--text-secondary); transition: all .15s; white-space: nowrap; font-family: inherit; }
+.tab-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+.tab-btn.active { color: var(--text-primary); background: var(--bg-hover); border-color: var(--border-bright); }
+
+.ctrl { padding: 7px 10px; border-radius: 8px; font-size: 12px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); outline: none; }
+.ctrl::placeholder { color: var(--text-muted); }
+.ctrl:focus { border-color: var(--border-bright); }
+.ctrl-btn { padding: 7px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); }
+.ctrl-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+table { width: 100%; border-collapse: collapse; }
+thead th { text-align: left; padding: 9px 12px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+tbody tr { border-bottom: 1px solid rgba(37,42,53,.6); transition: background .1s; }
+tbody tr:hover { background: var(--bg-hover); }
+tbody tr:last-child { border-bottom: none; }
+tbody td { padding: 9px 12px; font-size: 13px; color: var(--text-secondary); }
+
+.progress-bar { height: 5px; border-radius: 3px; background: var(--bg-hover); overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 3px; transition: width .8s cubic-bezier(.4,0,.2,1); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; }
+
+@keyframes slide-up { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+.slide-up { animation: slide-up .4s ease-out forwards; }
