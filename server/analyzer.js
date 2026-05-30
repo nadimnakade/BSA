@@ -367,6 +367,15 @@ function extractTxnMeta(desc, tx) {
   const principal_amount = principal_raw ? parseAmount(principal_raw) : 0;
   const interest_amount = interest_raw ? parseAmount(interest_raw) : 0;
 
+  const src = tx && tx._source ? tx._source : null;
+  const source_type = src ? (src.type || '') : '';
+  const source_sheet = src ? (src.sheet || '') : '';
+  const source_row = src && src.row !== undefined ? src.row : undefined;
+  const source_line_start = src && src.line_start !== undefined ? src.line_start : undefined;
+  const source_line_end = src && src.line_end !== undefined ? src.line_end : undefined;
+  const source_page = src && src.page !== undefined ? src.page : undefined;
+  const source_excerpt = tx && tx.source_excerpt ? tx.source_excerpt : '';
+
   return {
     reference_id: reference_id || undefined,
     utr: utr || undefined,
@@ -384,6 +393,13 @@ function extractTxnMeta(desc, tx) {
     principal_amount: principal_amount || undefined,
     interest_amount: interest_amount || undefined,
     processing_fee: undefined,
+    source_type: source_type || undefined,
+    source_sheet: source_sheet || undefined,
+    source_row: source_row,
+    source_line_start: source_line_start,
+    source_line_end: source_line_end,
+    source_page: source_page,
+    source_excerpt: source_excerpt || undefined,
   };
 }
 
@@ -626,7 +642,7 @@ function analyzeTransactions(transactions) {
       // Family transfer IN
       const transferDir = detectTransfer(desc);
       if (transferDir === 'in') {
-        result.family_transfers.in.push({ date, from: 'NISHIKANT HIRE', amount: credit, description: desc });
+        result.family_transfers.in.push({ date, from: 'NISHIKANT HIRE', amount: credit, description: desc, ...meta });
         ms.transfers_in += credit;
         continue;
       }
@@ -642,7 +658,7 @@ function analyzeTransactions(transactions) {
 
       // ---- APY ----
       if (detectAPY(desc)) {
-        result.apy_pension.push({ date, description: desc, amount: debit });
+        result.apy_pension.push({ date, description: desc, amount: debit, ...meta });
         ms.apy += debit;
         continue;
       }
@@ -663,7 +679,7 @@ function analyzeTransactions(transactions) {
       // ---- INSURANCE ----
       const ins = detectInsurance(desc);
       if (ins) {
-        result.insurance.push({ date, provider: ins.provider, policy_type: ins.type, amount: debit, description: desc });
+        result.insurance.push({ date, provider: ins.provider, policy_type: ins.type, amount: debit, description: desc, ...meta });
         continue;
       }
 
@@ -676,20 +692,20 @@ function analyzeTransactions(transactions) {
       // ---- SIP ----
       const sip = detectSIP(desc);
       if (sip) {
-        result.sip_investments.push({ date, fund_name: desc.slice(0, 50), platform: sip, amount: debit });
+        result.sip_investments.push({ date, fund_name: desc.slice(0, 50), platform: sip, amount: debit, description: desc, ...meta });
         continue;
       }
 
       // ---- APP LOANS ----
       const appLoan = detectAppLoan(desc);
       if (appLoan) {
-        result.app_loans.push({ date, app_name: appLoan, amount: debit, type: 'repayment', description: desc });
+        result.app_loans.push({ date, app_name: appLoan, amount: debit, type: 'repayment', description: desc, ...meta });
         continue;
       }
 
       // ---- RENT ----
       if (detectRent(desc, debit)) {
-        result.rent.push({ date, payee: desc.slice(0, 40), amount: debit, description: desc, mode: 'UPI' });
+        result.rent.push({ date, payee: desc.slice(0, 40), amount: debit, description: desc, mode: 'UPI', ...meta });
         continue;
       }
 
@@ -702,7 +718,7 @@ function analyzeTransactions(transactions) {
       // ---- FAMILY TRANSFERS OUT ----
       const transferDir = detectTransfer(desc);
       if (transferDir === 'out') {
-        result.family_transfers.out.push({ date, to: 'NISHIKANT HIRE', amount: debit, description: desc });
+        result.family_transfers.out.push({ date, to: 'NISHIKANT HIRE', amount: debit, description: desc, ...meta });
         ms.transfers_out += debit;
         continue;
       }
@@ -710,7 +726,7 @@ function analyzeTransactions(transactions) {
       // ---- UTILITIES ----
       const util = detectUtility(desc);
       if (util) {
-        result.utilities.push({ date, description: desc.slice(0, 50), amount: debit, category: util });
+        result.utilities.push({ date, description: desc.slice(0, 50), amount: debit, category: util, ...meta });
         continue;
       }
     }

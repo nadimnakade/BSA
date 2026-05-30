@@ -102,7 +102,9 @@ function parseText(text) {
         date: parseDate(dateMatch[1]),
         description: desc,
         debit: 0, credit: 0, balance,
-        raw: line
+        raw: line,
+        _source: { type: 'text', line_start: i + 1, line_end: i + 1 },
+        source_excerpt: line
       };
 
     } else if (currentTx) {
@@ -121,6 +123,8 @@ function parseText(text) {
       // Continuation line (description, UTR, remarks)
       if (!/^\d+$/.test(line) && line.length > 2) {
         currentTx.description = (currentTx.description + ' ' + line).trim();
+        currentTx._source.line_end = i + 1;
+        currentTx.source_excerpt = (currentTx.source_excerpt + '\n' + line).trim();
       }
     }
   }
@@ -168,6 +172,8 @@ function parseUnionBankText(text) {
       const date = parseDate(rawDate);
       const descLines = [];
       let debit = 0, credit = 0, balance = 0;
+      const sourceStart = i + 1;
+      let sourceEnd = i + 1;
       i++;
 
       // Collect description lines until we hit amounts
@@ -177,6 +183,7 @@ function parseUnionBankText(text) {
         if (nextDateMatch) break;
 
         if (/^\d{2}:\d{2}(:\d{2})?$/.test(l)) {
+          sourceEnd = i + 1;
           i++;
           continue;
         }
@@ -193,17 +200,28 @@ function parseUnionBankText(text) {
           if (/cr\b|credit/i.test(l)) credit = txAmt;
           else debit = txAmt;
           descLines.push(l.replace(/[\d][\d,\s]*\.\d{2}/g, '').trim());
+          sourceEnd = i + 1;
           i++;
           break;
         }
 
         if (l && !/^page no\d*/i.test(l)) descLines.push(l);
+        sourceEnd = i + 1;
         i++;
       }
 
       const description = descLines.join(' ').replace(/\s+/g, ' ').trim();
       if (date && description) {
-        transactions.push({ date, description: cleanDesc(description), debit, credit, balance, raw: description });
+        transactions.push({
+          date,
+          description: cleanDesc(description),
+          debit,
+          credit,
+          balance,
+          raw: description,
+          _source: { type: 'unionbank-text', line_start: sourceStart, line_end: sourceEnd },
+          source_excerpt: lines.slice(sourceStart - 1, sourceEnd).join('\n')
+        });
       }
     } else {
       i++;
@@ -250,7 +268,12 @@ async function parseCSV(filePath) {
     });
   }
 
-  return records.map(row => normalizeRow(row)).filter(t => t.date && (t.debit > 0 || t.credit > 0));
+  return records.map((row, idx) => {
+    const tx = normalizeRow(row);
+    tx._source = { type: 'csv', row: idx + 2 };
+    tx.source_excerpt = JSON.stringify(row);
+    return tx;
+  }).filter(t => t.date && (t.debit > 0 || t.credit > 0));
 }
 
 // ---- XLSX PARSER ----
@@ -281,7 +304,11 @@ async function parseXLSX(filePath) {
       const obj = {};
       headers.forEach((h, j) => { obj[h] = row[j] !== undefined ? row[j].toString() : ''; });
       const tx = normalizeRow(obj);
-      if (tx.date && (tx.debit > 0 || tx.credit > 0)) allTx.push(tx);
+      if (tx.date && (tx.debit > 0 || tx.credit > 0)) {
+        tx._source = { type: 'xlsx', sheet: sheetName, row: i + 1 };
+        tx.source_excerpt = JSON.stringify(obj);
+        allTx.push(tx);
+      }
     }
   }
 

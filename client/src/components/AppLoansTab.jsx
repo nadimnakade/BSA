@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 const f = n => n ? `₹${Number(n).toLocaleString('en-IN')}` : '—'
 
-export default function AppLoansTab({ a }) {
+export default function AppLoansTab({ a, onTx }) {
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('date_desc')
   const [typeFilter, setTypeFilter] = useState('ALL')
@@ -75,7 +75,7 @@ export default function AppLoansTab({ a }) {
             <thead><tr><th>Date</th><th>App / Lender</th><th>Type</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {loans.map((x,i)=>(
-                <tr key={i}>
+                <tr key={i} onClick={()=>onTx && onTx(x)} style={{cursor:onTx?'pointer':'default'}}>
                   <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12}}>{x.date}</td>
                   <td style={{color:'var(--purple)',fontWeight:500}}>{x.app_name}</td>
                   <td><span className={`badge badge-${x.type==='credit'?'green':'red'}`}>{x.type}</span></td>

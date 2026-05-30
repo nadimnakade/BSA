@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 const f = n => n ? `₹${Number(n).toLocaleString('en-IN')}` : '₹0'
 const badge = (label, color='blue') => <span className={`badge badge-${color}`}>{label}</span>
 
-export default function InsightsTab({ a }) {
+export default function InsightsTab({ a, onTx }) {
   const [disbQuery, setDisbQuery] = useState('')
   const [disbSort, setDisbSort] = useState('date_desc')
   const [disbType, setDisbType] = useState('ALL')
@@ -122,7 +122,7 @@ export default function InsightsTab({ a }) {
             <thead><tr><th>Date</th><th>Lender</th><th>Loan Type</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {disbRows.map((x,i)=>(
-                <tr key={i}>
+                <tr key={i} onClick={()=>onTx && onTx(x)} style={{cursor:onTx?'pointer':'default'}}>
                   <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12}}>{x.date}</td>
                   <td style={{color:'var(--text-primary)',fontWeight:500}}>{x.lender}</td>
                   <td>{badge(x.loan_type||'—', x.loan_type==='HL'?'blue':x.loan_type==='PL'?'red':x.loan_type==='BL'?'purple':x.loan_type==='GL'?'amber':x.loan_type==='AL'?'amber':x.loan_type==='EL'?'teal':'gray')}</td>

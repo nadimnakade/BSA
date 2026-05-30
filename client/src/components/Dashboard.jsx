@@ -6,6 +6,7 @@ import AppLoansTab from './AppLoansTab'
 import TransfersTab from './TransfersTab'
 import InsightsTab from './InsightsTab'
 import MonthlyTab from './MonthlyTab'
+import TxModal from './TxModal'
 
 const TABS = [
   {id:'overview',label:'📊 Overview'},
@@ -22,7 +23,7 @@ const TABS = [
   {id:'insights',label:'🔍 Insights'},
 ]
 
-export default function Dashboard({ result, onReset }) {
+export default function Dashboard({ result, onReset, uploadedFile }) {
   const [tab, setTab] = useState('overview')
   const { analysis: a, filename, transaction_count } = result
   const as = a.account_summary
@@ -30,6 +31,10 @@ export default function Dashboard({ result, onReset }) {
   const badge = (label, color='blue') => <span className={`badge badge-${color}`}>{label}</span>
   const norm = v => (v ?? '').toString().toLowerCase()
   const [exporting, setExporting] = useState(false)
+  const [txOpen, setTxOpen] = useState(false)
+  const [selectedTx, setSelectedTx] = useState(null)
+
+  const openTx = (tx) => { setSelectedTx(tx); setTxOpen(true) }
 
   const exportSummary = async (format) => {
     setExporting(true)
@@ -120,7 +125,7 @@ export default function Dashboard({ result, onReset }) {
             <thead><tr><th>Date</th><th>Employer</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {rows.map((x, i) => (
-                <tr key={i}>
+                <tr key={i} onClick={()=>openTx(x)} style={{cursor:'pointer'}}>
                   <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.date}</td>
                   <td style={{color:'var(--text-primary)',fontWeight:600}}>{x.employer || '—'}</td>
                   <td style={{fontSize:12,color:'var(--text-secondary)'}}>{(x.description || '').slice(0, 90)}</td>
@@ -181,7 +186,7 @@ export default function Dashboard({ result, onReset }) {
             <thead><tr><th>Date</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {rows.map((x, i) => (
-                <tr key={i}>
+                <tr key={i} onClick={()=>openTx(x)} style={{cursor:'pointer'}}>
                   <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.date}</td>
                   <td style={{fontSize:12,color:'var(--text-secondary)'}}>{(x.description || '').slice(0, 110)}</td>
                   <td style={{textAlign:'right'}}><span className="amount-credit">{f(x.amount)}</span></td>
@@ -255,7 +260,7 @@ export default function Dashboard({ result, onReset }) {
             <thead><tr><th>Date</th><th>Lender</th><th>Type</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {rows.map((x, i) => (
-                <tr key={i}>
+                <tr key={i} onClick={()=>openTx(x)} style={{cursor:'pointer'}}>
                   <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.date}</td>
                   <td style={{color:'var(--text-primary)',fontWeight:600}}>{x.lender || '—'}</td>
                   <td>{badge(x.loan_type || '—', typeColor(x.loan_type))}</td>
@@ -317,7 +322,7 @@ export default function Dashboard({ result, onReset }) {
             <thead><tr><th>Date</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {rows.map((x, i) => (
-                <tr key={i}>
+                <tr key={i} onClick={()=>openTx(x)} style={{cursor:'pointer'}}>
                   <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.date}</td>
                   <td style={{fontSize:12,color:'var(--text-secondary)'}}>{(x.description || '').slice(0, 110)}</td>
                   <td style={{textAlign:'right'}}><span className="amount-debit">{f(x.amount)}</span></td>
@@ -412,7 +417,7 @@ export default function Dashboard({ result, onReset }) {
             <thead><tr><th>Date</th><th>Direction</th><th>Platform</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {rows.map((x,i)=>(
-                <tr key={i}>
+                <tr key={i} onClick={()=>openTx(x)} style={{cursor:'pointer'}}>
                   <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.date}</td>
                   <td>{badge(x.direction || '—', x.direction==='credit' ? 'green' : x.direction==='debit' ? 'red' : 'gray')}</td>
                   <td style={{color:'var(--text-primary)',fontWeight:600}}>{x.platform || 'Stock Market'}</td>
@@ -526,7 +531,7 @@ export default function Dashboard({ result, onReset }) {
             <thead><tr><th>Date</th><th>Lender</th><th>Type</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {rows.map((l,i)=>(
-                <tr key={i}>
+                <tr key={i} onClick={()=>openTx(l)} style={{cursor:'pointer'}}>
                   <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{l.date}</td>
                   <td style={{color:'var(--text-primary)',fontWeight:500}}>{l.bank}</td>
                   <td>{badge(l.type || 'OTHER', typeColor(l.type))}</td>
@@ -535,7 +540,7 @@ export default function Dashboard({ result, onReset }) {
                 </tr>
               ))}
               {apy.map((x,i)=>(
-                <tr key={`apy-${i}`}>
+                <tr key={`apy-${i}`} onClick={()=>openTx(x)} style={{cursor:'pointer'}}>
                   <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.date}</td>
                   <td style={{color:'var(--text-primary)',fontWeight:500}}>Atal Pension Yojana</td>
                   <td><span className="badge badge-amber">APY</span></td>
@@ -594,12 +599,14 @@ export default function Dashboard({ result, onReset }) {
         {tab==='disbursement' && <DisbursementTab />}
         {tab==='creditCard' && <CreditCardTab />}
         {tab==='stock' && <StockMarketTab />}
-        {tab==='investments' && <InvestmentsTab a={a} />}
-        {tab==='appLoans' && <AppLoansTab a={a} />}
-        {tab==='transfers' && <TransfersTab a={a} />}
+        {tab==='investments' && <InvestmentsTab a={a} onTx={openTx} />}
+        {tab==='appLoans' && <AppLoansTab a={a} onTx={openTx} />}
+        {tab==='transfers' && <TransfersTab a={a} onTx={openTx} />}
         {tab==='monthly' && <MonthlyTab a={a} />}
-        {tab==='insights' && <InsightsTab a={a} />}
+        {tab==='insights' && <InsightsTab a={a} onTx={openTx} />}
       </div>
+
+      <TxModal open={txOpen} tx={selectedTx} file={uploadedFile} filename={filename} onClose={() => { setTxOpen(false); setSelectedTx(null) }} />
     </div>
   )
 }

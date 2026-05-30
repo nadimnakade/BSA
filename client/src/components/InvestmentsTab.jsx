@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 const f = n => n ? `₹${Number(n).toLocaleString('en-IN')}` : '—'
 
-export default function InvestmentsTab({ a }) {
+export default function InvestmentsTab({ a, onTx }) {
   const [sipQuery, setSipQuery] = useState('')
   const [sipSort, setSipSort] = useState('date_desc')
   const [sipPlatform, setSipPlatform] = useState('ALL')
@@ -88,7 +88,7 @@ export default function InvestmentsTab({ a }) {
             <thead><tr><th>Date</th><th>Fund / Platform</th><th>Platform</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {sips.map((x,i)=>(
-                <tr key={i}>
+                <tr key={i} onClick={()=>onTx && onTx(x)} style={{cursor:onTx?'pointer':'default'}}>
                   <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12}}>{x.date}</td>
                   <td style={{color:'var(--text-primary)',fontWeight:500}}>{x.fund_name?.slice(0,50)||'—'}</td>
                   <td><span className="badge badge-amber">{x.platform||'MF'}</span></td>
@@ -129,7 +129,7 @@ export default function InvestmentsTab({ a }) {
             <thead><tr><th>Date</th><th>Provider</th><th>Policy Type</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {ins.map((x,i)=>(
-                <tr key={i}>
+                <tr key={i} onClick={()=>onTx && onTx(x)} style={{cursor:onTx?'pointer':'default'}}>
                   <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12}}>{x.date}</td>
                   <td style={{color:'var(--text-primary)',fontWeight:500}}>{x.provider}</td>
                   <td><span className="badge badge-teal">{x.policy_type}</span></td>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 const f = n => n ? `₹${Number(n).toLocaleString('en-IN')}` : '—'
 
-export default function TransfersTab({ a }) {
+export default function TransfersTab({ a, onTx }) {
   const [outQuery, setOutQuery] = useState('')
   const [outSort, setOutSort] = useState('date_desc')
   const [inQuery, setInQuery] = useState('')
@@ -87,7 +87,7 @@ export default function TransfersTab({ a }) {
             <thead><tr><th>Date</th><th>To</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {out.map((x,i)=>(
-                <tr key={i}>
+                <tr key={i} onClick={()=>onTx && onTx(x)} style={{cursor:onTx?'pointer':'default'}}>
                   <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:11}}>{x.date}</td>
                   <td style={{fontSize:12,color:'var(--text-secondary)',maxWidth:160}}>{x.description?.slice(0,50)||x.to}</td>
                   <td style={{textAlign:'right'}}><span className="amount-debit">{f(x.amount)}</span></td>
@@ -114,7 +114,7 @@ export default function TransfersTab({ a }) {
             <thead><tr><th>Date</th><th>From</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {inn.map((x,i)=>(
-                <tr key={i}>
+                <tr key={i} onClick={()=>onTx && onTx(x)} style={{cursor:onTx?'pointer':'default'}}>
                   <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:11}}>{x.date}</td>
                   <td style={{fontSize:12,color:'var(--text-secondary)',maxWidth:160}}>{x.description?.slice(0,50)||x.from}</td>
                   <td style={{textAlign:'right'}}><span className="amount-credit">{f(x.amount)}</span></td>
