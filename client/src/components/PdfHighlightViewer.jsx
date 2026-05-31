@@ -5,6 +5,7 @@ import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc
 
 const norm = v => (v ?? '').toString().trim()
+const unique = (arr) => Array.from(new Set(arr.filter(Boolean)))
 
 export default function PdfHighlightViewer({ file, initialQuery }) {
   const [loading, setLoading] = useState(false)
@@ -56,14 +57,26 @@ export default function PdfHighlightViewer({ file, initialQuery }) {
   const tokens = useMemo(() => {
     const q = norm(query)
     if (!q) return []
-    return Array.from(new Set(
-      q
-        .toUpperCase()
-        .replace(/[^A-Z0-9 ]/g, ' ')
-        .split(/\s+/)
-        .map(x => x.trim())
-        .filter(x => x.length >= 4)
-    ))
+    const raw = q
+      .toUpperCase()
+      .replace(/[^A-Z0-9 ]/g, ' ')
+      .split(/\s+/)
+      .map(x => x.trim())
+      .filter(x => (/^\d+$/.test(x) ? x.length >= 6 : x.length >= 4))
+
+    const expanded = []
+    for (const t of raw) {
+      if (/^\d{10,}$/.test(t)) {
+        const step = 3
+        const size = 6
+        for (let i = 0; i + size <= t.length; i += step) expanded.push(t.slice(i, i + size))
+        expanded.push(t.slice(-size))
+      } else {
+        expanded.push(t)
+      }
+    }
+
+    return unique(expanded)
   }, [query])
 
   useEffect(() => {
@@ -75,15 +88,35 @@ export default function PdfHighlightViewer({ file, initialQuery }) {
     ;(async () => {
       try {
         const upperQ = q.toUpperCase()
-        for (let p = 1; p <= (pdf.numPages || 0); p++) {
+        const searchTokens = unique(
+          upperQ
+            .replace(/[^A-Z0-9 ]/g, ' ')
+            .split(/\s+/)
+            .map(x => x.trim())
+            .filter(x => (/^\d+$/.test(x) ? x.length >= 6 : x.length >= 4))
+        )
+
+        let best = { page: 1, score: -1 }
+        const pageCount = pdf.numPages || 0
+        for (let p = 1; p <= pageCount; p++) {
           const page = await pdf.getPage(p)
           const tc = await page.getTextContent()
           const pageText = (tc.items || []).map(i => i.str).join(' ').toUpperCase()
+
           if (pageText.includes(upperQ)) {
             if (!cancelled) setPageNum(p)
-            break
+            return
           }
+
+          let score = 0
+          for (const t of searchTokens) {
+            if (pageText.includes(t)) score++
+          }
+          if (score > best.score) best = { page: p, score }
         }
+
+        const minNeeded = Math.min(2, searchTokens.length || 0)
+        if (best.score >= minNeeded && !cancelled) setPageNum(best.page)
       } catch {}
     })()
 
@@ -125,6 +158,10 @@ export default function PdfHighlightViewer({ file, initialQuery }) {
         if (cancelled) return
 
         const items = tc.items || []
+        if (!items.length) {
+          setErr('No selectable text detected on this PDF page. If this is a scanned PDF/image, highlighting cannot work.')
+          return
+        }
         const upperTokens = tokens
         if (!upperTokens.length) return
 
@@ -132,29 +169,23 @@ export default function PdfHighlightViewer({ file, initialQuery }) {
         octx.strokeStyle = 'rgba(245, 158, 11, 0.7)'
         octx.lineWidth = 1
 
+        let matchCount = 0
         for (const item of items) {
           const str = (item.str || '').toString().toUpperCase()
           if (!str) continue
           if (!upperTokens.some(t => str.includes(t))) continue
 
-          const tr = item.transform || []
-          const x = tr[4]
-          const y = tr[5]
-          const w = item.width || 0
-          const h = item.height || 0
-          if (!x && !y) continue
-
-          const rect = viewport.convertToViewportRectangle([x, y, x + w, y + h])
-          const x1 = Math.min(rect[0], rect[2])
-          const y1 = Math.min(rect[1], rect[3])
-          const x2 = Math.max(rect[0], rect[2])
-          const y2 = Math.max(rect[1], rect[3])
-          const rw = x2 - x1
-          const rh = y2 - y1
-          if (rw <= 0 || rh <= 0) continue
-          octx.fillRect(x1, y1 - rh, rw, rh + 2)
-          octx.strokeRect(x1, y1 - rh, rw, rh + 2)
+          const tx = pdfjsLib.Util.transform(viewport.transform, item.transform || [])
+          const x = tx[4]
+          const y = tx[5]
+          const h = Math.max(8, Math.abs(tx[3] || tx[0] || 0))
+          const w = Math.max(1, (item.width || 0) * (viewport.scale || 1))
+          if (!Number.isFinite(x) || !Number.isFinite(y)) continue
+          matchCount++
+          octx.fillRect(x, y - h, w, h + 2)
+          octx.strokeRect(x, y - h, w, h + 2)
         }
+        if (!matchCount) setErr('No highlights found for the current query on this page. Try searching by a shorter unique token (e.g., UTR/UMRN/last 6 digits).')
       } catch (e) {
         if (!cancelled) setErr(e?.message || 'Failed to render PDF page')
       }
@@ -199,4 +230,3 @@ export default function PdfHighlightViewer({ file, initialQuery }) {
     </div>
   )
 }
-

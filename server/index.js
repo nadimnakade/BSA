@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { parseFile } = require('./parser');
-const { analyzeTransactions } = require('./analyzer');
+const { analyzeTransactions, parseCibilText, crossVerifyCibil, assessEligibility, assessUnderwriting } = require('./analyzer');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,20 +25,73 @@ const upload = multer({
 
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 
+const normStr = (v) => (v ?? '').toString().trim();
+
+async function extractPdfTextPdfjs(buffer, password) {
+  const p = normStr(password);
+  try {
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const data = Buffer.isBuffer(buffer)
+      ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
+      : buffer;
+    const loadingTask = pdfjs.getDocument({ data, password: p || undefined, disableWorker: true });
+    const doc = await loadingTask.promise;
+    let out = '';
+    const pageCount = doc.numPages || 0;
+    for (let i = 1; i <= pageCount; i++) {
+      const page = await doc.getPage(i);
+      const tc = await page.getTextContent();
+      out += (tc.items || []).map(it => it.str).join(' ') + '\n';
+    }
+    try { await doc.destroy(); } catch {}
+    return out;
+  } catch (e) {
+    const msg = (e?.message || '').toString();
+    const name = (e?.name || '').toString();
+    const isPassword = /password/i.test(msg) || /password/i.test(name) || /encrypted/i.test(msg);
+    const isWrongPassword = /incorrect password/i.test(msg) || /wrong password/i.test(msg);
+    if (isWrongPassword) throw new Error('Incorrect CIBIL PDF password. Please re-check and try again.');
+    if (isPassword && !p) throw new Error('CIBIL PDF is password-protected. Please enter the PDF password and re-upload.');
+    throw new Error(msg || 'Failed to read PDF text');
+  }
+}
+
+async function extractCibilText(filePath, originalName, password) {
+  const ext = path.extname(originalName).toLowerCase();
+  if (ext === '.txt') return fs.readFileSync(filePath, 'utf-8');
+  const buffer = fs.readFileSync(filePath);
+  try {
+    const pdfParse = require('pdf-parse');
+    const data = await pdfParse(buffer);
+    const text = data.text || '';
+    if (text.trim().length > 20) return text;
+  } catch (e) {
+    const msg = (e?.message || '').toString();
+    const isPassword = /password/i.test(msg) || /encrypted/i.test(msg);
+    if (!isPassword && !normStr(password)) throw e;
+  }
+  return extractPdfTextPdfjs(buffer, password);
+}
+
 app.get('/api/health', (req, res) => res.json({ status: 'ok', mode: 'rule-based', version: '2.0' }));
 
 // --- FILE UPLOAD ANALYZE ---
-app.post('/api/analyze', upload.single('statement'), async (req, res) => {
-  const filePath = req.file?.path;
+app.post('/api/analyze', upload.fields([{ name: 'statement', maxCount: 1 }, { name: 'cibil', maxCount: 1 }]), async (req, res) => {
+  const statementFile = req.files?.statement?.[0];
+  const cibilFile = req.files?.cibil?.[0];
+  const filePath = statementFile?.path;
+  const cibilPath = cibilFile?.path;
+  const cibilPassword = normStr(req.body?.cibil_password);
   try {
-    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-    console.log(`\n[Analyze] ${req.file.originalname} (${(req.file.size/1024).toFixed(1)} KB)`);
+    if (!statementFile) return res.status(400).json({ error: 'No file uploaded' });
+    console.log(`\n[Analyze] ${statementFile.originalname} (${(statementFile.size/1024).toFixed(1)} KB)`);
+    if (cibilFile) console.log(`[CIBIL] ${cibilFile.originalname} (${(cibilFile.size/1024).toFixed(1)} KB)`);
 
-    const transactions = await parseFile(filePath, req.file.originalname);
+    const transactions = await parseFile(filePath, statementFile.originalname);
     console.log(`[Parse] Extracted ${transactions.length} transactions`);
 
     if (!transactions.length) {
-      const ext = path.extname(req.file.originalname).toLowerCase();
+      const ext = path.extname(statementFile.originalname).toLowerCase();
       if (ext === '.pdf') {
         try {
           const pdfParse = require('pdf-parse');
@@ -54,11 +107,57 @@ app.post('/api/analyze', upload.single('statement'), async (req, res) => {
     }
 
     const analysis = analyzeTransactions(transactions);
+    if (cibilPath) {
+      try {
+        const ext = path.extname(cibilFile.originalname).toLowerCase();
+        if (ext !== '.pdf' && ext !== '.txt') {
+          analysis.cibil = { error: 'CIBIL report must be PDF or TXT' };
+        } else {
+          const cibilText = await extractCibilText(cibilPath, cibilFile.originalname, cibilPassword);
+          const cibil = parseCibilText(cibilText);
+          analysis.cibil = { filename: cibilFile.originalname, ...cibil };
+          analysis.cibil_cross_verification = crossVerifyCibil(analysis, analysis.cibil);
+          analysis.eligibility = assessEligibility(analysis, analysis.cibil);
+          analysis.underwriting = assessUnderwriting(analysis, analysis.cibil);
+        }
+      } catch (e) {
+        analysis.cibil = { error: e.message || 'Failed to parse CIBIL report' };
+      }
+    }
+
     console.log(`[Analyze] Done — ${transactions.length} txns, salary: ${analysis.salary.length}, loans: ${analysis.loans.length}`);
 
-    res.json({ success: true, filename: req.file.originalname, transaction_count: transactions.length, analysis });
+    res.json({ success: true, filename: statementFile.originalname, transaction_count: transactions.length, analysis });
   } catch (err) {
     console.error('[Error]', err.message);
+    if (['PDF_SCANNED', 'PDF_PARSE_NO_ROWS', 'OCR_NOT_AVAILABLE', 'OCR_TIMEOUT', 'OCR_FAILED', 'PDF_PASSWORD'].includes(err?.code)) {
+      return res.status(400).json({ error: err.message, error_code: err.code });
+    }
+    res.status(500).json({ error: err.message });
+  } finally {
+    if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    if (cibilPath && fs.existsSync(cibilPath)) fs.unlinkSync(cibilPath);
+  }
+});
+
+app.post('/api/analyze-cibil', upload.single('cibil'), async (req, res) => {
+  const filePath = req.file?.path;
+  const cibilPassword = normStr(req.body?.cibil_password);
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No CIBIL file uploaded' });
+
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    if (ext !== '.pdf' && ext !== '.txt') return res.status(400).json({ error: 'CIBIL report must be PDF or TXT' });
+
+    const cibilText = await extractCibilText(filePath, req.file.originalname, cibilPassword);
+
+    const cibil = parseCibilText(cibilText);
+    const analysis = analyzeTransactions([]);
+    analysis.cibil = { filename: req.file.originalname, ...cibil };
+    analysis.underwriting = assessUnderwriting(analysis, analysis.cibil);
+
+    res.json({ success: true, filename: req.file.originalname, transaction_count: 0, analysis });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   } finally {
     if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);

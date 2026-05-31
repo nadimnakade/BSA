@@ -15,11 +15,14 @@ const SAMPLE = `Date,Description,Debit,Credit,Balance
 export default function UploadZone({ onAnalyze, onTextAnalyze, error }) {
   const [dragging, setDragging] = useState(false)
   const [file, setFile] = useState(null)
+  const [cibilFile, setCibilFile] = useState(null)
+  const [cibilPassword, setCibilPassword] = useState('')
   const [textMode, setTextMode] = useState(false)
   const [text, setText] = useState('')
   const fileRef = useRef()
+  const cibilRef = useRef()
 
-  const canSubmit = textMode ? text.trim().length > 30 : !!file
+  const canSubmit = textMode ? text.trim().length > 30 : (!!file || !!cibilFile)
 
   return (
     <div style={{ maxWidth:680, margin:'48px auto 0' }}>
@@ -35,27 +38,70 @@ export default function UploadZone({ onAnalyze, onTextAnalyze, error }) {
       )}
 
       <div style={{ display:'flex', gap:6, marginBottom:14 }}>
-        <button className={`tab-btn ${!textMode?'active':''}`} onClick={() => setTextMode(false)}>📁 Upload File</button>
-        <button className={`tab-btn ${textMode?'active':''}`} onClick={() => setTextMode(true)}>📋 Paste Text / CSV</button>
+        <button className={`tab-btn ${!textMode?'active':''}`} onClick={() => { setTextMode(false); setText('') }}>📁 Upload File</button>
+        <button className={`tab-btn ${textMode?'active':''}`} onClick={() => { setTextMode(true); setFile(null); setCibilFile(null); setCibilPassword('') }}>📋 Paste Text / CSV</button>
       </div>
 
       {!textMode ? (
-        <div
-          onDragOver={e=>{e.preventDefault();setDragging(true)}}
-          onDragLeave={()=>setDragging(false)}
-          onDrop={e=>{e.preventDefault();setDragging(false);const f=e.dataTransfer.files[0];if(f)setFile(f)}}
-          onClick={()=>fileRef.current.click()}
-          style={{ border:`2px dashed ${dragging?'var(--blue)':file?'var(--green)':'var(--border-bright)'}`, borderRadius:14, padding:'44px 32px', textAlign:'center', cursor:'pointer', background:dragging?'rgba(59,130,246,.05)':file?'rgba(34,197,94,.03)':'var(--bg-card)', transition:'all .2s' }}
-        >
-          <input ref={fileRef} type="file" accept=".pdf,.csv,.xlsx,.xls,.txt" style={{display:'none'}} onChange={e=>e.target.files[0]&&setFile(e.target.files[0])} />
-          {file ? (
-            <><div style={{fontSize:32,marginBottom:10}}>✓</div>
-            <div style={{color:'var(--green)',fontWeight:500,marginBottom:4}}>{file.name}</div>
-            <div style={{color:'var(--text-muted)',fontSize:12}}>{(file.size/1024).toFixed(1)} KB · Click to change</div></>
-          ) : (
-            <><div style={{fontSize:32,marginBottom:10}}>📄</div>
-            <div style={{color:'var(--text-primary)',fontWeight:500,marginBottom:6}}>Drop your bank statement here</div>
-            <div style={{color:'var(--text-muted)',fontSize:12}}>PDF · CSV · XLSX · XLS · TXT · up to 25MB</div></>
+        <div style={{display:'grid',gridTemplateColumns:'1fr',gap:12}}>
+          <div
+            onDragOver={e=>{e.preventDefault();setDragging(true)}}
+            onDragLeave={()=>setDragging(false)}
+            onDrop={e=>{e.preventDefault();setDragging(false);const f=e.dataTransfer.files[0];if(f)setFile(f)}}
+            onClick={()=>fileRef.current.click()}
+            style={{ border:`2px dashed ${dragging?'var(--blue)':file?'var(--green)':'var(--border-bright)'}`, borderRadius:14, padding:'44px 32px', textAlign:'center', cursor:'pointer', background:dragging?'rgba(59,130,246,.05)':file?'rgba(34,197,94,.03)':'var(--bg-card)', transition:'all .2s' }}
+          >
+            <input ref={fileRef} type="file" accept=".pdf,.csv,.xlsx,.xls,.txt" style={{display:'none'}} onChange={e=>e.target.files[0]&&setFile(e.target.files[0])} />
+            {file ? (
+              <><div style={{fontSize:32,marginBottom:10}}>✓</div>
+              <div style={{color:'var(--green)',fontWeight:500,marginBottom:4}}>{file.name}</div>
+              <div style={{color:'var(--text-muted)',fontSize:12}}>{(file.size/1024).toFixed(1)} KB · Click to change</div></>
+            ) : (
+              <><div style={{fontSize:32,marginBottom:10}}>📄</div>
+              <div style={{color:'var(--text-primary)',fontWeight:500,marginBottom:6}}>Drop your bank statement here</div>
+              <div style={{color:'var(--text-muted)',fontSize:12}}>PDF · CSV · XLSX · XLS · TXT · up to 25MB</div></>
+            )}
+          </div>
+
+          <div className="card" style={{padding:'14px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:10}}>
+            <div>
+              <div style={{fontSize:12,fontWeight:600,color:'var(--text-primary)'}}>Optional: Upload CIBIL report</div>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>PDF (preferred) or TXT · Used for cross-verification & eligibility indicators</div>
+            </div>
+            <div style={{display:'flex',gap:8,alignItems:'center'}}>
+              {cibilFile && (
+                <div style={{fontSize:11,color:'var(--text-secondary)',maxWidth:220,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                  {cibilFile.name}
+                </div>
+              )}
+              <button className="ctrl-btn" onClick={(e)=>{e.stopPropagation();cibilRef.current.click()}}>
+                {cibilFile ? 'Change' : 'Choose'}
+              </button>
+              {cibilFile && (
+                <button className="ctrl-btn" onClick={(e)=>{e.stopPropagation();setCibilFile(null);setCibilPassword('')}}>
+                  Remove
+                </button>
+              )}
+            </div>
+            <input ref={cibilRef} type="file" accept=".pdf,.txt" style={{display:'none'}} onChange={e=>{ if (e.target.files[0]) { setCibilFile(e.target.files[0]); setCibilPassword('') } }} />
+          </div>
+
+          {cibilFile && (
+            <div className="card" style={{padding:'12px 14px'}}>
+              <div style={{fontSize:12,fontWeight:600,color:'var(--text-primary)',marginBottom:6}}>CIBIL PDF password (if any)</div>
+              <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}}>
+                <input
+                  className="ctrl"
+                  value={cibilPassword}
+                  onChange={e=>setCibilPassword(e.target.value)}
+                  type="password"
+                  placeholder="Enter password if the PDF is locked"
+                  style={{minWidth:320}}
+                />
+                <button className="ctrl-btn" onClick={()=>setCibilPassword('')} disabled={!cibilPassword}>Clear</button>
+              </div>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:6}}>If the PDF is password-protected, enter the password here so it can be read for underwriting.</div>
+            </div>
           )}
         </div>
       ) : (
@@ -70,9 +116,9 @@ export default function UploadZone({ onAnalyze, onTextAnalyze, error }) {
         </div>
       )}
 
-      <button onClick={()=>textMode?onTextAnalyze(text):onAnalyze(file)} disabled={!canSubmit}
+      <button onClick={()=>textMode?onTextAnalyze(text):onAnalyze(file, cibilFile, cibilPassword)} disabled={!canSubmit}
         style={{ width:'100%', marginTop:14, padding:'13px 24px', background:canSubmit?'var(--blue)':'var(--bg-card)', color:canSubmit?'#fff':'var(--text-muted)', border:'none', borderRadius:10, fontSize:15, fontWeight:600, cursor:canSubmit?'pointer':'not-allowed', transition:'all .2s' }}>
-        Analyze Statement →
+        {file && cibilFile ? 'Analyze Statement + CIBIL →' : cibilFile ? 'Analyze CIBIL →' : 'Analyze Statement →'}
       </button>
 
       <div style={{ marginTop:28, display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10 }}>

@@ -32,6 +32,38 @@ export default function TxModal({ open, tx, onClose, file, filename }) {
   const isTextLike = ext === 'txt' || ext === 'csv'
   const isPdf = ext === 'pdf'
 
+  const pdfQuery = useMemo(() => {
+    const parts = []
+    const add = (v) => {
+      const s = (v ?? '').toString().trim()
+      if (!s) return
+      if (parts.includes(s)) return
+      parts.push(s)
+    }
+
+    add(tx.utr)
+    add(tx.rrn)
+    add(tx.nach_umrn)
+    add(tx.nach_ref)
+    add(tx.mandate_id)
+    add(tx.txn_id)
+    add(tx.reference_id)
+    add(tx.disbursement_id)
+    add(tx.loan_account_masked)
+
+    const iso = (tx.date || '').toString().match(/^(\d{4})-(\d{2})-(\d{2})$/)
+    if (iso) add(`${iso[3]}-${iso[2]}-${iso[1]}`)
+
+    const amt = tx.amount ?? tx.emi_amount
+    if (amt !== undefined && amt !== null && amt !== '') {
+      const n = Number(amt)
+      if (!Number.isNaN(n) && Number.isFinite(n)) add(n.toFixed(2))
+    }
+
+    if (!parts.length) add((tx.source_excerpt || tx.description || tx.raw || '').toString().slice(0, 120))
+    return parts.join(' ')
+  }, [tx])
+
   useEffect(() => {
     if (!open) return
     setShowFileText(false)
@@ -178,7 +210,7 @@ export default function TxModal({ open, tx, onClose, file, filename }) {
             <div style={{marginTop:14,marginBottom:6,fontSize:12,fontWeight:600,color:'var(--text-primary)'}}>PDF View</div>
             <PdfHighlightViewer
               file={file}
-              initialQuery={(tx.source_excerpt || tx.description || tx.raw || '').toString().slice(0, 200)}
+              initialQuery={pdfQuery}
             />
           </>
         )}
