@@ -18,6 +18,30 @@ function errWithCode(message, code) {
   return e;
 }
 
+function escapeRegExp(s) {
+  return (s || "").toString().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function extractAmounts(line) {
+  const out = [];
+  let m;
+  MONEY_RE.lastIndex = 0;
+  while ((m = MONEY_RE.exec(line)) !== null) {
+    const idx = m.index ?? 0;
+    let j = idx - 1;
+    while (j >= 0 && /\s/.test(line[j])) j--;
+    let sign = 0;
+    if (j >= 0 && (line[j] === "+" || line[j] === "-")) sign = line[j] === "+" ? 1 : -1;
+
+    const after = line.slice(idx + m[0].length, idx + m[0].length + 8).toUpperCase();
+    if (!sign && /\bCR\b/.test(after)) sign = 1;
+    if (!sign && /\bDR\b/.test(after)) sign = -1;
+
+    out.push({ value: parseAmount(m[0]), sign, idx, raw: m[0] });
+  }
+  return out;
+}
+
 function render_page(pageData) {
   const render_options = {
     normalizeWhitespace: false,
@@ -215,6 +239,7 @@ async function parseFile(filePath, originalName) {
 
 async function parsePDF(filePath) {
   let raw = "";
+  let rawAlt = "";
   try {
     const pdfParse = require("pdf-parse");
     const data = await pdfParse(fs.readFileSync(filePath), {
@@ -233,6 +258,13 @@ async function parsePDF(filePath) {
       throw new Error(`PDF parsing failed: ${e2.message}`);
     }
   }
+
+  // Alternate extraction (some PDFs parse worse with pagerender)
+  try {
+    const pdfParse = require("pdf-parse");
+    const data2 = await pdfParse(fs.readFileSync(filePath));
+    rawAlt = data2.text || "";
+  } catch {}
 
   if ((raw || "").trim().length < 50) {
     try {
@@ -261,13 +293,31 @@ async function parsePDF(filePath) {
 
   console.log("[PDF] first 800 chars:\n", raw.slice(0, 800));
 
-  let txns = parseText(raw);
-  console.log("[PDF] Generic text parser:", txns.length);
-  if (txns.length >= 2) return txns;
+  let best = parseText(raw);
+  console.log("[PDF] Generic text parser:", best.length);
 
-  txns = parseUnionBankText(raw);
-  console.log("[PDF] Union Bank parser:", txns.length);
-  if (txns.length >= 2) return txns;
+  if ((rawAlt || "").trim().length >= 50) {
+    const txAlt = parseText(rawAlt);
+    console.log("[PDF] Generic text parser (alt):", txAlt.length);
+    if (txAlt.length > best.length) best = txAlt;
+  }
+
+  try {
+    const rawJs = await extractPdfTextPdfjs(filePath);
+    if ((rawJs || "").trim().length >= 50) {
+      const txJs = parseText(rawJs);
+      console.log("[PDF] Generic text parser (pdfjs):", txJs.length);
+      if (txJs.length > best.length) best = txJs;
+    }
+  } catch (e) {
+    console.error("[PDF] pdfjs fallback error:", e?.message || e);
+  }
+
+  const union = parseUnionBankText(raw);
+  console.log("[PDF] Union Bank parser:", union.length);
+  if (union.length > best.length) best = union;
+
+  if (best.length >= 1) return best;
 
   throw errWithCode(
     "We could extract text from this PDF, but couldn't detect transaction rows reliably. Please export CSV/XLSX from netbanking (recommended) or share a text-based PDF statement.",
@@ -317,81 +367,123 @@ function parseText(text) {
   ) {
     const line = lines[i];
 
-    // Skip page headers/footers
+    // Skip page headers/footers and column header rows (keep this conservative to avoid skipping real txns)
     if (
-      /page no|statement of account|account statement|customer id|account no|account type|branch|micr|ifsc|for any queries|savings account transactions|withdrawal|deposit|opening balance|closing balance|currency/i.test(
+      /^(?:page\s*(?:no)?\b|statement of account|account statement|customer id|account no|account type|branch|micr|ifsc|for any queries|savings account transactions)\b/i.test(
         line,
       )
-    )
+    ) {
       continue;
+    }
+
+    const headerHits = headerPatterns.filter((p) => p.test(line)).length;
+    if (headerHits >= 3) continue;
 
     const dateMatch = line.match(dateRegex);
 
     if (dateMatch) {
       if (/\b\d{2}\s+[A-Za-z]{3}\s+\d{4}\s*(?:to|-)\s*\d{2}\s+[A-Za-z]{3}\s+\d{4}\b/i.test(line)) continue;
-      if (currentTx) transactions.push(currentTx);
-
       // Extract all numbers from line
-      const amounts = [];
-      let m;
-      MONEY_RE.lastIndex = 0;
-      while ((m = MONEY_RE.exec(line)) !== null) {
-        amounts.push(parseAmount(m[0]));
-      }
-      if (!amounts.length) {
-        currentTx = null;
-        continue;
-      }
+      const amounts = extractAmounts(line);
 
       // Remove date from line to get description
       const desc = line.replace(dateRegex, "").trim();
+      const descNoRow = desc.replace(/^[#\s]*\d+\s*/g, "").trim();
+
+      // Handle date-only row markers:
+      // - Kotak-style: "1 01 Jan 2026" then time line then "01 Jan 2026 <details> <amounts>"
+      //   => skip the row marker line
+      // - ICICI-style: "01-09-2024" then particulars lines then amount/balance line
+      //   => start a pending transaction on the date-only line
+      if (!amounts.length && descNoRow.length < 3) {
+        const rowMarker = new RegExp(`^\\s*\\d+\\s+${escapeRegExp(dateMatch[1])}\\b`, "i").test(line);
+        if (rowMarker) {
+          continue;
+        }
+        const next = lines[i + 1] || "";
+        const next2 = lines[i + 2] || "";
+        const timeLike = /^\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?$/i.test(next);
+        const repeatsDate = next2 && dateRegex.test(next2) && next2.includes(dateMatch[1]);
+        if (timeLike && repeatsDate) {
+          continue;
+        }
+      }
+
+      if (currentTx) transactions.push(currentTx);
 
       // Detect debit/credit/balance from amounts
       // Strategy: last amount is usually balance, second-to-last is the transaction
       let debit = 0,
         credit = 0,
         balance = 0;
+      let pendingBalance = false;
 
-      if (amounts.length >= 3) {
-        balance = amounts[amounts.length - 1];
+      if (amounts.length >= 2) {
+        balance = amounts[amounts.length - 1].value;
+        const txAmt = amounts[amounts.length - 2];
         // Look for debit or credit markers
         if (/withdrawal|debit|dr\b/i.test(line)) {
-          debit = amounts[amounts.length - 2];
+          debit = txAmt.value;
         } else if (/deposit|credit|cr\b/i.test(line)) {
-          credit = amounts[amounts.length - 2];
+          credit = txAmt.value;
+        } else if (txAmt.sign > 0) {
+          credit = txAmt.value;
+        } else if (txAmt.sign < 0) {
+          debit = txAmt.value;
         } else {
           // Infer from balance change context later
-          debit = amounts[amounts.length - 2];
+          pendingBalance = true;
         }
-      } else if (amounts.length === 2) {
-        balance = amounts[1];
-        debit = amounts[0];
       } else if (amounts.length === 1) {
-        balance = amounts[0];
+        const txAmt = amounts[0];
+        if (/withdrawal|debit|dr\b/i.test(line) || txAmt.sign < 0) debit = txAmt.value;
+        else if (/deposit|credit|cr\b/i.test(line) || txAmt.sign > 0) credit = txAmt.value;
+        else {
+          pendingBalance = true;
+        }
+        balance = 0;
+        pendingBalance = true;
+      } else {
+        // Date line only; details and amount/balance follow on subsequent lines (common in ICICI)
+        pendingBalance = true;
       }
+
+      const isBalanceOnly = /\bB\/F\b|OPENING\s*BAL/i.test(descNoRow) && !debit && !credit;
 
       currentTx = {
         date: parseDate(dateMatch[1]),
-        description: desc,
+        description: descNoRow || desc,
         debit,
         credit,
         balance,
         raw: line,
         _source: { type: "text", line_start: i + 1, line_end: i + 1 },
         source_excerpt: line,
+        _pending_balance: pendingBalance,
+        _is_balance_only: isBalanceOnly,
       };
     } else if (currentTx) {
-      if (currentTx.balance === 0) {
-        const amounts = [];
-        let m;
-        MONEY_RE.lastIndex = 0;
-        while ((m = MONEY_RE.exec(line)) !== null) amounts.push(parseAmount(m[0]));
-
+      const amounts = extractAmounts(line);
+      if (amounts.length) {
         if (amounts.length >= 2) {
-          currentTx.balance = amounts[amounts.length - 1] || 0;
-          const txAmt = amounts[amounts.length - 2] || 0;
-          if (!currentTx.debit && !currentTx.credit && txAmt)
-            currentTx.debit = txAmt;
+          if (!currentTx.balance || currentTx._pending_balance) currentTx.balance = amounts[amounts.length - 1].value || currentTx.balance || 0;
+          const txAmt = amounts[amounts.length - 2];
+          if (!currentTx.debit && !currentTx.credit && txAmt?.value) {
+            if (/deposit|credit|cr\b/i.test(line) || txAmt.sign > 0) currentTx.credit = txAmt.value;
+            else if (/withdrawal|debit|dr\b/i.test(line) || txAmt.sign < 0) currentTx.debit = txAmt.value;
+          }
+          currentTx._pending_balance = false;
+        } else if (amounts.length === 1) {
+          const one = amounts[0];
+          if (!currentTx.debit && !currentTx.credit && one?.value) {
+            if (/deposit|credit|cr\b/i.test(line) || one.sign > 0) currentTx.credit = one.value;
+            else if (/withdrawal|debit|dr\b/i.test(line) || one.sign < 0) currentTx.debit = one.value;
+            else currentTx.debit = one.value;
+            currentTx._pending_balance = true;
+          } else if ((!currentTx.balance || currentTx._pending_balance) && one?.value) {
+            currentTx.balance = one.value;
+            currentTx._pending_balance = false;
+          }
         }
       }
       // Continuation line (description, UTR, remarks)
@@ -413,7 +505,7 @@ function parseText(text) {
   for (let i = 0; i < transactions.length; i++) {
     const tx = transactions[i];
     const prevBalance = lastBalance;
-    if (prevBalance !== null && tx.balance !== 0) {
+    if (prevBalance !== null && tx.balance !== 0 && !tx.debit && !tx.credit) {
       const delta = tx.balance - prevBalance;
       if (delta > 0) {
         tx.credit = delta;
@@ -429,10 +521,20 @@ function parseText(text) {
     tx.description = cleanDesc(tx.description || tx.raw || "");
   }
 
-  // Remove invalid rows
-  return transactions.filter(
-    (t) => t.date && (t.debit > 0 || t.credit > 0 || t.balance > 0),
+  const cleaned = transactions.filter(
+    (t) => t.date && !t._is_balance_only && (t.debit > 0 || t.credit > 0 || t.balance > 0),
   );
+
+  const seen = new Set();
+  const uniq = [];
+  for (const t of cleaned) {
+    const key = `${t.date}|${Number(t.debit || 0).toFixed(2)}|${Number(t.credit || 0).toFixed(2)}|${Number(t.balance || 0).toFixed(2)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniq.push(t);
+  }
+
+  return uniq;
 }
 
 // ---- UNION BANK PDF SPECIFIC PARSER ----
@@ -538,7 +640,16 @@ function parseUnionBankText(text) {
     }
   }
 
-  return transactions.filter((t) => t.date && (t.debit > 0 || t.credit > 0));
+  const cleaned = transactions.filter((t) => t.date && (t.debit > 0 || t.credit > 0));
+  const seen = new Set();
+  const uniq = [];
+  for (const t of cleaned) {
+    const key = `${t.date}|${Number(t.debit || 0).toFixed(2)}|${Number(t.credit || 0).toFixed(2)}|${Number(t.balance || 0).toFixed(2)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniq.push(t);
+  }
+  return uniq;
 }
 
 // ---- CSV PARSER ----

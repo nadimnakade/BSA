@@ -8,7 +8,7 @@ import InsightsTab from './InsightsTab'
 import MonthlyTab from './MonthlyTab'
 import TxModal from './TxModal'
 
-const TABS = [
+const STATEMENT_TABS = [
   {id:'overview',label:'📊 Overview'},
   {id:'salary',label:'💼 Salary'},
   {id:'pf',label:'🧾 PF/EPFO'},
@@ -17,7 +17,6 @@ const TABS = [
   {id:'creditCard',label:'💳 Credit Card'},
   {id:'bounces',label:'⚠️ Bounces/Charges'},
   {id:'stock',label:'📈 Stock Market'},
-  {id:'cibil',label:'🧾 CIBIL'},
   {id:'investments',label:'📈 Investments'},
   {id:'appLoans',label:'📱 App Loans'},
   {id:'transfers',label:'🔄 Transfers'},
@@ -25,8 +24,16 @@ const TABS = [
   {id:'insights',label:'🔍 Insights'},
 ]
 
-export default function Dashboard({ result, onReset, uploadedFile, uploadedCibilFile }) {
-  const [tab, setTab] = useState('overview')
+const CIBIL_TABS = [
+  {id:'personal',label:'👤 Personal Information'},
+  {id:'score',label:'✅ CIBIL Score'},
+  {id:'loans',label:'🏦 Active Loans'},
+  {id:'inquiry',label:'🔎 Inquiry'},
+]
+
+export default function Dashboard({ mode = 'statement', result, onReset, uploadedStatementFile, uploadedCibilFile }) {
+  const isCibil = mode === 'cibil'
+  const [tab, setTab] = useState(isCibil ? 'score' : 'overview')
   const { analysis: a, filename, transaction_count } = result
   const as = a.account_summary
   const f = n => n ? `₹${Number(n).toLocaleString('en-IN')}` : '—'
@@ -37,8 +44,7 @@ export default function Dashboard({ result, onReset, uploadedFile, uploadedCibil
   const [selectedTx, setSelectedTx] = useState(null)
 
   const openTx = (tx) => { setSelectedTx(tx); setTxOpen(true) }
-
-  const isCibilOnly = transaction_count === 0 && a?.cibil && !uploadedFile
+  const tabs = isCibil ? CIBIL_TABS : STATEMENT_TABS
 
   const exportSummary = async (format) => {
     setExporting(true)
@@ -58,6 +64,38 @@ export default function Dashboard({ result, onReset, uploadedFile, uploadedCibil
       const aTag = document.createElement('a')
       aTag.href = url
       aTag.download = `${base}-summary-insights.${format === 'csv' ? 'csv' : 'xlsx'}`
+      document.body.appendChild(aTag)
+      aTag.click()
+      aTag.remove()
+      URL.revokeObjectURL(url)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const exportCibil = async (format) => {
+    setExporting(true)
+    try {
+      const res = await fetch(`/api/export-cibil?format=${encodeURIComponent(format)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename, analysis: a })
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Export failed')
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const base = ((a?.cibil?.filename || filename || 'cibil') || 'cibil')
+        .toString()
+        .replace(/\.[a-z0-9]+$/i, '')
+        .replace(/[^a-z0-9\-_ ]/gi, '')
+        .trim()
+        .slice(0, 60) || 'cibil'
+      const aTag = document.createElement('a')
+      aTag.href = url
+      aTag.download = `${base}-cibil.${format === 'csv' ? 'csv' : 'xlsx'}`
       document.body.appendChild(aTag)
       aTag.click()
       aTag.remove()
@@ -424,30 +462,88 @@ export default function Dashboard({ result, onReset, uploadedFile, uploadedCibil
     )
   }
 
-  const CibilTab = () => {
-    const cibil = a.cibil || null
-    const eligibility = a.eligibility || null
-    const uw = a.underwriting || null
-    const x = a.cibil_cross_verification || null
+  const cibil = a.cibil || null
 
-    const openCibil = () => {
-      if (!uploadedCibilFile) return
-      const url = URL.createObjectURL(uploadedCibilFile)
-      window.open(url, '_blank', 'noopener,noreferrer')
-      setTimeout(() => URL.revokeObjectURL(url), 60_000)
-    }
+  const openCibil = () => {
+    if (!uploadedCibilFile) return
+    const url = URL.createObjectURL(uploadedCibilFile)
+    window.open(url, '_blank', 'noopener,noreferrer')
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  }
 
-    const score = cibil && typeof cibil.score === 'number' ? cibil.score : null
-    const scoreColor = score === null ? 'gray' : score >= 750 ? 'green' : score >= 650 ? 'amber' : 'red'
-
+  const PersonalTab = () => {
+    const p = cibil?.personal || {}
+    const addresses = Array.isArray(p.addresses) ? p.addresses : []
     return (
       <div style={{padding:24}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:16,flexWrap:'wrap'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:14,flexWrap:'wrap'}}>
           <div>
-            <div style={{fontSize:15,fontWeight:600,color:'var(--text-primary)'}}>CIBIL Cross-Verification</div>
-            <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>
-              {cibil?.filename ? cibil.filename : (uploadedCibilFile?.name || '—')}
+            <div style={{fontSize:15,fontWeight:600,color:'var(--text-primary)'}}>Personal Information</div>
+            <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{cibil?.filename || uploadedCibilFile?.name || filename || '—'}</div>
+          </div>
+          <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+            {uploadedCibilFile && <button className="ctrl-btn" onClick={openCibil}>Open CIBIL File</button>}
+          </div>
+        </div>
+
+        {!cibil ? (
+          <div style={{textAlign:'center',padding:'40px 20px',color:'var(--text-muted)',fontSize:13}}>No CIBIL report analyzed</div>
+        ) : cibil.error ? (
+          <div style={{background:'rgba(239,68,68,.08)', border:'1px solid rgba(239,68,68,.2)', borderRadius:10, padding:'12px 16px', fontSize:13, color:'var(--red)'}}>✗ {cibil.error}</div>
+        ) : (
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
+            <div className="card" style={{padding:14}}>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:6}}>Name</div>
+              <div style={{fontSize:13,color:'var(--text-primary)'}}>{p.name || '—'}</div>
             </div>
+            <div className="card" style={{padding:14}}>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:6}}>DOB</div>
+              <div style={{fontSize:13,color:'var(--text-primary)',fontFamily:'JetBrains Mono,monospace'}}>{p.dob || '—'}</div>
+            </div>
+            <div className="card" style={{padding:14}}>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:6}}>PAN</div>
+              <div style={{fontSize:13,color:'var(--text-primary)',fontFamily:'JetBrains Mono,monospace'}}>{p.pan || '—'}</div>
+            </div>
+            <div className="card" style={{padding:14}}>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:6}}>Gender</div>
+              <div style={{fontSize:13,color:'var(--text-primary)'}}>{p.gender || '—'}</div>
+            </div>
+            <div className="card" style={{padding:14}}>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:6}}>Mobile</div>
+              <div style={{fontSize:13,color:'var(--text-primary)',fontFamily:'JetBrains Mono,monospace'}}>{p.mobile || '—'}</div>
+            </div>
+            <div className="card" style={{padding:14}}>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:6}}>Company</div>
+              <div style={{fontSize:13,color:'var(--text-primary)'}}>{p.company || '—'}</div>
+            </div>
+          </div>
+        )}
+
+        {addresses.length > 0 && (
+          <div className="card" style={{marginTop:12,padding:14}}>
+            <div style={{fontSize:12,fontWeight:600,color:'var(--text-primary)',marginBottom:10}}>Residence Address</div>
+            <div style={{fontSize:12,color:'var(--text-secondary)',whiteSpace:'pre-wrap'}}>
+              {addresses.slice(0, 5).map((a, i) => (
+                <div key={i} style={{padding:'6px 0',borderTop:i? '1px solid var(--border)' : 'none'}}>{a}</div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const ScoreTab = () => {
+    const score = cibil && typeof cibil.score === 'number' ? cibil.score : null
+    const scoreColor = score === null ? 'gray' : score >= 750 ? 'green' : score >= 650 ? 'amber' : 'red'
+    const enq = cibil?.enquiries || {}
+    const adverse = Array.isArray(cibil?.adverse_flags) ? cibil.adverse_flags : []
+    return (
+      <div style={{padding:24}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:14,flexWrap:'wrap'}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:600,color:'var(--text-primary)'}}>CIBIL Score</div>
+            <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{cibil?.filename || uploadedCibilFile?.name || filename || '—'}</div>
           </div>
           <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
             {uploadedCibilFile && <button className="ctrl-btn" onClick={openCibil}>Open CIBIL File</button>}
@@ -456,160 +552,215 @@ export default function Dashboard({ result, onReset, uploadedFile, uploadedCibil
         </div>
 
         {!cibil ? (
-          <div style={{textAlign:'center',padding:'40px 20px',color:'var(--text-muted)',fontSize:13}}>
-            No CIBIL report uploaded for this analysis
-          </div>
+          <div style={{textAlign:'center',padding:'40px 20px',color:'var(--text-muted)',fontSize:13}}>No CIBIL report analyzed</div>
         ) : cibil.error ? (
-          <div style={{background:'rgba(239,68,68,.08)', border:'1px solid rgba(239,68,68,.2)', borderRadius:10, padding:'12px 16px', fontSize:13, color:'var(--red)'}}>
-            ✗ {cibil.error}
-          </div>
+          <div style={{background:'rgba(239,68,68,.08)', border:'1px solid rgba(239,68,68,.2)', borderRadius:10, padding:'12px 16px', fontSize:13, color:'var(--red)'}}>✗ {cibil.error}</div>
         ) : (
-          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10}}>
             <div className="card" style={{padding:14}}>
               <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:6}}>Report Date</div>
               <div style={{fontSize:13,color:'var(--text-primary)',fontFamily:'JetBrains Mono,monospace'}}>{cibil.report_date || '—'}</div>
+            </div>
+            <div className="card" style={{padding:14}}>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:6}}>DPD Max</div>
+              <div style={{fontSize:13,color:'var(--text-primary)',fontFamily:'JetBrains Mono,monospace'}}>{cibil.dpd_max ?? '—'}</div>
             </div>
             <div className="card" style={{padding:14}}>
               <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:6}}>Accounts Detected</div>
               <div style={{fontSize:13,color:'var(--text-primary)',fontFamily:'JetBrains Mono,monospace'}}>{Array.isArray(cibil.accounts) ? cibil.accounts.length : 0}</div>
             </div>
             <div className="card" style={{padding:14}}>
-              <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:6}}>DPD Max</div>
-              <div style={{fontSize:13,color:'var(--text-primary)',fontFamily:'JetBrains Mono,monospace'}}>{cibil.dpd_max ?? '—'}</div>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:6}}>Enquiries (total)</div>
+              <div style={{fontSize:13,color:'var(--text-primary)',fontFamily:'JetBrains Mono,monospace'}}>{enq.total ?? '—'}</div>
             </div>
           </div>
         )}
 
-        {uw && (
-          <div className="card" style={{marginTop:12,padding:16}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-              <div style={{fontSize:13,fontWeight:600,color:'var(--text-primary)'}}>Credit Underwriting (Indicative)</div>
-              {badge(`Grade ${uw.grade || '—'}`, uw.grade === 'A' ? 'green' : uw.grade === 'B' ? 'teal' : uw.grade === 'C' ? 'amber' : 'red')}
-            </div>
-
-            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginTop:10}}>
-              <div>
-                <div style={{fontSize:11,color:'var(--text-muted)'}}>Enquiries (recent)</div>
-                <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace'}}>{uw.enquiries_recent ?? 0}</div>
-              </div>
-              <div>
-                <div style={{fontSize:11,color:'var(--text-muted)'}}>Active Accounts</div>
-                <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace'}}>{uw.accounts_active ?? 0}</div>
-              </div>
-              <div>
-                <div style={{fontSize:11,color:'var(--text-muted)'}}>DPD Max</div>
-                <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace'}}>{uw.dpd_max ?? '—'}</div>
-              </div>
-              <div>
-                <div style={{fontSize:11,color:'var(--text-muted)'}}>CC Utilization</div>
-                <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace'}}>
-                  {uw.credit_card_utilization !== undefined ? `${Math.round(uw.credit_card_utilization * 100)}%` : '—'}
-                </div>
-              </div>
-            </div>
-
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginTop:12}}>
-              <div className="card" style={{padding:12}}>
-                <div style={{fontSize:11,color:'var(--text-muted)'}}>Policy FOIR</div>
-                <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace'}}>
-                  {uw.max_foir_policy !== undefined ? `${Math.round(uw.max_foir_policy * 100)}%` : '—'}
-                </div>
-              </div>
-              <div className="card" style={{padding:12}}>
-                <div style={{fontSize:11,color:'var(--text-muted)'}}>Additional EMI Capacity</div>
-                <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace'}}>
-                  {uw.additional_emi_capacity !== undefined ? f(uw.additional_emi_capacity) : '—'}
-                </div>
-              </div>
-              <div className="card" style={{padding:12}}>
-                <div style={{fontSize:11,color:'var(--text-muted)'}}>Policy Flags</div>
-                <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace',whiteSpace:'pre-wrap'}}>
-                  {(uw.policy_flags || []).slice(0, 8).join('\n') || '—'}
-                </div>
-              </div>
-            </div>
-
-            <div style={{marginTop:12}}>
-              <div style={{fontSize:12,fontWeight:600,color:'var(--text-primary)',marginBottom:8}}>Product Eligibility</div>
-              <table>
-                <thead><tr><th>Product</th><th>Min Score</th><th>Status</th></tr></thead>
-                <tbody>
-                  {(uw.product_eligibility || []).map((p, i) => (
-                    <tr key={i}>
-                      <td style={{fontSize:12,color:'var(--text-secondary)'}}>{p.label}</td>
-                      <td style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace'}}>{p.min_score ?? '—'}</td>
-                      <td>{badge(p.eligible ? 'Eligible' : 'Review', p.eligible ? 'green' : 'amber')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        {adverse.length > 0 && (
+          <div className="card" style={{marginTop:12,padding:14}}>
+            <div style={{fontSize:12,fontWeight:600,color:'var(--text-primary)',marginBottom:10}}>Adverse Flags</div>
+            <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace',whiteSpace:'pre-wrap'}}>{adverse.join('\n')}</div>
           </div>
         )}
+      </div>
+    )
+  }
 
-        {eligibility && (
-          <div className="card" style={{marginTop:12,padding:16}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-              <div style={{fontSize:13,fontWeight:600,color:'var(--text-primary)'}}>Eligibility (Indicative)</div>
-              {badge(eligibility.decision || 'Needs Review', eligibility.decision === 'Likely Eligible' ? 'green' : eligibility.decision === 'Unlikely' ? 'red' : 'amber')}
-            </div>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginTop:10}}>
-              <div>
-                <div style={{fontSize:11,color:'var(--text-muted)'}}>Avg Monthly Income</div>
-                <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace'}}>{f(eligibility.avg_monthly_income)}</div>
-              </div>
-              <div>
-                <div style={{fontSize:11,color:'var(--text-muted)'}}>Avg Monthly Obligations</div>
-                <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace'}}>{f(eligibility.avg_monthly_obligations)}</div>
-              </div>
-              <div>
-                <div style={{fontSize:11,color:'var(--text-muted)'}}>FOIR</div>
-                <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace'}}>{eligibility.foir !== undefined ? `${Math.round(eligibility.foir * 100)}%` : '—'}</div>
-              </div>
-              <div>
-                <div style={{fontSize:11,color:'var(--text-muted)'}}>Bounces</div>
-                <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace'}}>{eligibility.bounce_count ?? 0}</div>
-              </div>
-            </div>
-            {Array.isArray(eligibility.reasons) && eligibility.reasons.length > 0 && (
-              <div style={{marginTop:10,fontSize:12,color:'var(--text-secondary)'}}>
-                {eligibility.reasons.join(' · ')}
-              </div>
-            )}
+  const LoansTab = () => {
+    const [query, setQuery] = useState('')
+    const [sort, setSort] = useState('opened_desc')
+
+    const accounts = Array.isArray(cibil?.accounts) ? cibil.accounts : []
+    const isClosed = (s) => /CLOSED|SETTLED|WRITTEN\s*OFF|CHARGEOFF|CHARGE\s*OFF/i.test((s || '').toString())
+    const baseRows = useMemo(() => accounts
+      .filter(a => a && (a.lender || a.account_type))
+      .filter(a => !isClosed(a.account_status) && !a.closed_date), [accounts])
+
+    const sorters = {
+      opened_desc: (x, y) => new Date(y.opened_date || 0) - new Date(x.opened_date || 0),
+      opened_asc: (x, y) => new Date(x.opened_date || 0) - new Date(y.opened_date || 0),
+      lender_asc: (x, y) => norm(x.lender).localeCompare(norm(y.lender)),
+      emi_desc: (x, y) => (y.emi || 0) - (x.emi || 0),
+      emi_asc: (x, y) => (x.emi || 0) - (y.emi || 0),
+      balance_desc: (x, y) => (y.current_balance || 0) - (x.current_balance || 0),
+      balance_asc: (x, y) => (x.current_balance || 0) - (y.current_balance || 0),
+      overdue_desc: (x, y) => (y.overdue_amount || 0) - (x.overdue_amount || 0),
+      overdue_asc: (x, y) => (x.overdue_amount || 0) - (y.overdue_amount || 0),
+    }
+
+    const rows = useMemo(() => {
+      const q = norm(query).trim()
+      return baseRows
+        .filter(r => {
+          if (!q) return true
+          const loanAmt = r.sanctioned_amount || r.high_credit || r.credit_limit || 0
+          const hay = `${r.lender || ''} ${r.account_type || ''} ${r.account_status || ''} ${r.opened_date || ''} ${r.closed_date || ''} ${r.account_no || ''} ${r.ownership || ''} ${r.last_update || ''} ${r.emi || ''} ${loanAmt || ''} ${r.current_balance || ''} ${r.overdue_amount || ''} ${r.dpd_max ?? ''}`.toLowerCase()
+          return hay.includes(q)
+        })
+        .slice()
+        .sort(sorters[sort] || sorters.opened_desc)
+    }, [baseRows, query, sort])
+
+    return (
+      <div style={{padding:24}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:14,flexWrap:'wrap'}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:600,color:'var(--text-primary)'}}>Active Loans</div>
+            <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{rows.length} accounts</div>
           </div>
-        )}
-
-        {x && (
-          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginTop:12}}>
-            <div className="card" style={{padding:14}}>
-              <div style={{fontSize:12,fontWeight:600,color:'var(--text-primary)',marginBottom:8}}>Matched Lenders</div>
-              <div style={{fontSize:12,color:'var(--text-secondary)'}}>{(x.matched || []).length || 0}</div>
-            </div>
-            <div className="card" style={{padding:14}}>
-              <div style={{fontSize:12,fontWeight:600,color:'var(--text-primary)',marginBottom:8}}>Missing in Statement</div>
-              <div style={{fontSize:12,color:'var(--text-secondary)'}}>{(x.missing_in_statement || []).length || 0}</div>
-            </div>
-            <div className="card" style={{padding:14}}>
-              <div style={{fontSize:12,fontWeight:600,color:'var(--text-primary)',marginBottom:8}}>Missing in CIBIL</div>
-              <div style={{fontSize:12,color:'var(--text-secondary)'}}>{(x.missing_in_cibil || []).length || 0}</div>
-            </div>
+          <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+            {uploadedCibilFile && <button className="ctrl-btn" onClick={openCibil}>Open CIBIL File</button>}
           </div>
-        )}
+        </div>
 
-        {x && ((x.missing_in_statement || []).length || (x.missing_in_cibil || []).length) ? (
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginTop:12}}>
-            <div className="card" style={{padding:14}}>
-              <div style={{fontSize:12,fontWeight:600,color:'var(--text-primary)',marginBottom:10}}>Missing in Statement</div>
-              <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace',whiteSpace:'pre-wrap'}}>
-                {(x.missing_in_statement || []).slice(0, 20).join('\n') || '—'}
-              </div>
-            </div>
-            <div className="card" style={{padding:14}}>
-              <div style={{fontSize:12,fontWeight:600,color:'var(--text-primary)',marginBottom:10}}>Missing in CIBIL</div>
-              <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace',whiteSpace:'pre-wrap'}}>
-                {(x.missing_in_cibil || []).slice(0, 20).join('\n') || '—'}
-              </div>
-            </div>
+        <Controls
+          query={query}
+          setQuery={setQuery}
+          sort={sort}
+          setSort={setSort}
+          sortOptions={[
+            {id:'opened_desc',label:'Opened ↓'},
+            {id:'opened_asc',label:'Opened ↑'},
+            {id:'lender_asc',label:'Lender A→Z'},
+            {id:'emi_desc',label:'EMI ↓'},
+            {id:'emi_asc',label:'EMI ↑'},
+            {id:'balance_desc',label:'Balance ↓'},
+            {id:'balance_asc',label:'Balance ↑'},
+            {id:'overdue_desc',label:'Overdue ↓'},
+            {id:'overdue_asc',label:'Overdue ↑'},
+          ]}
+          onResetControls={() => { setQuery(''); setSort('opened_desc') }}
+        />
+
+        {rows.length ? (
+          <table>
+            <thead><tr><th>Lender</th><th>Type</th><th>Opened</th><th style={{textAlign:'right'}}>EMI</th><th style={{textAlign:'right'}}>Loan Amt</th><th style={{textAlign:'right'}}>Balance</th><th style={{textAlign:'right'}}>Overdue</th><th>DPD</th></tr></thead>
+            <tbody>
+              {rows.map((x, i) => (
+                <tr key={i}>
+                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{x.lender || '—'}</td>
+                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{x.account_type || '—'}</td>
+                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.opened_date || '—'}</td>
+                  <td style={{textAlign:'right'}}>{x.emi ? f(x.emi) : '—'}</td>
+                  <td style={{textAlign:'right'}}>{x.sanctioned_amount ? f(x.sanctioned_amount) : (x.high_credit ? f(x.high_credit) : (x.credit_limit ? f(x.credit_limit) : '—'))}</td>
+                  <td style={{textAlign:'right'}}>{x.current_balance ? f(x.current_balance) : '—'}</td>
+                  <td style={{textAlign:'right'}}>{x.overdue_amount ? f(x.overdue_amount) : '—'}</td>
+                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12}}>{x.dpd_max ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div style={{textAlign:'center',padding:'40px 20px',color:'var(--text-muted)',fontSize:13}}>No active loan accounts detected</div>
+        )}
+      </div>
+    )
+  }
+
+  const InquiryTab = () => {
+    const [query, setQuery] = useState('')
+    const [sort, setSort] = useState('date_desc')
+
+    const enq = cibil?.enquiries || {}
+    const baseRows = Array.isArray(cibil?.enquiry_details) ? cibil.enquiry_details : []
+
+    const sorters = {
+      date_desc: (x, y) => new Date(y.date || 0) - new Date(x.date || 0),
+      date_asc: (x, y) => new Date(x.date || 0) - new Date(y.date || 0),
+      member_asc: (x, y) => norm(x.member).localeCompare(norm(y.member)),
+      purpose_asc: (x, y) => norm(x.purpose).localeCompare(norm(y.purpose)),
+    }
+
+    const rows = useMemo(() => {
+      const q = norm(query).trim()
+      return baseRows
+        .filter(r => !q || `${r.date || ''} ${r.member || ''} ${r.purpose || ''} ${r.amount || ''} ${r.raw || ''}`.toLowerCase().includes(q))
+        .slice()
+        .sort(sorters[sort] || sorters.date_desc)
+    }, [baseRows, query, sort])
+
+    return (
+      <div style={{padding:24}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:14,flexWrap:'wrap'}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:600,color:'var(--text-primary)'}}>Inquiry</div>
+            <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{rows.length ? `${rows.length} enquiry records` : `Total enquiries: ${enq.total ?? '—'}`}</div>
+          </div>
+          <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+            {uploadedCibilFile && <button className="ctrl-btn" onClick={openCibil}>Open CIBIL File</button>}
+          </div>
+        </div>
+
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10}}>
+          <div className="card" style={{padding:12}}>
+            <div style={{fontSize:11,color:'var(--text-muted)'}}>Last 30 Days</div>
+            <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace'}}>{enq.last_30d ?? '—'}</div>
+          </div>
+          <div className="card" style={{padding:12}}>
+            <div style={{fontSize:11,color:'var(--text-muted)'}}>Last 90 Days</div>
+            <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace'}}>{enq.last_90d ?? '—'}</div>
+          </div>
+          <div className="card" style={{padding:12}}>
+            <div style={{fontSize:11,color:'var(--text-muted)'}}>Last 180 Days</div>
+            <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace'}}>{enq.last_180d ?? '—'}</div>
+          </div>
+          <div className="card" style={{padding:12}}>
+            <div style={{fontSize:11,color:'var(--text-muted)'}}>Total</div>
+            <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace'}}>{enq.total ?? '—'}</div>
+          </div>
+        </div>
+
+        <div style={{marginTop:12}}>
+          <Controls
+            query={query}
+            setQuery={setQuery}
+            sort={sort}
+            setSort={setSort}
+            sortOptions={[
+              {id:'date_desc',label:'Date ↓'},
+              {id:'date_asc',label:'Date ↑'},
+              {id:'member_asc',label:'Member A→Z'},
+              {id:'purpose_asc',label:'Purpose A→Z'},
+            ]}
+            onResetControls={() => { setQuery(''); setSort('date_desc') }}
+          />
+        </div>
+
+        {rows.length ? (
+          <div style={{marginTop:12}}>
+            <table>
+              <thead><tr><th>Date</th><th>Member</th><th>Purpose</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+              <tbody>
+                {rows.slice(0, 200).map((x, i) => (
+                  <tr key={i}>
+                    <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.date || '—'}</td>
+                    <td style={{fontSize:12,color:'var(--text-secondary)'}}>{x.member || '—'}</td>
+                    <td style={{fontSize:12,color:'var(--text-secondary)'}}>{x.purpose || '—'}</td>
+                    <td style={{textAlign:'right'}}>{x.amount ? f(x.amount) : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : null}
       </div>
@@ -840,56 +991,88 @@ export default function Dashboard({ result, onReset, uploadedFile, uploadedCibil
     <div className="slide-up">
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:8 }}>
         <div>
-          <div style={{ fontSize:19, fontWeight:600, color:'var(--text-primary)' }}>{isCibilOnly ? 'CIBIL Analysis' : 'Statement Analysis'}</div>
+          <div style={{ fontSize:19, fontWeight:600, color:'var(--text-primary)' }}>{isCibil ? 'CIBIL Analysis' : 'Statement Analysis'}</div>
           <div style={{ fontSize:12, color:'var(--text-muted)', fontFamily:'JetBrains Mono,monospace', marginTop:2 }}>
-            {filename} · {transaction_count} transactions {as?.period ? `· ${as.period}` : ''}
+            {isCibil ? (cibil?.filename || filename || '—') : `${filename} · ${transaction_count} transactions ${as?.period ? `· ${as.period}` : ''}`}
           </div>
         </div>
         <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
-          <button
-            onClick={()=>exportSummary('xlsx')}
-            disabled={exporting}
-            style={{ background:'var(--bg-card)', border:'1px solid var(--border)', color:'var(--text-secondary)', padding:'6px 12px', borderRadius:8, fontSize:12, cursor:exporting?'not-allowed':'pointer', opacity:exporting?.6:1 }}
-          >
-            {exporting ? 'Exporting...' : 'Export XLSX'}
-          </button>
-          <button
-            onClick={()=>exportSummary('csv')}
-            disabled={exporting}
-            style={{ background:'var(--bg-card)', border:'1px solid var(--border)', color:'var(--text-secondary)', padding:'6px 12px', borderRadius:8, fontSize:12, cursor:exporting?'not-allowed':'pointer', opacity:exporting?.6:1 }}
-          >
-            Export CSV
-          </button>
+          {isCibil && (
+            <>
+              <button
+                onClick={()=>exportCibil('xlsx')}
+                disabled={exporting}
+                style={{ background:'var(--bg-card)', border:'1px solid var(--border)', color:'var(--text-secondary)', padding:'6px 12px', borderRadius:8, fontSize:12, cursor:exporting?'not-allowed':'pointer', opacity:exporting?.6:1 }}
+              >
+                {exporting ? 'Exporting...' : 'Export XLSX'}
+              </button>
+              <button
+                onClick={()=>exportCibil('csv')}
+                disabled={exporting}
+                style={{ background:'var(--bg-card)', border:'1px solid var(--border)', color:'var(--text-secondary)', padding:'6px 12px', borderRadius:8, fontSize:12, cursor:exporting?'not-allowed':'pointer', opacity:exporting?.6:1 }}
+              >
+                Export CSV
+              </button>
+            </>
+          )}
+          {!isCibil && (
+            <>
+              <button
+                onClick={()=>exportSummary('xlsx')}
+                disabled={exporting}
+                style={{ background:'var(--bg-card)', border:'1px solid var(--border)', color:'var(--text-secondary)', padding:'6px 12px', borderRadius:8, fontSize:12, cursor:exporting?'not-allowed':'pointer', opacity:exporting?.6:1 }}
+              >
+                {exporting ? 'Exporting...' : 'Export XLSX'}
+              </button>
+              <button
+                onClick={()=>exportSummary('csv')}
+                disabled={exporting}
+                style={{ background:'var(--bg-card)', border:'1px solid var(--border)', color:'var(--text-secondary)', padding:'6px 12px', borderRadius:8, fontSize:12, cursor:exporting?'not-allowed':'pointer', opacity:exporting?.6:1 }}
+              >
+                Export CSV
+              </button>
+            </>
+          )}
           <button onClick={onReset} style={{ background:'var(--bg-card)', border:'1px solid var(--border)', color:'var(--text-secondary)', padding:'6px 14px', borderRadius:8, fontSize:12, cursor:'pointer' }}>← New Analysis</button>
         </div>
       </div>
 
-      <SummaryCards a={a} />
+      {!isCibil && <SummaryCards a={a} />}
 
       <div style={{ display:'flex', gap:4, margin:'20px 0 16px', flexWrap:'wrap' }}>
-        {TABS.map(t => (
+        {tabs.map(t => (
           <button key={t.id} className={`tab-btn ${tab===t.id?'active':''}`} onClick={()=>setTab(t.id)}>{t.label}</button>
         ))}
       </div>
 
       <div className="card" style={{ padding:0, overflow:'hidden' }}>
-        {tab==='overview' && <OverviewTab a={a} />}
-        {tab==='salary' && <SalaryTab />}
-        {tab==='pf' && <PFTab />}
-        {tab==='emi' && <EMITab />}
-        {tab==='disbursement' && <DisbursementTab />}
-        {tab==='creditCard' && <CreditCardTab />}
-        {tab==='bounces' && <BouncesTab />}
-        {tab==='stock' && <StockMarketTab />}
-        {tab==='cibil' && <CibilTab />}
-        {tab==='investments' && <InvestmentsTab a={a} onTx={openTx} />}
-        {tab==='appLoans' && <AppLoansTab a={a} onTx={openTx} />}
-        {tab==='transfers' && <TransfersTab a={a} onTx={openTx} />}
-        {tab==='monthly' && <MonthlyTab a={a} />}
-        {tab==='insights' && <InsightsTab a={a} onTx={openTx} />}
+        {isCibil ? (
+          <>
+            {tab==='personal' && <PersonalTab />}
+            {tab==='score' && <ScoreTab />}
+            {tab==='loans' && <LoansTab />}
+            {tab==='inquiry' && <InquiryTab />}
+          </>
+        ) : (
+          <>
+            {tab==='overview' && <OverviewTab a={a} />}
+            {tab==='salary' && <SalaryTab />}
+            {tab==='pf' && <PFTab />}
+            {tab==='emi' && <EMITab />}
+            {tab==='disbursement' && <DisbursementTab />}
+            {tab==='creditCard' && <CreditCardTab />}
+            {tab==='bounces' && <BouncesTab />}
+            {tab==='stock' && <StockMarketTab />}
+            {tab==='investments' && <InvestmentsTab a={a} onTx={openTx} />}
+            {tab==='appLoans' && <AppLoansTab a={a} onTx={openTx} />}
+            {tab==='transfers' && <TransfersTab a={a} onTx={openTx} />}
+            {tab==='monthly' && <MonthlyTab a={a} />}
+            {tab==='insights' && <InsightsTab a={a} onTx={openTx} />}
+          </>
+        )}
       </div>
 
-      <TxModal open={txOpen} tx={selectedTx} file={uploadedFile} filename={filename} onClose={() => { setTxOpen(false); setSelectedTx(null) }} />
+      {!isCibil && <TxModal open={txOpen} tx={selectedTx} file={uploadedStatementFile} filename={filename} onClose={() => { setTxOpen(false); setSelectedTx(null) }} />}
     </div>
   )
 }

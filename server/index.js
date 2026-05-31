@@ -4,7 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { parseFile } = require('./parser');
-const { analyzeTransactions, parseCibilText, crossVerifyCibil, assessEligibility, assessUnderwriting } = require('./analyzer');
+const { analyzeTransactions, parseCibilText, assessUnderwriting } = require('./analyzer');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -76,16 +76,12 @@ async function extractCibilText(filePath, originalName, password) {
 app.get('/api/health', (req, res) => res.json({ status: 'ok', mode: 'rule-based', version: '2.0' }));
 
 // --- FILE UPLOAD ANALYZE ---
-app.post('/api/analyze', upload.fields([{ name: 'statement', maxCount: 1 }, { name: 'cibil', maxCount: 1 }]), async (req, res) => {
-  const statementFile = req.files?.statement?.[0];
-  const cibilFile = req.files?.cibil?.[0];
+app.post('/api/analyze', upload.single('statement'), async (req, res) => {
+  const statementFile = req.file;
   const filePath = statementFile?.path;
-  const cibilPath = cibilFile?.path;
-  const cibilPassword = normStr(req.body?.cibil_password);
   try {
-    if (!statementFile) return res.status(400).json({ error: 'No file uploaded' });
+    if (!statementFile) return res.status(400).json({ error: 'No statement file uploaded' });
     console.log(`\n[Analyze] ${statementFile.originalname} (${(statementFile.size/1024).toFixed(1)} KB)`);
-    if (cibilFile) console.log(`[CIBIL] ${cibilFile.originalname} (${(cibilFile.size/1024).toFixed(1)} KB)`);
 
     const transactions = await parseFile(filePath, statementFile.originalname);
     console.log(`[Parse] Extracted ${transactions.length} transactions`);
@@ -107,23 +103,6 @@ app.post('/api/analyze', upload.fields([{ name: 'statement', maxCount: 1 }, { na
     }
 
     const analysis = analyzeTransactions(transactions);
-    if (cibilPath) {
-      try {
-        const ext = path.extname(cibilFile.originalname).toLowerCase();
-        if (ext !== '.pdf' && ext !== '.txt') {
-          analysis.cibil = { error: 'CIBIL report must be PDF or TXT' };
-        } else {
-          const cibilText = await extractCibilText(cibilPath, cibilFile.originalname, cibilPassword);
-          const cibil = parseCibilText(cibilText);
-          analysis.cibil = { filename: cibilFile.originalname, ...cibil };
-          analysis.cibil_cross_verification = crossVerifyCibil(analysis, analysis.cibil);
-          analysis.eligibility = assessEligibility(analysis, analysis.cibil);
-          analysis.underwriting = assessUnderwriting(analysis, analysis.cibil);
-        }
-      } catch (e) {
-        analysis.cibil = { error: e.message || 'Failed to parse CIBIL report' };
-      }
-    }
 
     console.log(`[Analyze] Done — ${transactions.length} txns, salary: ${analysis.salary.length}, loans: ${analysis.loans.length}`);
 
@@ -136,7 +115,6 @@ app.post('/api/analyze', upload.fields([{ name: 'statement', maxCount: 1 }, { na
     res.status(500).json({ error: err.message });
   } finally {
     if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    if (cibilPath && fs.existsSync(cibilPath)) fs.unlinkSync(cibilPath);
   }
 });
 
@@ -158,7 +136,9 @@ app.post('/api/analyze-cibil', upload.single('cibil'), async (req, res) => {
 
     res.json({ success: true, filename: req.file.originalname, transaction_count: 0, analysis });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    const msg = (err?.message || 'Failed to parse CIBIL report').toString();
+    if (/password/i.test(msg) || /CIBIL/i.test(msg)) return res.status(400).json({ error: msg });
+    res.status(500).json({ error: msg });
   } finally {
     if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
   }
@@ -423,6 +403,157 @@ app.post('/api/export-summary', async (req, res) => {
     const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${safeBase}-summary-insights.xlsx"`);
+    res.send(buf);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/export-cibil', async (req, res) => {
+  try {
+    const format = (req.query.format || 'xlsx').toString().toLowerCase();
+    const { analysis, filename } = req.body || {};
+    const cibil = analysis?.cibil || null;
+    if (!cibil || cibil.error) return res.status(400).json({ error: cibil?.error || 'Missing CIBIL analysis' });
+
+    const safeBase = (filename || cibil.filename || 'cibil')
+      .toString()
+      .replace(/\.[a-z0-9]+$/i, '')
+      .replace(/[^a-z0-9\-_ ]/gi, '')
+      .trim()
+      .slice(0, 60) || 'cibil';
+
+    const personal = cibil.personal || {};
+    const enquiries = cibil.enquiries || {};
+    const enquiryDetails = Array.isArray(cibil.enquiry_details) ? cibil.enquiry_details : [];
+    const accounts = Array.isArray(cibil.accounts) ? cibil.accounts : [];
+    const adverse = Array.isArray(cibil.adverse_flags) ? cibil.adverse_flags : [];
+
+    const summaryRows = [
+      ['Report', 'CIBIL Analyzer'],
+      ['Generated At', new Date().toISOString()],
+      ['Filename', cibil.filename || filename || '—'],
+      ['Report Date', cibil.report_date || '—'],
+      ['CIBIL Score', cibil.score ?? '—'],
+      ['DPD Max', cibil.dpd_max ?? '—'],
+      ['Accounts Detected', accounts.length],
+      ['Enquiries Total', enquiries.total ?? '—'],
+    ];
+
+    const personalRows = [
+      ['Name', personal.name || '—'],
+      ['DOB', personal.dob || '—'],
+      ['Gender', personal.gender || '—'],
+      ['PAN', personal.pan || '—'],
+      ['Mobile', personal.mobile || '—'],
+      ['Email', personal.email || '—'],
+      ['Company', personal.company || '—'],
+    ];
+
+    const activeLoans = accounts.map(a => ({
+      lender: a.lender || '',
+      account_type: a.account_type || '',
+      account_status: a.account_status || '',
+      opened_date: a.opened_date || '',
+      closed_date: a.closed_date || '',
+      emi: Number(a.emi) || 0,
+      loan_amount: Number(a.sanctioned_amount) || 0,
+      high_credit: Number(a.high_credit) || 0,
+      credit_limit: Number(a.credit_limit) || 0,
+      remaining_balance: Number(a.current_balance) || 0,
+      overdue_amount: Number(a.overdue_amount) || 0,
+      dpd_max: a.dpd_max ?? '',
+      adverse_flags: Array.isArray(a.adverse_flags) ? a.adverse_flags.join('|') : '',
+    }));
+
+    const enquiriesRows = enquiryDetails.map(e => ({
+      date: e.date || '',
+      member: e.member || '',
+      purpose: e.purpose || '',
+      amount: Number(e.amount) || 0,
+      raw: e.raw || '',
+    }));
+
+    if (format === 'csv') {
+      const esc = (v) => {
+        const s = (v ?? '').toString();
+        if (/[,"\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+        return s;
+      };
+
+      const lines = [];
+      lines.push('Summary');
+      lines.push('Field,Value');
+      for (const [k, v] of summaryRows) lines.push(`${esc(k)},${esc(v)}`);
+      lines.push('');
+      lines.push('Personal Information');
+      lines.push('Field,Value');
+      for (const [k, v] of personalRows) lines.push(`${esc(k)},${esc(v)}`);
+      lines.push('');
+      lines.push('Addresses');
+      lines.push('Address');
+      for (const a of (personal.addresses || [])) lines.push(`${esc(a)}`);
+      lines.push('');
+      lines.push('Adverse Flags');
+      lines.push('Flag');
+      for (const f of adverse) lines.push(`${esc(f)}`);
+      lines.push('');
+      lines.push('Active Loans');
+      lines.push('Lender,Type,Status,Opened Date,Closed Date,EMI,Loan Amount,High Credit,Credit Limit,Remaining Balance,Overdue Amount,DPD Max,Adverse Flags');
+      for (const r of activeLoans) {
+        lines.push([
+          esc(r.lender), esc(r.account_type), esc(r.account_status), esc(r.opened_date), esc(r.closed_date),
+          esc(r.emi), esc(r.loan_amount), esc(r.high_credit), esc(r.credit_limit),
+          esc(r.remaining_balance), esc(r.overdue_amount), esc(r.dpd_max), esc(r.adverse_flags)
+        ].join(','));
+      }
+      lines.push('');
+      lines.push('Inquiry');
+      lines.push('Date,Member,Purpose,Amount,Raw');
+      for (const r of enquiriesRows) {
+        lines.push([esc(r.date), esc(r.member), esc(r.purpose), esc(r.amount), esc(r.raw)].join(','));
+      }
+
+      const csv = lines.join('\n');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${safeBase}-cibil.csv"`);
+      return res.send(csv);
+    }
+
+    const XLSX = require('xlsx');
+    const wb = XLSX.utils.book_new();
+    const wsSummary = XLSX.utils.aoa_to_sheet([['Field', 'Value'], ...summaryRows]);
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+    const wsPersonal = XLSX.utils.aoa_to_sheet([
+      ['Field', 'Value'],
+      ...personalRows,
+      [],
+      ['Addresses'],
+      ...(personal.addresses || []).map(x => [x]),
+      [],
+      ['Adverse Flags'],
+      ...adverse.map(x => [x]),
+    ]);
+    XLSX.utils.book_append_sheet(wb, wsPersonal, 'Personal');
+
+    const wsLoans = XLSX.utils.json_to_sheet(activeLoans, {
+      header: [
+        'lender', 'account_type', 'account_status', 'opened_date', 'closed_date',
+        'emi', 'loan_amount', 'high_credit', 'credit_limit',
+        'remaining_balance', 'overdue_amount', 'dpd_max', 'adverse_flags'
+      ]
+    });
+    XLSX.utils.book_append_sheet(wb, wsLoans, 'Active Loans');
+
+    const wsEnq = XLSX.utils.json_to_sheet(enquiriesRows, {
+      header: ['date', 'member', 'purpose', 'amount', 'raw']
+    });
+    XLSX.utils.book_append_sheet(wb, wsEnq, 'Inquiry');
+
+    const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeBase}-cibil.xlsx"`);
     res.send(buf);
   } catch (err) {
     res.status(500).json({ error: err.message });

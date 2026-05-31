@@ -88,6 +88,8 @@ const SALARY_KEYWORDS = [
   'PAYROLL',
   'WAGES',
   'STIPEND',
+  'BONUS',
+  'INCENTIVE',
   'SAL/',
   'SAL ',
   'NEFT.*SALARY',
@@ -123,6 +125,7 @@ function parseCibilText(text) {
   const t = (text || '').toString();
   const lines = t.split('\n').map(x => x.trim()).filter(Boolean);
   const joined = lines.join('\n');
+  const joinedFlat = lines.join(' ').replace(/\s+/g, ' ').trim();
 
   const pickScore = () => {
     const m =
@@ -160,6 +163,157 @@ function parseCibilText(text) {
     joined.match(/\bENQUIR(?:Y|IES)\b[^0-9]{0,20}(\d{1,4})\b/i);
   if (totalEnq && totalEnq[1]) enquiries.total = parseNum(totalEnq[1]);
 
+  const personal = {};
+  const addresses = [];
+  const labelLine = (s) => /^[A-Z][A-Z ]{2,30}\s*[:\-]/.test((s || '').toString());
+  const stopAddress = (s) =>
+    /\b(ACCOUNT|ACCT|ENQUIR(?:Y|IES)|INQUIR(?:Y|IES)|SCORE|CIBIL|DPD|CREDIT\s*FACILITY|PAYMENT\s*HISTORY)\b/i.test((s || '').toString()) ||
+    labelLine(s);
+
+  let addrBuf = [];
+  let inAddr = false;
+  for (const line of lines) {
+    const m = line.match(/^([A-Z][A-Z \/_]{2,40})\s*[:\-]\s*(.*)$/);
+    if (m) {
+      const k = (m[1] || '').toString().trim().toUpperCase().replace(/\s+/g, ' ');
+      const v = (m[2] || '').toString().trim();
+
+      if (/^(FULL\s*)?NAME$|^NAME$/.test(k) && !personal.name) personal.name = v;
+      else if (/^DATE OF BIRTH$|^DOB$/.test(k) && !personal.dob) personal.dob = v;
+      else if (/^GENDER$|^SEX$/.test(k) && !personal.gender) personal.gender = v;
+      else if (/^PAN$|^PERMANENT ACCOUNT NUMBER$/.test(k) && !personal.pan) personal.pan = v;
+      else if (/^MOBILE$|^MOBILE NUMBER$|^PHONE$|^PHONE NUMBER$/.test(k) && !personal.mobile) personal.mobile = v;
+      else if (/^EMAIL$|^EMAIL ID$/.test(k) && !personal.email) personal.email = v;
+      else if (/^COMPANY$|^EMPLOYER$|^ORGANIZATION$|^ORGANISATION$/.test(k) && !personal.company) personal.company = v;
+
+      if (/ADDRESS/.test(k)) {
+        if (addrBuf.length) {
+          addresses.push(addrBuf.join(' ').replace(/\s+/g, ' ').trim());
+          addrBuf = [];
+        }
+        if (v) addrBuf.push(v);
+        inAddr = true;
+      } else if (inAddr && v === '') {
+        inAddr = false;
+      }
+      continue;
+    }
+
+    if (!inAddr) continue;
+    if (stopAddress(line)) {
+      if (addrBuf.length) addresses.push(addrBuf.join(' ').replace(/\s+/g, ' ').trim());
+      addrBuf = [];
+      inAddr = false;
+      continue;
+    }
+    addrBuf.push(line);
+  }
+  if (addrBuf.length) addresses.push(addrBuf.join(' ').replace(/\s+/g, ' ').trim());
+  if (addresses.length) personal.addresses = Array.from(new Set(addresses.filter(Boolean)));
+
+  if (!personal.name) {
+    const m = joined.match(/\bHey\s+([A-Z][A-Za-z]+)\b/i) || joined.match(/\b([A-Z][A-Za-z]+)'s\s+Credit\s+Report\b/i);
+    if (m && m[1]) personal.name = m[1].trim();
+  }
+
+  if (!personal.mobile) {
+    const m =
+      joinedFlat.match(/\bMobile\s*Phone\s+(\d{10})\b/i) ||
+      joinedFlat.match(/\bPhone\s*Number\b[\s\S]{0,120}?\b(\d{10})\b/i) ||
+      joinedFlat.match(/\b(\d{10})\b/);
+    if (m && m[1]) personal.mobile = m[1];
+  }
+
+  if (!personal.email) {
+    const m = joinedFlat.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+    if (m) personal.email = m[0];
+  }
+
+  if (!personal.addresses || !personal.addresses.length) {
+    const upper = joinedFlat.toUpperCase();
+    const idx = upper.lastIndexOf('ADDRESS DETAILS');
+    if (idx >= 0) {
+      const seg = joinedFlat.slice(idx, idx + 8000);
+      const addrRe = /([A-Z0-9:#,\-\/ .]{15,}?)\s*,\s*(\d{6})\s*,\s*([A-Za-z]{2,})\s+(Residence\s+Address|O\s*ce\s+Address|Office\s+Address)\b/gi;
+      const found = [];
+      let mm;
+      while ((mm = addrRe.exec(seg)) !== null) {
+        let a = `${mm[1]}, ${mm[2]}, ${mm[3]}`.replace(/\s+/g, ' ').trim();
+        a = a.replace(/^Address Details\s+Address\s+Category\s+Date\s+Reported\s+/i, '');
+        if (a.length >= 10) found.push(a);
+      }
+      if (found.length) personal.addresses = Array.from(new Set(found));
+    }
+  }
+
+  const enquiry_details = [];
+  const enqDateRe = /\b(\d{2}[-\/]\d{2}[-\/]\d{4})\b/;
+  let inEnq = false;
+  for (const line of lines) {
+    if (!inEnq && /\bENQUIR(?:Y|IES)\b/i.test(line) && /\bDETAIL|HISTORY|INFORMATION\b/i.test(line)) {
+      inEnq = true;
+      continue;
+    }
+    if (!inEnq && (/\bENQUIR(?:Y|IES)\s+PURPOSE\b/i.test(line) || /\bENQUIRE[D|D]\s+ON\b/i.test(line) || /\bENQUIR(?:IED|ED)\s+ON\b/i.test(line))) {
+      inEnq = true;
+      continue;
+    }
+    if (!inEnq) continue;
+    if (/\bACCOUNT\b/i.test(line) && /\bTYPE\b/i.test(line)) break;
+    const dm = line.match(enqDateRe);
+    if (!dm) continue;
+    if (/\bREPORT\s+NUMBER\b/i.test(line) || /\bTABLE\s+OF\s+CONTENTS\b/i.test(line)) continue;
+    if (/\bLAST\s*(30|60|90|180|365)\s*DAYS\b/i.test(line)) continue;
+    if (/\bTOTAL\s*ENQUIR/i.test(line)) continue;
+
+    const date = parseDate(dm[1]);
+    let member = '';
+    let purpose = '';
+    let amount = undefined;
+    const rest = line.replace(enqDateRe, '').trim();
+    const parts = rest.split(/\s{2,}/).map(x => x.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      member = parts[0] || '';
+      purpose = parts[1] || '';
+      if (parts[2]) amount = parseNum(parts[2]);
+    } else {
+      const amt = rest.match(/\b(\d[\d,]{3,})\b(?!.*\b\d[\d,]{3,}\b)/);
+      if (amt) amount = parseNum(amt[1]);
+      purpose = rest;
+    }
+    enquiry_details.push({ date, member, purpose, amount, raw: line });
+  }
+
+  if (!enquiry_details.length) {
+    const upper = joinedFlat.toUpperCase();
+    const start = upper.indexOf('CREDIT ENQUIRIES');
+    if (start >= 0) {
+      let seg = joinedFlat.slice(start, start + 25000);
+      const hdr = seg.toUpperCase().indexOf('ENQUIRED ON');
+      if (hdr >= 0) seg = seg.slice(hdr + 'ENQUIRED ON'.length);
+      const purposeRe = '(?:PERSONAL\\s+LOAN|EDUCATION\\s+LOAN|HOME\\s+LOAN|VEHICLE\\s+LOAN|TWO\\s+WHEELER\\s+LOAN|GOLD\\s+LOAN|BUSINESS\\s+LOAN(?:\\s+GENERAL)?|CONSUMER\\s+LOAN|LOAN\\s+AGAINST\\s+PROPERTY|CREDIT\\s+CARD|OVERDRAFT|OTHER)';
+      const rowRe = new RegExp(`\\b(\\d{1,3})\\s+(${purposeRe})\\s+([A-Z][A-Z0-9 &]{2,80})\\s+(\\d{2}-\\d{2}-\\d{4})\\b`, 'gi');
+      let m;
+      while ((m = rowRe.exec(seg)) !== null) {
+        const sr = Number(m[1]);
+        if (!Number.isFinite(sr) || sr < 1 || sr > 300) continue;
+        const member = (m[3] || '').trim();
+        if (!member || /\bREPORT\b|\bCONTENTS\b/i.test(member)) continue;
+        const purpose = (m[2] || '').toString().trim();
+        if (!purpose || purpose.length < 3) continue;
+        enquiry_details.push({
+          date: parseDate(m[4]),
+          member,
+          purpose,
+          amount: undefined,
+          raw: m[0]
+        });
+      }
+    }
+  }
+
+  if (enquiry_details.length && enquiries.total === undefined) enquiries.total = enquiry_details.length;
+
   const accounts = [];
   let cur = null;
   const push = () => {
@@ -174,6 +328,15 @@ function parseCibilText(text) {
     if (start) {
       push();
       cur = { account_type: start[2].trim() };
+      continue;
+    }
+    const memberStart = line.match(/^(?:MEMBER\s*NAME|LENDER|BANK\s*NAME|FINANCIER|INSTITUTION)\s*[:\-]\s*(.+)$/i);
+    if (memberStart && !cur) {
+      cur = { lender: memberStart[1].trim() };
+      continue;
+    } else if (memberStart && cur && cur.lender && Object.keys(cur).length >= 2) {
+      push();
+      cur = { lender: memberStart[1].trim() };
       continue;
     }
     if (!cur) continue;
@@ -222,14 +385,67 @@ function parseCibilText(text) {
   }
   push();
 
+  if (!accounts.some(a => a && a.account_no)) {
+    const upper = joinedFlat.toUpperCase();
+    const idx = upper.indexOf('SUMMARY: LOAN ACCOUNTS');
+    if (idx >= 0) {
+      let seg = joinedFlat.slice(idx, idx + 40000);
+      const hdr = seg.toUpperCase().indexOf('OUTSTANDING BALANCE');
+      if (hdr >= 0) seg = seg.slice(hdr + 'OUTSTANDING BALANCE'.length);
+      const typeRe = '(?:Personal\\s+Loan|Education\\s+Loan|Home\\s+Loan|Vehicle\\s+Loan|Two\\s+Wheeler\\s+Loan|Gold\\s+Loan|Business\\s+Loan(?:\\s+General)?|Consumer\\s+Loan|Loan\\s+Against\\s+Property|Overdraft|Credit\\s+Card|Other)';
+      const rowRe = new RegExp(`([A-Z][A-Z0-9 &.'-]{2,80}?)\\s+(${typeRe})\\s+(X{3,}\\d{3,})\\s+(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+(Active\\*?\\*?|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|Special\\s*Mention|SMA)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+([\\d,]+)\\s+([\\d,]+)`, 'gi');
+      let m;
+      while ((m = rowRe.exec(seg)) !== null) {
+        const lender = (m[1] || '').toString().trim();
+        if (!lender || /\bDATE\b|\bACCOUNT\b|\bSTATUS\b|\bUPDATE\b/i.test(lender)) continue;
+        accounts.push({
+          lender,
+          account_type: (m[2] || '').toString().trim(),
+          account_no: (m[3] || '').trim(),
+          ownership: (m[4] || '').trim(),
+          opened_date: parseDate(m[5]),
+          account_status: (m[6] || '').replace(/\s+/g, ' ').trim(),
+          last_update: parseDate(m[7]),
+          sanctioned_amount: parseNum(m[8]) || undefined,
+          current_balance: parseNum(m[9]) || undefined,
+        });
+      }
+    }
+  }
+
+  if (accounts.length) {
+    const seen = new Set();
+    const uniq = [];
+    for (const a of accounts) {
+      const key = `${(a.account_no || '').toString().trim()}|${(a.lender || '').toString().trim()}|${(a.account_type || '').toString().trim()}`;
+      if (!a.account_no || seen.has(key)) continue;
+      seen.add(key);
+      uniq.push(a);
+    }
+    accounts.length = 0;
+    accounts.push(...uniq);
+  }
+
   const dpd_max = accounts.reduce((m, a) => Math.max(m, Number(a.dpd_max) || 0), 0) || undefined;
+  const adverse_flags = Array.from(new Set(accounts.flatMap(a => Array.isArray(a.adverse_flags) ? a.adverse_flags : []).filter(Boolean)));
 
   return {
-    score: pickScore(),
+    score: (() => {
+      const s = pickScore();
+      if (s !== undefined) return s;
+      const m = joinedFlat.match(/\b([3-9]\d{2})\b\s+(EXCELLENT|VERY\s*GOOD|GOOD|FAIR|POOR)\b/i);
+      if (!m) return undefined;
+      const n = Number(m[1]);
+      if (!Number.isFinite(n) || n < 300 || n > 900) return undefined;
+      return n;
+    })(),
     report_date: pickDate(),
+    personal,
     enquiries,
+    enquiry_details,
     accounts,
     dpd_max,
+    adverse_flags,
     raw_char_count: t.length,
   };
 }
@@ -751,10 +967,24 @@ function inferSalaryEmployer(desc) {
   for (const [key, name] of Object.entries(SALARY_SOURCE_MAP)) {
     if (upper.includes(key)) return name;
   }
+  const salaryPay = desc.match(/\bSALARY(?:\s*PAYMENT)?\s*\/\s*([A-Z0-9 &.'-]{3,})/i);
+  if (salaryPay) return salaryPay[1].replace(/\s+/g, ' ').trim().slice(0, 50);
   const nachMatch = desc.match(/NACH\/\d+\/\d+\/(.+)/i);
   if (nachMatch) return nachMatch[1].replace(/\//g,' ').trim().slice(0,50);
-  const neftMatch = desc.match(/NEFT[:\s]+(.+)/i);
-  if (neftMatch) return neftMatch[1].trim().slice(0,50);
+  const channelMatch = desc.match(/\b(NEFT|IMPS|RTGS)\b[:\s\-\/]+(.+)/i);
+  if (channelMatch) {
+    let s = (channelMatch[2] || '').toString();
+    s = s
+      .replace(/\bUTR[:\s\-]*[A-Z0-9]{10,25}\b/gi, ' ')
+      .replace(/\bRRN[:\s\-]*[0-9]{10,18}\b/gi, ' ')
+      .replace(/\b[A-Z]{4}0[A-Z0-9]{6}\b/g, ' ')
+      .replace(/\b(?:CR|DR|CREDIT|DEBIT)\b/gi, ' ')
+      .replace(/\b(?:SALARY|PAYROLL|WAGES|STIPEND|BONUS|INCENTIVE)\b/gi, ' ')
+      .replace(/[\/\-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (s) return s.slice(0, 50);
+  }
   const autoToken = inferAutoDebitLender(desc);
   if (autoToken) return autoToken;
   return 'Salary Credit';
@@ -823,9 +1053,16 @@ function detectSalary(desc, amount, isCredit) {
   if (!isCredit) return null;
   if (anyMatch(d, SALARY_KEYWORDS)) return inferSalaryEmployer(d);
 
-  if (detectNACH(d) && (amount || 0) >= 5000) {
-    const negative = /\b(EMI|INSTAL+MENT|LOAN|REPAY|APY|PENSION|INSURANCE|PREM|SIP|MUTUAL|MF\b|CARD|CC\b|BILLDESK|DEMAT|DP\s*CHARGES|CDSL|NSDL|PAYOUT|PAYIN)\b/i;
-    if (!negative.test(d)) return inferSalaryEmployer(d);
+  if (detectNACH(d)) {
+    const negative = /\b(EMI|INSTAL+MENT|SALARY|LOAN|REPAY|APY|PENSION|INSURANCE|PREM|SIP|MUTUAL|MF\b|CARD|CC\b|BILLDESK|DEMAT|DP\s*CHARGES|CDSL|NSDL|PAYOUT|PAYIN)\b/i;
+    if (!negative.test(d) && amount >= 5000) return inferSalaryEmployer(d);
+  }
+
+  const channel = /\b(NEFT|IMPS|RTGS)\b/i.test(d);
+  if (channel && amount >= 5000) {
+    const salaryLike = /\b(SALARY|PAYROLL|WAGES|STIPEND|BONUS|INCENTIVE|SAL\/|\bSAL\b)\b/i;
+    const negative = /\b(LOAN|DISB|DISBURSE|SANCTION|OD\b|OVERDRAFT|CREDIT\s*LIMIT)\b/i;
+    if (!negative.test(d) && salaryLike.test(d)) return inferSalaryEmployer(d);
   }
 
   return null;
