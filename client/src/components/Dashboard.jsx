@@ -28,6 +28,7 @@ const CIBIL_TABS = [
   {id:'personal',label:'👤 Personal Information'},
   {id:'score',label:'✅ CIBIL Score'},
   {id:'loans',label:'🏦 Active Loans'},
+  {id:'closedLoans',label:'Closed Loans'},
   {id:'inquiry',label:'🔎 Inquiry'},
 ]
 
@@ -470,6 +471,16 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
     window.open(url, '_blank', 'noopener,noreferrer')
     setTimeout(() => URL.revokeObjectURL(url), 60_000)
   }
+  const isClosedAccount = (account) => /CLOSED|SETTLED|WRITTEN\s*OFF|CHARGEOFF|CHARGE\s*OFF/i.test((account?.account_status || '').toString()) || !!account?.closed_date
+  const formatDpdHistory = (account) => {
+    const history = Array.isArray(account?.dpd_history) ? account.dpd_history : []
+    if (!history.length) return account?.dpd_max !== undefined ? `Max - ${account.dpd_max}` : '—'
+    const delayed = history.filter(x => (Number(x.days) || 0) > 0)
+    return (delayed.length ? delayed : history)
+      .slice(0, 8)
+      .map(x => `${x.month} - ${Number(x.days) || 0}`)
+      .join(', ')
+  }
 
   const PersonalTab = () => {
     const p = cibil?.personal || {}
@@ -591,10 +602,9 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
     const [sort, setSort] = useState('opened_desc')
 
     const accounts = Array.isArray(cibil?.accounts) ? cibil.accounts : []
-    const isClosed = (s) => /CLOSED|SETTLED|WRITTEN\s*OFF|CHARGEOFF|CHARGE\s*OFF/i.test((s || '').toString())
     const baseRows = useMemo(() => accounts
       .filter(a => a && (a.lender || a.account_type))
-      .filter(a => !isClosed(a.account_status) && !a.closed_date), [accounts])
+      .filter(a => !isClosedAccount(a)), [accounts])
 
     const sorters = {
       opened_desc: (x, y) => new Date(y.opened_date || 0) - new Date(x.opened_date || 0),
@@ -614,7 +624,8 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
         .filter(r => {
           if (!q) return true
           const loanAmt = r.sanctioned_amount || r.high_credit || r.credit_limit || 0
-          const hay = `${r.lender || ''} ${r.account_type || ''} ${r.account_status || ''} ${r.opened_date || ''} ${r.closed_date || ''} ${r.account_no || ''} ${r.ownership || ''} ${r.last_update || ''} ${r.emi || ''} ${loanAmt || ''} ${r.current_balance || ''} ${r.overdue_amount || ''} ${r.dpd_max ?? ''}`.toLowerCase()
+          const dpd = Array.isArray(r.dpd_history) ? r.dpd_history.map(x => `${x.month} ${x.days}`).join(' ') : ''
+          const hay = `${r.lender || ''} ${r.account_type || ''} ${r.account_status || ''} ${r.opened_date || ''} ${r.closed_date || ''} ${r.account_no || ''} ${r.ownership || ''} ${r.last_update || ''} ${r.emi || ''} ${loanAmt || ''} ${r.current_balance || ''} ${r.overdue_amount || ''} ${r.dpd_max ?? ''} ${dpd}`.toLowerCase()
           return hay.includes(q)
         })
         .slice()
@@ -654,7 +665,7 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
 
         {rows.length ? (
           <table>
-            <thead><tr><th>Lender</th><th>Type</th><th>Opened</th><th style={{textAlign:'right'}}>EMI</th><th style={{textAlign:'right'}}>Loan Amt</th><th style={{textAlign:'right'}}>Balance</th><th style={{textAlign:'right'}}>Overdue</th><th>DPD</th></tr></thead>
+            <thead><tr><th>Lender</th><th>Type</th><th>Opened</th><th style={{textAlign:'right'}}>EMI</th><th style={{textAlign:'right'}}>Loan Amt</th><th style={{textAlign:'right'}}>Balance</th><th style={{textAlign:'right'}}>Overdue</th><th>DPD History</th></tr></thead>
             <tbody>
               {rows.map((x, i) => (
                 <tr key={i}>
@@ -665,13 +676,94 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
                   <td style={{textAlign:'right'}}>{x.sanctioned_amount ? f(x.sanctioned_amount) : (x.high_credit ? f(x.high_credit) : (x.credit_limit ? f(x.credit_limit) : '—'))}</td>
                   <td style={{textAlign:'right'}}>{x.current_balance ? f(x.current_balance) : '—'}</td>
                   <td style={{textAlign:'right'}}>{x.overdue_amount ? f(x.overdue_amount) : '—'}</td>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12}}>{x.dpd_max ?? '—'}</td>
+                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:11,maxWidth:220,whiteSpace:'normal'}}>{formatDpdHistory(x)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
           <div style={{textAlign:'center',padding:'40px 20px',color:'var(--text-muted)',fontSize:13}}>No active loan accounts detected</div>
+        )}
+      </div>
+    )
+  }
+
+  const ClosedLoansTab = () => {
+    const [query, setQuery] = useState('')
+    const [sort, setSort] = useState('closed_desc')
+
+    const accounts = Array.isArray(cibil?.accounts) ? cibil.accounts : []
+    const baseRows = useMemo(() => accounts
+      .filter(a => a && (a.lender || a.account_type))
+      .filter(a => isClosedAccount(a)), [accounts])
+
+    const sorters = {
+      closed_desc: (x, y) => new Date(y.closed_date || y.last_update || 0) - new Date(x.closed_date || x.last_update || 0),
+      closed_asc: (x, y) => new Date(x.closed_date || x.last_update || 0) - new Date(y.closed_date || y.last_update || 0),
+      lender_asc: (x, y) => norm(x.lender).localeCompare(norm(y.lender)),
+      emi_desc: (x, y) => (y.emi || 0) - (x.emi || 0),
+      overdue_desc: (x, y) => (y.overdue_amount || 0) - (x.overdue_amount || 0),
+    }
+
+    const rows = useMemo(() => {
+      const q = norm(query).trim()
+      return baseRows
+        .filter(r => {
+          if (!q) return true
+          const dpd = Array.isArray(r.dpd_history) ? r.dpd_history.map(x => `${x.month} ${x.days}`).join(' ') : ''
+          return `${r.lender || ''} ${r.account_type || ''} ${r.account_status || ''} ${r.opened_date || ''} ${r.closed_date || ''} ${r.account_no || ''} ${r.emi || ''} ${r.overdue_amount || ''} ${dpd}`.toLowerCase().includes(q)
+        })
+        .slice()
+        .sort(sorters[sort] || sorters.closed_desc)
+    }, [baseRows, query, sort])
+
+    return (
+      <div style={{padding:24}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:14,flexWrap:'wrap'}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:600,color:'var(--text-primary)'}}>Closed Loans</div>
+            <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{rows.length} accounts</div>
+          </div>
+          <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+            {uploadedCibilFile && <button className="ctrl-btn" onClick={openCibil}>Open CIBIL File</button>}
+          </div>
+        </div>
+
+        <Controls
+          query={query}
+          setQuery={setQuery}
+          sort={sort}
+          setSort={setSort}
+          sortOptions={[
+            {id:'closed_desc',label:'Closed ↓'},
+            {id:'closed_asc',label:'Closed ↑'},
+            {id:'lender_asc',label:'Lender A→Z'},
+            {id:'emi_desc',label:'EMI ↓'},
+            {id:'overdue_desc',label:'Overdue ↓'},
+          ]}
+          onResetControls={() => { setQuery(''); setSort('closed_desc') }}
+        />
+
+        {rows.length ? (
+          <table>
+            <thead><tr><th>Lender</th><th>Type</th><th>Status</th><th>Opened</th><th>Closed</th><th style={{textAlign:'right'}}>EMI</th><th style={{textAlign:'right'}}>Overdue</th><th>DPD History</th></tr></thead>
+            <tbody>
+              {rows.map((x, i) => (
+                <tr key={i}>
+                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{x.lender || '—'}</td>
+                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{x.account_type || '—'}</td>
+                  <td>{badge(x.account_status || 'Closed', 'green')}</td>
+                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.opened_date || '—'}</td>
+                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.closed_date || x.last_update || '—'}</td>
+                  <td style={{textAlign:'right'}}>{x.emi ? f(x.emi) : '—'}</td>
+                  <td style={{textAlign:'right'}}>{x.overdue_amount ? f(x.overdue_amount) : '—'}</td>
+                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:11,maxWidth:220,whiteSpace:'normal'}}>{formatDpdHistory(x)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div style={{textAlign:'center',padding:'40px 20px',color:'var(--text-muted)',fontSize:13}}>No closed loan accounts detected</div>
         )}
       </div>
     )
@@ -1051,6 +1143,7 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
             {tab==='personal' && <PersonalTab />}
             {tab==='score' && <ScoreTab />}
             {tab==='loans' && <LoansTab />}
+            {tab==='closedLoans' && <ClosedLoansTab />}
             {tab==='inquiry' && <InquiryTab />}
           </>
         ) : (

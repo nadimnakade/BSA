@@ -83,7 +83,9 @@ app.post('/api/analyze', upload.single('statement'), async (req, res) => {
     if (!statementFile) return res.status(400).json({ error: 'No statement file uploaded' });
     console.log(`\n[Analyze] ${statementFile.originalname} (${(statementFile.size/1024).toFixed(1)} KB)`);
 
-    const transactions = await parseFile(filePath, statementFile.originalname);
+    const parsed = await parseFile(filePath, statementFile.originalname);
+    const transactions = parsed.transactions || [];
+    const extraction = parsed.metadata || {};
     console.log(`[Parse] Extracted ${transactions.length} transactions`);
 
     if (!transactions.length) {
@@ -106,7 +108,7 @@ app.post('/api/analyze', upload.single('statement'), async (req, res) => {
 
     console.log(`[Analyze] Done — ${transactions.length} txns, salary: ${analysis.salary.length}, loans: ${analysis.loans.length}`);
 
-    res.json({ success: true, filename: statementFile.originalname, transaction_count: transactions.length, analysis });
+    res.json({ success: true, filename: statementFile.originalname, transaction_count: transactions.length, extraction, analysis });
   } catch (err) {
     console.error('[Error]', err.message);
     if (['PDF_SCANNED', 'PDF_PARSE_NO_ROWS', 'OCR_NOT_AVAILABLE', 'OCR_TIMEOUT', 'OCR_FAILED', 'PDF_PASSWORD'].includes(err?.code)) {
@@ -450,7 +452,11 @@ app.post('/api/export-cibil', async (req, res) => {
       ['Company', personal.company || '—'],
     ];
 
-    const activeLoans = accounts.map(a => ({
+    const isClosedAccount = (a) => /CLOSED|SETTLED|WRITTEN\s*OFF|CHARGEOFF|CHARGE\s*OFF/i.test((a?.account_status || '').toString()) || !!a?.closed_date;
+    const dpdHistoryText = (a) => Array.isArray(a?.dpd_history)
+      ? a.dpd_history.map(x => `${x.month || ''} - ${Number(x.days) || 0}`).join(' | ')
+      : '';
+    const accountRows = accounts.map(a => ({
       lender: a.lender || '',
       account_type: a.account_type || '',
       account_status: a.account_status || '',
@@ -463,8 +469,12 @@ app.post('/api/export-cibil', async (req, res) => {
       remaining_balance: Number(a.current_balance) || 0,
       overdue_amount: Number(a.overdue_amount) || 0,
       dpd_max: a.dpd_max ?? '',
+      dpd_delay_count: a.dpd_delay_count ?? '',
+      dpd_history: dpdHistoryText(a),
       adverse_flags: Array.isArray(a.adverse_flags) ? a.adverse_flags.join('|') : '',
     }));
+    const activeLoans = accountRows.filter(a => !isClosedAccount(a));
+    const closedLoans = accountRows.filter(a => isClosedAccount(a));
 
     const enquiriesRows = enquiryDetails.map(e => ({
       date: e.date || '',
@@ -499,12 +509,22 @@ app.post('/api/export-cibil', async (req, res) => {
       for (const f of adverse) lines.push(`${esc(f)}`);
       lines.push('');
       lines.push('Active Loans');
-      lines.push('Lender,Type,Status,Opened Date,Closed Date,EMI,Loan Amount,High Credit,Credit Limit,Remaining Balance,Overdue Amount,DPD Max,Adverse Flags');
+      lines.push('Lender,Type,Status,Opened Date,Closed Date,EMI,Loan Amount,High Credit,Credit Limit,Remaining Balance,Overdue Amount,DPD Max,DPD Delay Count,DPD History,Adverse Flags');
       for (const r of activeLoans) {
         lines.push([
           esc(r.lender), esc(r.account_type), esc(r.account_status), esc(r.opened_date), esc(r.closed_date),
           esc(r.emi), esc(r.loan_amount), esc(r.high_credit), esc(r.credit_limit),
-          esc(r.remaining_balance), esc(r.overdue_amount), esc(r.dpd_max), esc(r.adverse_flags)
+          esc(r.remaining_balance), esc(r.overdue_amount), esc(r.dpd_max), esc(r.dpd_delay_count), esc(r.dpd_history), esc(r.adverse_flags)
+        ].join(','));
+      }
+      lines.push('');
+      lines.push('Closed Loans');
+      lines.push('Lender,Type,Status,Opened Date,Closed Date,EMI,Loan Amount,High Credit,Credit Limit,Remaining Balance,Overdue Amount,DPD Max,DPD Delay Count,DPD History,Adverse Flags');
+      for (const r of closedLoans) {
+        lines.push([
+          esc(r.lender), esc(r.account_type), esc(r.account_status), esc(r.opened_date), esc(r.closed_date),
+          esc(r.emi), esc(r.loan_amount), esc(r.high_credit), esc(r.credit_limit),
+          esc(r.remaining_balance), esc(r.overdue_amount), esc(r.dpd_max), esc(r.dpd_delay_count), esc(r.dpd_history), esc(r.adverse_flags)
         ].join(','));
       }
       lines.push('');
@@ -541,10 +561,19 @@ app.post('/api/export-cibil', async (req, res) => {
       header: [
         'lender', 'account_type', 'account_status', 'opened_date', 'closed_date',
         'emi', 'loan_amount', 'high_credit', 'credit_limit',
-        'remaining_balance', 'overdue_amount', 'dpd_max', 'adverse_flags'
+        'remaining_balance', 'overdue_amount', 'dpd_max', 'dpd_delay_count', 'dpd_history', 'adverse_flags'
       ]
     });
     XLSX.utils.book_append_sheet(wb, wsLoans, 'Active Loans');
+
+    const wsClosedLoans = XLSX.utils.json_to_sheet(closedLoans, {
+      header: [
+        'lender', 'account_type', 'account_status', 'opened_date', 'closed_date',
+        'emi', 'loan_amount', 'high_credit', 'credit_limit',
+        'remaining_balance', 'overdue_amount', 'dpd_max', 'dpd_delay_count', 'dpd_history', 'adverse_flags'
+      ]
+    });
+    XLSX.utils.book_append_sheet(wb, wsClosedLoans, 'Closed Loans');
 
     const wsEnq = XLSX.utils.json_to_sheet(enquiriesRows, {
       header: ['date', 'member', 'purpose', 'amount', 'raw']
@@ -565,8 +594,13 @@ app.post('/api/parse-only', upload.single('statement'), async (req, res) => {
   const filePath = req.file?.path;
   try {
     if (!req.file) return res.status(400).json({ error: 'No file' });
-    const transactions = await parseFile(filePath, req.file.originalname);
-    res.json({ count: transactions.length, sample: transactions.slice(0, 20) });
+    const parsed = await parseFile(filePath, req.file.originalname);
+    const transactions = parsed.transactions || [];
+    res.json({
+      count: transactions.length,
+      extraction: parsed.metadata || {},
+      sample: transactions.slice(0, 20),
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   } finally {

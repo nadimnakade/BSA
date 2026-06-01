@@ -11,6 +11,7 @@ const { spawn } = require("child_process");
 const { parseAmount, parseDate } = require("./analyzer");
 
 const MONEY_RE = /(?:\d{1,3}(?:,\s?\d{2,3})+|\d+)\.\d{2}/g;
+const PDF_TEXT_ITEM_THRESHOLD = 5;
 
 function errWithCode(message, code) {
   const e = new Error(message);
@@ -31,9 +32,12 @@ function extractAmounts(line) {
     let j = idx - 1;
     while (j >= 0 && /\s/.test(line[j])) j--;
     let sign = 0;
-    if (j >= 0 && (line[j] === "+" || line[j] === "-")) sign = line[j] === "+" ? 1 : -1;
+    if (j >= 0 && (line[j] === "+" || line[j] === "-"))
+      sign = line[j] === "+" ? 1 : -1;
 
-    const after = line.slice(idx + m[0].length, idx + m[0].length + 8).toUpperCase();
+    const after = line
+      .slice(idx + m[0].length, idx + m[0].length + 8)
+      .toUpperCase();
     if (!sign && /\bCR\b/.test(after)) sign = 1;
     if (!sign && /\bDR\b/.test(after)) sign = -1;
 
@@ -82,6 +86,43 @@ async function extractPdfTextPdfjs(filePath) {
   return out;
 }
 
+async function classifyPdfPages(filePath, threshold = PDF_TEXT_ITEM_THRESHOLD) {
+  const buffer = fs.readFileSync(filePath);
+  const data = Buffer.isBuffer(buffer)
+    ? new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength)
+    : buffer;
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const loadingTask = pdfjs.getDocument({ data, disableWorker: true });
+  const doc = await loadingTask.promise;
+  const pages = [];
+
+  try {
+    const pageCount = doc.numPages || 0;
+    for (let i = 1; i <= pageCount; i++) {
+      const page = await doc.getPage(i);
+      const tc = await page.getTextContent();
+      const textItemCount = (tc.items || []).filter((item) =>
+        (item.str || "").trim(),
+      ).length;
+      pages.push({
+        page: i,
+        mode: textItemCount < threshold ? "ocr" : "text",
+      });
+    }
+  } finally {
+    try {
+      await doc.destroy();
+    } catch {}
+  }
+
+  return {
+    pageCount: pages.length,
+    textPages: pages.filter((p) => p.mode === "text").length,
+    ocrPages: pages.filter((p) => p.mode === "ocr").length,
+    pages,
+  };
+}
+
 function runExternal(cmd, args, timeoutMs = 300_000) {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"] });
@@ -122,7 +163,16 @@ async function extractPdfTextOcr(filePath) {
       fs.unlinkSync(outPdf);
     } catch {}
 
-    const args = ["-m", "ocrmypdf", "--skip-text", "--sidecar", sidecar, filePath, outPdf, "--quiet"];
+    const args = [
+      "-m",
+      "ocrmypdf",
+      "--skip-text",
+      "--sidecar",
+      sidecar,
+      filePath,
+      outPdf,
+      "--quiet",
+    ];
     const r = await runExternal("python", args, 600_000);
 
     if (r.code === 0 && fs.existsSync(sidecar)) {
@@ -130,21 +180,29 @@ async function extractPdfTextOcr(filePath) {
       if ((t || "").trim().length > 50) return t;
     }
     const detail = (r.stderr || r.stdout || "").toString().trim();
-    if (/Could not find program 'gswin64c'/i.test(detail) || /ghostscript/i.test(detail)) {
+    if (
+      /Could not find program 'gswin64c'/i.test(detail) ||
+      /ghostscript/i.test(detail)
+    ) {
       throw errWithCode(
         "OCR requires Ghostscript on Windows for this method. Install Ghostscript (gswin64c) OR use the fallback OCR path (pypdfium2+tesseract) by keeping tesseract installed. If you can’t install system dependencies, export CSV/XLSX from netbanking.",
         "OCR_NOT_AVAILABLE",
       );
     }
     if (r.code !== 0) {
-      const msg = detail ? `OCR failed (ocrmypdf): ${detail.slice(0, 600)}` : "OCR failed (ocrmypdf).";
+      const msg = detail
+        ? `OCR failed (ocrmypdf): ${detail.slice(0, 600)}`
+        : "OCR failed (ocrmypdf).";
       throw errWithCode(msg, "OCR_FAILED");
     }
   } catch (e) {
     if (e?.code !== "ENOENT") {
       const msg = (e?.message || "").toString();
       if (/password/i.test(msg) || /encrypted/i.test(msg)) {
-        throw errWithCode("This PDF is password-protected. Please upload an unlocked statement PDF or export CSV/XLSX.", "PDF_PASSWORD");
+        throw errWithCode(
+          "This PDF is password-protected. Please upload an unlocked statement PDF or export CSV/XLSX.",
+          "PDF_PASSWORD",
+        );
       }
       if (e?.code === "OCR_FAILED") throw e;
       if (e?.code === "OCR_NOT_AVAILABLE") throw e;
@@ -173,10 +231,16 @@ async function extractPdfTextOcr(filePath) {
       "  img.save(p)\n" +
       "  print(p)\n";
 
-    const r = await runExternal("python", ["-c", renderScript, filePath, tmpDir], 600_000);
+    const r = await runExternal(
+      "python",
+      ["-c", renderScript, filePath, tmpDir],
+      600_000,
+    );
     if (r.code !== 0) {
       const detail = (r.stderr || r.stdout || "").toString().trim();
-      const msg = detail ? `PDF render failed (pypdfium2): ${detail.slice(0, 600)}` : "PDF render failed (pypdfium2).";
+      const msg = detail
+        ? `PDF render failed (pypdfium2): ${detail.slice(0, 600)}`
+        : "PDF render failed (pypdfium2).";
       throw errWithCode(msg, "OCR_FAILED");
     }
 
@@ -186,21 +250,34 @@ async function extractPdfTextOcr(filePath) {
       .filter(Boolean)
       .filter((p) => /\.png$/i.test(p));
 
-    if (!images.length) throw errWithCode("OCR failed: no images produced from PDF.", "OCR_FAILED");
+    if (!images.length)
+      throw errWithCode(
+        "OCR failed: no images produced from PDF.",
+        "OCR_FAILED",
+      );
 
     let out = "";
     for (const imgPath of images) {
-      const tr = await runExternal("tesseract", [imgPath, "stdout", "-l", "eng"], 600_000);
+      const tr = await runExternal(
+        "tesseract",
+        [imgPath, "stdout", "-l", "eng"],
+        600_000,
+      );
       if (tr.code !== 0) {
         const detail = (tr.stderr || tr.stdout || "").toString().trim();
-        const msg = detail ? `OCR failed (tesseract): ${detail.slice(0, 600)}` : "OCR failed (tesseract).";
+        const msg = detail
+          ? `OCR failed (tesseract): ${detail.slice(0, 600)}`
+          : "OCR failed (tesseract).";
         throw errWithCode(msg, "OCR_FAILED");
       }
       out += (tr.stdout || "") + "\n";
     }
 
     if ((out || "").trim().length > 50) return out;
-    throw errWithCode("OCR completed but produced no readable text. Please export CSV/XLSX from netbanking.", "OCR_FAILED");
+    throw errWithCode(
+      "OCR completed but produced no readable text. Please export CSV/XLSX from netbanking.",
+      "OCR_FAILED",
+    );
   } finally {
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -214,15 +291,36 @@ async function parseFile(filePath, originalName) {
     case ".pdf":
       return await parsePDF(filePath);
     case ".csv":
-      return await parseCSV(filePath);
+      return toParsedResult(await parseCSV(filePath), "csv");
     case ".xlsx":
     case ".xls":
-      return await parseXLSX(filePath);
+      return toParsedResult(await parseXLSX(filePath), ext.slice(1));
     case ".txt":
-      return parseText(fs.readFileSync(filePath, "utf-8"));
+      {
+        const rawText = fs.readFileSync(filePath, "utf-8");
+        return toParsedResult(parseText(rawText), "txt", rawText);
+      }
     default:
       throw new Error(`Unsupported file type: ${ext}`);
   }
+}
+
+function toParsedResult(transactions, source, rawText = "", extraMetadata = {}) {
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
+  const metrics = calculateExtractionMetrics(safeTransactions, rawText, source);
+  const warnings = [
+    ...(metrics.warnings || []),
+    ...((extraMetadata.warnings || []).filter(Boolean)),
+  ];
+
+  return {
+    transactions: safeTransactions,
+    metadata: {
+      ...metrics,
+      ...extraMetadata,
+      warnings: Array.from(new Set(warnings)),
+    },
+  };
 }
 
 // ---- PDF PARSER ----
@@ -240,6 +338,22 @@ async function parseFile(filePath, originalName) {
 async function parsePDF(filePath) {
   let raw = "";
   let rawAlt = "";
+  let pageClassification = null;
+  const metadataWarnings = [];
+
+  try {
+    pageClassification = await classifyPdfPages(filePath);
+    console.log("[PDF] page classification:", pageClassification);
+    if (pageClassification.ocrPages > 0) {
+      metadataWarnings.push(
+        `${pageClassification.ocrPages} page(s) appear to require OCR`,
+      );
+    }
+  } catch (e) {
+    metadataWarnings.push("PDF page classification failed");
+    console.error("[PDF] page classification error:", e?.message || e);
+  }
+
   try {
     const pdfParse = require("pdf-parse");
     const data = await pdfParse(fs.readFileSync(filePath), {
@@ -293,13 +407,17 @@ async function parsePDF(filePath) {
 
   console.log("[PDF] first 800 chars:\n", raw.slice(0, 800));
 
+  let bestRaw = raw;
   let best = parseText(raw);
   console.log("[PDF] Generic text parser:", best.length);
 
   if ((rawAlt || "").trim().length >= 50) {
     const txAlt = parseText(rawAlt);
     console.log("[PDF] Generic text parser (alt):", txAlt.length);
-    if (txAlt.length > best.length) best = txAlt;
+    if (txAlt.length > best.length) {
+      best = txAlt;
+      bestRaw = rawAlt;
+    }
   }
 
   try {
@@ -307,7 +425,10 @@ async function parsePDF(filePath) {
     if ((rawJs || "").trim().length >= 50) {
       const txJs = parseText(rawJs);
       console.log("[PDF] Generic text parser (pdfjs):", txJs.length);
-      if (txJs.length > best.length) best = txJs;
+      if (txJs.length > best.length) {
+        best = txJs;
+        bestRaw = rawJs;
+      }
     }
   } catch (e) {
     console.error("[PDF] pdfjs fallback error:", e?.message || e);
@@ -315,9 +436,18 @@ async function parsePDF(filePath) {
 
   const union = parseUnionBankText(raw);
   console.log("[PDF] Union Bank parser:", union.length);
-  if (union.length > best.length) best = union;
+  if (union.length > best.length) {
+    best = union;
+    bestRaw = raw;
+  }
 
-  if (best.length >= 1) return best;
+  // if (best.length >= 1) return best;
+  if (best.length >= 1) {
+    return toParsedResult(best, "pdf", bestRaw, {
+      ...(pageClassification || {}),
+      warnings: metadataWarnings,
+    });
+  }
 
   throw errWithCode(
     "We could extract text from this PDF, but couldn't detect transaction rows reliably. Please export CSV/XLSX from netbanking (recommended) or share a text-based PDF statement.",
@@ -382,7 +512,12 @@ function parseText(text) {
     const dateMatch = line.match(dateRegex);
 
     if (dateMatch) {
-      if (/\b\d{2}\s+[A-Za-z]{3}\s+\d{4}\s*(?:to|-)\s*\d{2}\s+[A-Za-z]{3}\s+\d{4}\b/i.test(line)) continue;
+      if (
+        /\b\d{2}\s+[A-Za-z]{3}\s+\d{4}\s*(?:to|-)\s*\d{2}\s+[A-Za-z]{3}\s+\d{4}\b/i.test(
+          line,
+        )
+      )
+        continue;
       // Extract all numbers from line
       const amounts = extractAmounts(line);
 
@@ -396,14 +531,18 @@ function parseText(text) {
       // - ICICI-style: "01-09-2024" then particulars lines then amount/balance line
       //   => start a pending transaction on the date-only line
       if (!amounts.length && descNoRow.length < 3) {
-        const rowMarker = new RegExp(`^\\s*\\d+\\s+${escapeRegExp(dateMatch[1])}\\b`, "i").test(line);
+        const rowMarker = new RegExp(
+          `^\\s*\\d+\\s+${escapeRegExp(dateMatch[1])}\\b`,
+          "i",
+        ).test(line);
         if (rowMarker) {
           continue;
         }
         const next = lines[i + 1] || "";
         const next2 = lines[i + 2] || "";
         const timeLike = /^\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM)?$/i.test(next);
-        const repeatsDate = next2 && dateRegex.test(next2) && next2.includes(dateMatch[1]);
+        const repeatsDate =
+          next2 && dateRegex.test(next2) && next2.includes(dateMatch[1]);
         if (timeLike && repeatsDate) {
           continue;
         }
@@ -436,8 +575,10 @@ function parseText(text) {
         }
       } else if (amounts.length === 1) {
         const txAmt = amounts[0];
-        if (/withdrawal|debit|dr\b/i.test(line) || txAmt.sign < 0) debit = txAmt.value;
-        else if (/deposit|credit|cr\b/i.test(line) || txAmt.sign > 0) credit = txAmt.value;
+        if (/withdrawal|debit|dr\b/i.test(line) || txAmt.sign < 0)
+          debit = txAmt.value;
+        else if (/deposit|credit|cr\b/i.test(line) || txAmt.sign > 0)
+          credit = txAmt.value;
         else {
           pendingBalance = true;
         }
@@ -448,7 +589,8 @@ function parseText(text) {
         pendingBalance = true;
       }
 
-      const isBalanceOnly = /\bB\/F\b|OPENING\s*BAL/i.test(descNoRow) && !debit && !credit;
+      const isBalanceOnly =
+        /\bB\/F\b|OPENING\s*BAL/i.test(descNoRow) && !debit && !credit;
 
       currentTx = {
         date: parseDate(dateMatch[1]),
@@ -466,21 +608,30 @@ function parseText(text) {
       const amounts = extractAmounts(line);
       if (amounts.length) {
         if (amounts.length >= 2) {
-          if (!currentTx.balance || currentTx._pending_balance) currentTx.balance = amounts[amounts.length - 1].value || currentTx.balance || 0;
+          if (!currentTx.balance || currentTx._pending_balance)
+            currentTx.balance =
+              amounts[amounts.length - 1].value || currentTx.balance || 0;
           const txAmt = amounts[amounts.length - 2];
           if (!currentTx.debit && !currentTx.credit && txAmt?.value) {
-            if (/deposit|credit|cr\b/i.test(line) || txAmt.sign > 0) currentTx.credit = txAmt.value;
-            else if (/withdrawal|debit|dr\b/i.test(line) || txAmt.sign < 0) currentTx.debit = txAmt.value;
+            if (/deposit|credit|cr\b/i.test(line) || txAmt.sign > 0)
+              currentTx.credit = txAmt.value;
+            else if (/withdrawal|debit|dr\b/i.test(line) || txAmt.sign < 0)
+              currentTx.debit = txAmt.value;
           }
           currentTx._pending_balance = false;
         } else if (amounts.length === 1) {
           const one = amounts[0];
           if (!currentTx.debit && !currentTx.credit && one?.value) {
-            if (/deposit|credit|cr\b/i.test(line) || one.sign > 0) currentTx.credit = one.value;
-            else if (/withdrawal|debit|dr\b/i.test(line) || one.sign < 0) currentTx.debit = one.value;
+            if (/deposit|credit|cr\b/i.test(line) || one.sign > 0)
+              currentTx.credit = one.value;
+            else if (/withdrawal|debit|dr\b/i.test(line) || one.sign < 0)
+              currentTx.debit = one.value;
             else currentTx.debit = one.value;
             currentTx._pending_balance = true;
-          } else if ((!currentTx.balance || currentTx._pending_balance) && one?.value) {
+          } else if (
+            (!currentTx.balance || currentTx._pending_balance) &&
+            one?.value
+          ) {
             currentTx.balance = one.value;
             currentTx._pending_balance = false;
           }
@@ -522,7 +673,10 @@ function parseText(text) {
   }
 
   const cleaned = transactions.filter(
-    (t) => t.date && !t._is_balance_only && (t.debit > 0 || t.credit > 0 || t.balance > 0),
+    (t) =>
+      t.date &&
+      !t._is_balance_only &&
+      (t.debit > 0 || t.credit > 0 || t.balance > 0),
   );
 
   const seen = new Set();
@@ -640,7 +794,9 @@ function parseUnionBankText(text) {
     }
   }
 
-  const cleaned = transactions.filter((t) => t.date && (t.debit > 0 || t.credit > 0));
+  const cleaned = transactions.filter(
+    (t) => t.date && (t.debit > 0 || t.credit > 0),
+  );
   const seen = new Set();
   const uniq = [];
   for (const t of cleaned) {
@@ -848,4 +1004,84 @@ function cleanDesc(desc) {
     .slice(0, 200);
 }
 
-module.exports = { parseFile, parseText, parseUnionBankText, normalizeRow };
+function calculateExtractionMetrics(transactions, rawText, source) {
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
+  const total = safeTransactions.length;
+  const text = (rawText || "").toString();
+  const warnings = [];
+
+  if (!total) {
+    return {
+      source: source || "",
+      date_detection_rate: 0,
+      balance_detection_rate: 0,
+      debit_credit_detection_rate: 0,
+      confidence: 0,
+      quality: 0,
+      warnings: ["No transactions detected"],
+    };
+  }
+
+  const hasPositiveNumber = (value) => {
+    const n = Number(value || 0);
+    return Number.isFinite(n) && n > 0;
+  };
+
+  const dateCount = safeTransactions.filter((t) => t.date).length;
+  const balanceCount = safeTransactions.filter((t) =>
+    hasPositiveNumber(t.balance),
+  ).length;
+  const amountCount = safeTransactions.filter(
+    (t) => hasPositiveNumber(t.credit) || hasPositiveNumber(t.debit),
+  ).length;
+
+  const dateRate = dateCount / total;
+  const balanceRate = balanceCount / total;
+  const amountRate = amountCount / total;
+
+  if (dateRate < 0.8) warnings.push("Low date detection rate");
+  if (balanceRate < 0.5) warnings.push("Low balance detection rate");
+  if (amountRate < 0.8) warnings.push("Low debit/credit detection rate");
+
+  if (text && text.trim().length < 100) {
+    warnings.push("Extracted text is very short");
+  }
+
+  const sourceBonus =
+    source === "csv" || source === "xlsx" || source === "xls" ? 0.05 : 0;
+  const confidenceScore = Math.min(
+    1,
+    dateRate * 0.4 + balanceRate * 0.25 + amountRate * 0.35 + sourceBonus,
+  );
+
+  const rawTextScore = text
+    ? Math.min(1, text.replace(/\s+/g, " ").trim().length / 1000)
+    : source === "csv" || source === "xlsx" || source === "xls"
+      ? 1
+      : 0.7;
+  const volumeScore = Math.min(1, total / 10);
+  const qualityScore = Math.min(
+    1,
+    confidenceScore * 0.7 + rawTextScore * 0.15 + volumeScore * 0.15,
+  );
+
+  return {
+    source: source || "",
+    date_detection_rate: Number(dateRate.toFixed(3)),
+    balance_detection_rate: Number(balanceRate.toFixed(3)),
+    debit_credit_detection_rate: Number(amountRate.toFixed(3)),
+    confidence: Math.round(confidenceScore * 100),
+    quality: Math.round(qualityScore * 100),
+    warnings,
+  };
+}
+
+module.exports = {
+  parseFile,
+  parsePDF,
+  classifyPdfPages,
+  parseText,
+  parseUnionBankText,
+  normalizeRow,
+  calculateExtractionMetrics,
+};

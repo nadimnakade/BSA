@@ -121,6 +121,20 @@ function anyMatch(desc, patterns) {
   return false;
 }
 
+function parseDate(s) {
+  if (!s) return undefined;
+  const d = s.toString().trim();
+  const m = d.match(/(\d{1,2})[-\/\s](\d{1,2}|[A-Z]{3})[-\/\s](\d{2,4})/i);
+  if (!m) return undefined;
+  let day = m[1];
+  let mon = m[2];
+  let year = m[3];
+  if (year.length === 2) year = '20' + year;
+  const months = { JAN:'01', FEB:'02', MAR:'03', APR:'04', MAY:'05', JUN:'06', JUL:'07', AUG:'08', SEP:'09', OCT:'10', NOV:'11', DEC:'12' };
+  if (isNaN(mon)) mon = months[mon.toUpperCase().slice(0, 3)] || '01';
+  return `${year}-${mon.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+}
+
 function parseCibilText(text) {
   const t = (text || '').toString();
   const lines = t.split('\n').map(x => x.trim()).filter(Boolean);
@@ -148,6 +162,80 @@ function parseCibilText(text) {
     if (!s) return undefined;
     const n = Number(s.toString().replace(/[,\s]/g, ''));
     return Number.isFinite(n) ? n : undefined;
+  };
+  const pickLabeledNumber = (text, labelRe) => {
+    const src = (text || '').toString();
+    const re = new RegExp(`${labelRe.source}\\s*(?:Amount|Balance|Limit|Utilization|Payment|Principal|Total)?[^0-9A-Z-]{0,40}(-?\\d[\\d,]*(?:\\.\\d{1,2})?|NA)`, 'i');
+    const m = src.match(re);
+    if (!m || /^NA$/i.test(m[1])) return undefined;
+    return parseNum(m[1]);
+  };
+  const pickLabeledDate = (text, labelRe) => {
+    const src = (text || '').toString();
+    const re = new RegExp(`${labelRe.source}\\s*(?:Date)?[^0-9A-Z]{0,40}(\\d{2}[-\\/]\\d{2}[-\\/]\\d{4}|NA)`, 'i');
+    const m = src.match(re);
+    if (!m || /^NA$/i.test(m[1])) return undefined;
+    return parseDate(m[1]);
+  };
+
+  const monthRe = '(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)';
+  const dpdTokenToDays = (value) => {
+    const raw = (value || '').toString().trim().toUpperCase();
+    if (!raw || raw === 'XXX' || raw === 'STD') return 0;
+    const n = Number(raw.replace(/^0+(?=\d)/, ''));
+    return Number.isFinite(n) ? n : 0;
+  };
+  const parseDpdHistory = (text) => {
+    const out = [];
+    const seen = new Set();
+    const add = (month, value) => {
+      const label = (month || '').toString().replace(/\s+/g, ' ').trim();
+      if (!label) return;
+      const days = dpdTokenToDays(value);
+      const key = `${label.toUpperCase()}|${days}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({ month: label, days });
+    };
+
+    const pairRe = new RegExp(`\\b(${monthRe}\\s*(?:(?:19|20)\\d{2}|[-']\\s*\\d{2}(?!\\d)))\\b\\s*(?:-|:)?\\s*(\\d{1,3}|XXX|STD)\\b`, 'gi');
+    let m;
+    while ((m = pairRe.exec(text)) !== null) add(m[1], m[2]);
+
+    const linesForDpd = (text || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+    for (let i = 0; i < linesForDpd.length; i++) {
+      const months = Array.from(linesForDpd[i].matchAll(new RegExp(`\\b${monthRe}\\b`, 'gi'))).map(x => x[0]);
+      if (months.length < 2) continue;
+      const valuesLine = [linesForDpd[i + 1] || '', linesForDpd[i + 2] || ''].find(line => {
+        const vals = line.match(/\b(?:\d{3}|XXX|STD)\b/gi) || [];
+        return vals.length >= Math.min(2, months.length);
+      });
+      if (!valuesLine) continue;
+      const values = valuesLine.match(/\b(?:\d{3}|XXX|STD)\b/gi) || [];
+      months.slice(0, values.length).forEach((month, idx) => add(month, values[idx]));
+    }
+
+    return out;
+  };
+  const accountKey = (a) => {
+    const no = (a.account_no || '').toString().replace(/[^A-Z0-9]/gi, '').toUpperCase();
+    const l = (a.lender || '').toString().toUpperCase()
+      .replace(/\b(?:BANK|LTD|LIMITED|FINANCE|FIN|CREDIT|CARD|CORPORATION|CORP|SERVICES|SER|CO|NA)\b/g, ' ')
+      .replace(/[^A-Z]/g, '')
+      .slice(0, 15);
+    return `${no}|${l}`;
+  };
+  const mergeAccountFields = (target, source) => {
+    for (const field of [
+      'ownership', 'opened_date', 'closed_date', 'account_status', 'last_update',
+      'last_payment_date', 'sanctioned_amount', 'high_credit', 'credit_limit',
+      'current_balance', 'overdue_amount', 'emi', 'actual_last_payment',
+      'payment_frequency', 'repayment_tenure'
+    ]) {
+      if ((target[field] === undefined || target[field] === '' || target[field] === 0) && source[field] !== undefined) {
+        target[field] = source[field];
+      }
+    }
   };
 
   const enquiries = {};
@@ -323,11 +411,29 @@ function parseCibilText(text) {
   };
 
   const startRe = /^(ACCOUNT|ACCT)\s*TYPE\s*[:\-]\s*(.+)$/i;
-  for (const line of lines) {
+  for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+    const line = lines[lineIdx];
+    const accountNoLine = line.match(/^(?:ACCOUNT\s*(?:NUMBER|NO)|ACCT\s*(?:NUMBER|NO))\s*[:\-]?\s*(X{3,}\d{3,}|[A-Z0-9X*]{4,})$/i);
+    if (accountNoLine) {
+      if (!cur) {
+        const prev = (lines[lineIdx - 1] || '').trim();
+        cur = {
+          account_no: accountNoLine[1].trim(),
+          lender: /^[A-Z][A-Z0-9 &.'-]{2,80}$/.test(prev) && !/\b(?:ACCOUNT|DATE|STATUS|TYPE|OWNERSHIP)\b/i.test(prev) ? prev : undefined,
+        };
+      } else if (!cur.account_no) {
+        cur.account_no = accountNoLine[1].trim();
+      }
+      continue;
+    }
     const start = line.match(startRe);
     if (start) {
-      push();
-      cur = { account_type: start[2].trim() };
+      if (cur && !cur.account_type) {
+        cur.account_type = start[2].trim();
+      } else {
+        push();
+        cur = { account_type: start[2].trim() };
+      }
       continue;
     }
     const memberStart = line.match(/^(?:MEMBER\s*NAME|LENDER|BANK\s*NAME|FINANCIER|INSTITUTION)\s*[:\-]\s*(.+)$/i);
@@ -351,6 +457,7 @@ function parseCibilText(text) {
     set('ownership', /^(?:OWNERSHIP|ACCOUNT\s*HOLDER\s*TYPE)\s*[:\-]\s*(.+)$/i);
     set('opened_date', /^(?:DATE\s*OPENED|OPENED\s*DATE|DATE\s*OPEN)\s*[:\-]\s*(.+)$/i);
     set('closed_date', /^(?:DATE\s*CLOSED|CLOSED\s*DATE)\s*[:\-]\s*(.+)$/i);
+    set('account_no', /^(?:ACCOUNT\s*(?:NUMBER|NO)|ACCT\s*(?:NUMBER|NO))\s*[:\-]?\s*(X{3,}\d{3,}|[A-Z0-9X*]{4,})$/i);
 
     const money = (k, re) => {
       const m = line.match(re);
@@ -363,6 +470,14 @@ function parseCibilText(text) {
     money('high_credit', /\bHIGH\s*(?:CREDIT|CR)\b[^0-9]{0,20}([\d,]+(?:\.\d{1,2})?)\b/i);
     money('credit_limit', /\b(?:CREDIT\s*LIMIT|LIMIT)\b[^0-9]{0,20}([\d,]+(?:\.\d{1,2})?)\b/i);
     money('overdue_amount', /\b(?:OVERDUE|OD\s*AMOUNT|OVER\s*DUE)\b[^0-9]{0,20}([\d,]+(?:\.\d{1,2})?)\b/i);
+
+    const lookahead = lines.slice(lineIdx, Math.min(lines.length, lineIdx + 4)).join(' ');
+    if (cur.emi === undefined) cur.emi = pickLabeledNumber(lookahead, /\bEMI\b/i);
+    if (cur.overdue_amount === undefined) cur.overdue_amount = pickLabeledNumber(lookahead, /\bOVERDUE\b/i);
+    if (cur.current_balance === undefined) cur.current_balance = pickLabeledNumber(lookahead, /\b(?:OUTSTANDING|CURRENT)\b/i);
+    if (cur.sanctioned_amount === undefined) cur.sanctioned_amount = pickLabeledNumber(lookahead, /\bLOAN\b/i);
+    if (cur.actual_last_payment === undefined) cur.actual_last_payment = pickLabeledNumber(lookahead, /\bACTUAL\s+LAST\s+PAYMENT\b/i);
+    if (cur.last_payment_date === undefined) cur.last_payment_date = pickLabeledDate(lookahead, /\bLAST\s+PAYMENT\b/i);
 
     if (/\b(WRITE\s*OFF|WRITTEN\s*OFF|SETTLED|SETTLEMENT|SUIT\s*FILED|WILFUL\s*DEFAULT|LOSS|SPECIAL\s*MENTION)\b/i.test(line)) {
       cur.adverse_flags = cur.adverse_flags || [];
@@ -382,34 +497,214 @@ function parseCibilText(text) {
       const max = nonZero.length ? Math.max(...nonZero) : 0;
       cur.dpd_max = Math.max(cur.dpd_max || 0, max);
     }
+
+    if (new RegExp(`\\b${monthRe}\\b`, 'i').test(line) || /\b(?:\d{3}|XXX|STD)\b/i.test(line)) {
+      cur._dpd_text = `${cur._dpd_text || ''}\n${line}`.trim();
+    }
   }
   push();
 
-  if (!accounts.some(a => a && a.account_no)) {
-    const upper = joinedFlat.toUpperCase();
-    const idx = upper.indexOf('SUMMARY: LOAN ACCOUNTS');
-    if (idx >= 0) {
-      let seg = joinedFlat.slice(idx, idx + 40000);
-      const hdr = seg.toUpperCase().indexOf('OUTSTANDING BALANCE');
-      if (hdr >= 0) seg = seg.slice(hdr + 'OUTSTANDING BALANCE'.length);
-      const typeRe = '(?:Personal\\s+Loan|Education\\s+Loan|Home\\s+Loan|Vehicle\\s+Loan|Two\\s+Wheeler\\s+Loan|Gold\\s+Loan|Business\\s+Loan(?:\\s+General)?|Consumer\\s+Loan|Loan\\s+Against\\s+Property|Overdraft|Credit\\s+Card|Other)';
-      const rowRe = new RegExp(`([A-Z][A-Z0-9 &.'-]{2,80}?)\\s+(${typeRe})\\s+(X{3,}\\d{3,})\\s+(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+(Active\\*?\\*?|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|Special\\s*Mention|SMA)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+([\\d,]+)\\s+([\\d,]+)`, 'gi');
-      let m;
-      while ((m = rowRe.exec(seg)) !== null) {
-        const lender = (m[1] || '').toString().trim();
-        if (!lender || /\bDATE\b|\bACCOUNT\b|\bSTATUS\b|\bUPDATE\b/i.test(lender)) continue;
-        accounts.push({
-          lender,
-          account_type: (m[2] || '').toString().trim(),
-          account_no: (m[3] || '').trim(),
-          ownership: (m[4] || '').trim(),
-          opened_date: parseDate(m[5]),
-          account_status: (m[6] || '').replace(/\s+/g, ' ').trim(),
-          last_update: parseDate(m[7]),
-          sanctioned_amount: parseNum(m[8]) || undefined,
-          current_balance: parseNum(m[9]) || undefined,
-        });
-      }
+  const summaryAccounts = [];
+  const upper = joinedFlat.toUpperCase();
+  const typeRe = '(?:Personal\\s+Loan|Education\\s+Loan|Home\\s+Loan|Housing\\s+Loan|Vehicle\\s+Loan|Two\\s+Wheeler\\s+Loan|Used\\s+Car\\s+Loan|Gold\\s+Loan|Business\\s+Loan(?:\\s+General)?|Consumer\\s+Loan|Loan\\s+Against\\s+Property|Property\\s+Loan|Overdraft|Credit\\s+Card|Loan\\s+on\\s+Credit\\s+Card|Other)';
+
+  // Pass 1: Summary: Loan Accounts
+  const idxLoan = upper.indexOf('SUMMARY: LOAN ACCOUNTS');
+  if (idxLoan >= 0) {
+    let seg = joinedFlat.slice(idxLoan, idxLoan + 40000);
+    const hdr = seg.toUpperCase().indexOf('OUTSTANDING BALANCE');
+    if (hdr >= 0) seg = seg.slice(hdr + 'OUTSTANDING BALANCE'.length);
+    const rowRe = new RegExp(`([A-Z][A-Z0-9 &.'-]{2,80}?)\\s+(${typeRe})\\s+(X{3,}\\d{3,})\\s+(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+(Active\\*?\\*?|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|Special\\s*Mention|SMA)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+([\\d,]+)\\s+([\\d,]+)(?:\\s+([\\d,]+))?(?:\\s+([\\d,]+))?`, 'gi');
+    let m;
+    while ((m = rowRe.exec(seg)) !== null) {
+      const lender = (m[1] || '').toString().trim();
+      if (!lender || /\bDATE\b|\bACCOUNT\b|\bSTATUS\b|\bUPDATE\b/i.test(lender)) continue;
+      const account_type = (m[2] || '').toString().trim();
+      const n1 = parseNum(m[8]) || undefined;
+      const n2 = parseNum(m[9]) || undefined;
+      summaryAccounts.push({
+        lender,
+        account_type,
+        account_no: (m[3] || '').trim(),
+        ownership: (m[4] || '').trim(),
+        opened_date: parseDate(m[5]),
+        account_status: (m[6] || '').replace(/\s+/g, ' ').trim(),
+        last_update: parseDate(m[7]),
+        sanctioned_amount: /credit\s*card/i.test(account_type) ? undefined : n1,
+        high_credit: /credit\s*card/i.test(account_type) ? n1 : undefined,
+        current_balance: n2,
+        overdue_amount: parseNum(m[10]) || undefined,
+        emi: parseNum(m[11]) || undefined,
+      });
+    }
+  }
+
+  // Pass 2: Summary: Credit Cards
+  const idxCC = upper.indexOf('SUMMARY: CREDIT CARDS');
+  if (idxCC >= 0) {
+    let seg = joinedFlat.slice(idxCC, idxCC + 40000);
+    const hdr = seg.toUpperCase().indexOf('OUTSTANDING BALANCE');
+    if (hdr >= 0) seg = seg.slice(hdr + 'OUTSTANDING BALANCE'.length);
+    const rowRe = new RegExp(`([A-Z][A-Z0-9 &.'-]{2,80}?)\\s+(${typeRe})\\s+(X{3,}\\d{3,})\\s+(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+(Active\\*?\\*?|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|Special\\s*Mention|SMA)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+([\\d,NA-]+)\\s+([\\d,NA-]+)(?:\\s+([\\d,NA-]+))?(?:\\s+([\\d,NA-]+))?`, 'gi');
+    let m;
+    while ((m = rowRe.exec(seg)) !== null) {
+      const lender = (m[1] || '').toString().trim();
+      if (!lender || /\bDATE\b|\bACCOUNT\b|\bSTATUS\b|\bUPDATE\b/i.test(lender)) continue;
+      const account_type = (m[2] || '').toString().trim();
+      const n1 = parseNum(m[8]) || undefined;
+      const n2 = parseNum(m[9]) || undefined;
+      summaryAccounts.push({
+        lender,
+        account_type,
+        account_no: (m[3] || '').trim(),
+        ownership: (m[4] || '').trim(),
+        opened_date: parseDate(m[5]),
+        account_status: (m[6] || '').replace(/\s+/g, ' ').trim(),
+        last_update: parseDate(m[7]),
+        high_credit: n1,
+        current_balance: n2,
+        overdue_amount: parseNum(m[10]) || undefined,
+        emi: parseNum(m[11]) || undefined,
+      });
+    }
+  }
+
+  // Pass 3: Catch-all regex for accounts that might have been missed
+  const seenSummaryKeys = new Set(summaryAccounts.map(accountKey));
+  const accountNoRe = /\b(X{3,}\d{3,})\b/gi;
+  let mm;
+  while ((mm = accountNoRe.exec(joinedFlat)) !== null) {
+    const accountNo = (mm[1] || '').trim();
+    const before = joinedFlat.slice(Math.max(0, mm.index - 180), mm.index).replace(/\s+/g, ' ').trim();
+    const after = joinedFlat.slice(mm.index + accountNo.length, mm.index + accountNo.length + 260).replace(/\s+/g, ' ').trim();
+    
+    // Improved beforeMatch to avoid capturing previous account data
+    const beforeMatch = before.match(new RegExp(`(?:^|\\s)([A-Z][A-Z0-9 &.'-]{2,60})\\s+(${typeRe})\\s*$`, 'i'));
+    const afterMatch = after.match(/^\s*(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\s+(\d{2}-\d{2}-\d{4})\s+(Active\*?\*?|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|Special\\s*Mention|SMA)\s+(\d{2}-\d{2}-\d{4})\s+([\\d,NA-]+)\s+([\\d,NA-]+)(?:\s+([\\d,NA-]+))?(?:\s+([\\d,NA-]+))?/i);
+    
+    if (!beforeMatch || !afterMatch) continue;
+    const lender = (beforeMatch[1] || '').replace(/\b(?:FINANCIAL\s+INSTITUTION|ACCOUNT\s+TYPE|ENQUIRY\s+PURPOSE|SR\s+NO|SUMMARY|DETAILS|REPORT|DATE|STATUS|UPDATE|NA)\b/gi, ' ').trim();
+    const account_type = (beforeMatch[2] || '').trim();
+    if (!lender || lender.length < 2 || /\b(?:DATE|ACCOUNT|STATUS|UPDATE|DETAILS|SUMMARY|REPORT)\b/i.test(lender) || /\d{2}-\d{2}-\d{4}/.test(lender) || lender.includes('XXXX')) continue;
+
+    const rec = {
+      lender,
+      account_type,
+      account_no: accountNo,
+      ownership: (afterMatch[1] || '').trim(),
+      opened_date: parseDate(afterMatch[2]),
+      account_status: (afterMatch[3] || '').replace(/\s+/g, ' ').trim(),
+      last_update: parseDate(afterMatch[4]),
+    };
+    const n1 = parseNum(afterMatch[5]);
+    const n2 = parseNum(afterMatch[6]);
+    const n3 = parseNum(afterMatch[7]);
+    const n4 = parseNum(afterMatch[8]);
+
+    if (/credit\s*card/i.test(account_type)) {
+      rec.high_credit = n1;
+      rec.current_balance = n2;
+      rec.overdue_amount = n3;
+      rec.emi = n4;
+    } else {
+      rec.sanctioned_amount = n1;
+      rec.current_balance = n2;
+      rec.overdue_amount = n3;
+      rec.emi = n4;
+    }
+
+    const key = accountKey(rec);
+    if (!seenSummaryKeys.has(key)) {
+      seenSummaryKeys.add(key);
+      summaryAccounts.push(rec);
+    }
+  }
+
+  for (const summary of summaryAccounts) {
+    const key = accountKey(summary);
+    const existing = accounts.find(a => accountKey(a) === key);
+    if (existing) {
+      mergeAccountFields(existing, summary);
+    } else {
+      accounts.push(summary);
+    }
+  }
+
+  const detailSegments = joined.split(/(?=\b[A-Z][A-Z0-9 &.'-]{2,80}\s+(?:Active|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|Special\s*Mention|SMA)[*]*\s+Account Number:|\n\s*(?:ACCOUNT|ACCT)\s*TYPE\s*[:\-]|\n\s*(?:MEMBER\s*NAME|LENDER|BANK\s*NAME|FINANCIER|INSTITUTION)\s*[:\-])/i);
+  const dpdByAccount = new Map();
+  for (const segment of detailSegments) {
+    const segmentAccountNo =
+      (segment.match(/\b(X{3,}\d{3,})\b/i) || [])[1] ||
+      (segment.match(/\b(?:ACCOUNT\s*(?:NUMBER|NO)|ACCT\s*(?:NUMBER|NO))\s*[:\-]?\s*([A-Z0-9X*]{4,})/i) || [])[1] ||
+      '';
+    const segmentLender =
+      (segment.match(/^(?:MEMBER\s*NAME|LENDER|BANK\s*NAME|FINANCIER|INSTITUTION)\s*[:\-]\s*(.+)$/im) || [])[1] ||
+      (segment.match(/^\s*([A-Z][A-Z0-9 &.'-]{2,80})\s*\n\s*Account\s+Number/im) || [])[1] ||
+      (segment.match(/\b([A-Z][A-Z0-9 &.'-]{2,60})\s+(?:Active|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|Special\s*Mention|SMA)[*]*\s+Account Number:/i) || [])[1] ||
+      '';
+    const account_type = 
+      (segment.match(/\b(?:ACCOUNT|ACCT)\s*TYPE\s*[:\-]\s*(.+?)(?:\s{2,}|$)/im) || [])[1] || 
+      (segment.match(/^(?:ACCOUNT|ACCT)\s*TYPE\s*[:\-]\s*(.+)$/im) || [])[1] || '';
+    const account_status = 
+      (segment.match(/\b(?:ACCOUNT\s*STATUS|STATUS)\s*[:\-]\s*(.+?)(?:\s{2,}|$)/im) || [])[1] ||
+      (segment.match(/^(?:ACCOUNT\s*STATUS|STATUS)\s*[:\-]\s*(.+)$/im) || [])[1] || '';
+    const detailAccount = {
+      account_no: segmentAccountNo,
+      lender: segmentLender.trim(),
+      account_type: account_type.trim() || undefined,
+      account_status: account_status.trim() || undefined,
+      opened_date: pickLabeledDate(segment, /\bACCOUNT\s+OPENED\b/i),
+      closed_date: pickLabeledDate(segment, /\bACCOUNT\s+CLOSED\b/i),
+      last_update: pickLabeledDate(segment, /\bLAST\s+BANK\s+UPDATE\b/i),
+      last_payment_date: pickLabeledDate(segment, /\bLAST\s+PAYMENT\b/i),
+      sanctioned_amount: pickLabeledNumber(segment, /\bLOAN\b/i),
+      current_balance: pickLabeledNumber(segment, /\bOUTSTANDING\b/i),
+      overdue_amount: pickLabeledNumber(segment, /\bOVERDUE\b/i),
+      emi: pickLabeledNumber(segment, /\bEMI\b/i) || parseNum((segment.match(/\bEMI\s*Amount\s*[:\-]?\s*([\d,]+)/i) || [])[1]),
+      actual_last_payment: pickLabeledNumber(segment, /\bACTUAL\s+LAST\s+PAYMENT\b/i),
+    };
+    if (detailAccount.account_no || detailAccount.lender) {
+      const key = accountKey(detailAccount);
+      const existing = accounts.find(a => accountKey(a) === key) ||
+        accounts.find(a => detailAccount.account_no && (a.account_no || '').toString().replace(/[^A-Z0-9]/gi, '').toUpperCase() === detailAccount.account_no.toString().replace(/[^A-Z0-9]/gi, '').toUpperCase());
+      if (existing) mergeAccountFields(existing, detailAccount);
+      else if (detailAccount.account_no && (detailAccount.lender || detailAccount.account_type)) accounts.push(detailAccount);
+    }
+
+    if (!/\b(?:DAYS\s*PAST\s*DUE|DPD|ASSET\s*CLASSIFICATION)\b/i.test(segment)) continue;
+    const accountNo =
+      segmentAccountNo;
+    const lender =
+      segmentLender;
+    const history = parseDpdHistory(segment);
+    if (!history.length) continue;
+    const dpdMax = history.reduce((max, h) => Math.max(max, Number(h.days) || 0), 0);
+    const delayedCount = history.filter(h => (Number(h.days) || 0) > 0).length;
+    dpdByAccount.set(accountKey({ account_no: accountNo, lender }), { history, dpdMax, delayedCount });
+  }
+
+  for (const a of accounts) {
+    const direct = dpdByAccount.get(accountKey(a));
+    const fallback = direct || Array.from(dpdByAccount.entries()).find(([key]) => {
+      const [no, lender] = key.split('|');
+      const accountNo = (a.account_no || '').toString().replace(/[^A-Z0-9]/gi, '').toUpperCase();
+      const accountLender = (a.lender || '').toString().toUpperCase().replace(/[^A-Z0-9]/g, '');
+      return (no && accountNo && no === accountNo) || (lender && accountLender && (lender.includes(accountLender) || accountLender.includes(lender)));
+    })?.[1];
+    if (!fallback) {
+      const history = parseDpdHistory(a._dpd_text || '');
+      if (!history.length) continue;
+      a.dpd_history = history;
+    } else {
+      a.dpd_history = fallback.history;
+    }
+    if (a.dpd_history?.length) {
+      a.dpd_max = Math.max(a.dpd_max || 0, ...a.dpd_history.map(h => Number(h.days) || 0));
+      a.dpd_delay_count = a.dpd_history.filter(h => (Number(h.days) || 0) > 0).length;
+      // Format DPD history string: "Month Year - Days, ..."
+      a.dpd_history_formatted = a.dpd_history
+        .map(h => `${h.month} - ${h.days}`)
+        .join(', ');
     }
   }
 
@@ -422,8 +717,41 @@ function parseCibilText(text) {
       seen.add(key);
       uniq.push(a);
     }
+    // Secondary deduplication by account_no only for similar lenders
+    const finalUniq = [];
+    const noMap = new Map();
+    for (const a of uniq) {
+      const no = (a.account_no || '').toString().replace(/[^A-Z0-9]/gi, '').toUpperCase();
+      if (!no) {
+        finalUniq.push(a);
+        continue;
+      }
+      if (noMap.has(no)) {
+        const existing = noMap.get(no);
+        const l1 = (existing.lender || '').toUpperCase();
+        const l2 = (a.lender || '').toUpperCase();
+        // If one lender name is a substring of the other, or they are very similar, merge them
+        if (l1.includes(l2) || l2.includes(l1) || l1.slice(0, 5) === l2.slice(0, 5)) {
+          // Prioritize shorter/cleaner lender name
+          if (l2.length < l1.length && l2.length > 3) {
+            const old = { ...existing };
+            Object.assign(existing, a);
+            mergeAccountFields(existing, old);
+          } else {
+            mergeAccountFields(existing, a);
+          }
+          continue;
+        }
+      }
+      finalUniq.push(a);
+      noMap.set(no, a);
+    }
     accounts.length = 0;
-    accounts.push(...uniq);
+    accounts.push(...finalUniq);
+  }
+
+  for (const a of accounts) {
+    delete a._dpd_text;
   }
 
   const dpd_max = accounts.reduce((m, a) => Math.max(m, Number(a.dpd_max) || 0), 0) || undefined;
@@ -763,936 +1091,369 @@ const SIP_PATTERNS = [
   { regex: /HDFC.*MF/i,                       platform:'HDFC MF' },
   { regex: /SBI.*MF/i,                        platform:'SBI MF' },
   { regex: /ICICI.*MF|ICICI.*PRU.*MF/i,       platform:'ICICI Prudential MF' },
+  { regex: /UTI.*MF/i,                        platform:'UTI MF' },
   { regex: /KOTAK.*MF/i,                      platform:'Kotak MF' },
-  { regex: /DSP\b.*MF|DSP.*MUTUAL/i,          platform:'DSP MF' },
-  { regex: /CANARA.*ROB|CANROB/i,             platform:'Canara Robeco MF' },
-  { regex: /FRANKLIN.*TEMP|FRANKLINTEMP/i,    platform:'Franklin Templeton MF' },
-  { regex: /MOTILAL.*OSWAL|MOTILAL/i,         platform:'Motilal Oswal MF' },
-  { regex: /INVESCO/i,                        platform:'Invesco MF' },
-  { regex: /EDELWEISS.*MF/i,                  platform:'Edelweiss MF' },
-  { regex: /MUTUAL.*FUND|MF.*SIP|SIP.*MF/i,  platform:'Mutual Fund' },
+  { regex: /TATA.*MF/i,                       platform:'Tata MF' },
+  { regex: /CANARA.*ROBECO/i,                 platform:'Canara Robeco MF' },
+  { regex: /DSP.*MF/i,                        platform:'DSP MF' },
+  { regex: /IDFC.*MF|BANDHAN.*MF/i,           platform:'Bandhan MF' },
+  { regex: /HSBC.*MF/i,                       platform:'HSBC MF' },
+  { regex: /FRANKLIN.*TEMPLETON/i,            platform:'Franklin Templeton MF' },
 ];
 
-// ── STOCK MARKET / BROKING PLATFORMS ────────────────────────────
-const STOCK_MARKET_PATTERNS = [
-  { regex: /ZERODHA|KITE\b|KITEAPP|\bCOIN\b/i,             platform:'Zerodha' },
-  { regex: /UPSTOX|UPSTX/i,                                 platform:'Upstox' },
-  { regex: /ANGEL\s*ONE|ANGEL\s*BROKING|ANGELBRK/i,         platform:'Angel One' },
-  { regex: /FYERS/i,                                         platform:'Fyers' },
-  { regex: /5PAISA|FIVE\s*PAISA/i,                           platform:'5paisa' },
-  { regex: /\bDHAN\b|RAISE\s*FIN/i,                         platform:'Dhan' },
-  { regex: /ALICE\s*BLUE/i,                                  platform:'Alice Blue' },
-  { regex: /SHOONYA|FINVASIA/i,                              platform:'Shoonya' },
-  { regex: /PROSTOCKS/i,                                     platform:'ProStocks' },
-  { regex: /\bSAMCO\b/i,                                    platform:'Samco' },
-  { regex: /INDMONEY/i,                                      platform:'INDmoney' },
-  { regex: /ICICI\s*DIRECT|ICICIDIRECT/i,                    platform:'ICICI Direct' },
-  { regex: /HDFC\s*SEC|HDFCSEC|HDFC\s*SKY/i,                platform:'HDFC Securities' },
-  { regex: /KOTAK\s*SEC|KOTAKSEC|KOTAK\s*NEO/i,             platform:'Kotak Securities' },
-  { regex: /AXIS\s*DIRECT|AXISDIRECT/i,                      platform:'Axis Direct' },
-  { regex: /SBI\s*SEC|SBI\s*SECURITIES/i,                    platform:'SBI Securities' },
-  { regex: /NUVAMA|EDELWEISS\s*BROKING|EDELWEISS\s*SEC/i,   platform:'Nuvama' },
-  { regex: /SHAREKHAN/i,                                     platform:'Sharekhan' },
-  { regex: /MOTILAL\s*OSWAL|MOSL/i,                         platform:'Motilal Oswal' },
-  { regex: /VENTURA/i,                                       platform:'Ventura Wealth' },
-  { regex: /\bGEOJIT\b/i,                                   platform:'Geojit' },
-  { regex: /ANAND\s*RATHI/i,                                 platform:'Anand Rathi' },
-  { regex: /NIRMAL\s*BANG/i,                                 platform:'Nirmal Bang' },
-  { regex: /RELIGARE/i,                                      platform:'Religare' },
-  { regex: /ARIHANT\s*CAP/i,                                 platform:'Arihant Capital' },
-  { regex: /BONANZA/i,                                       platform:'Bonanza' },
-  { regex: /CHOICE\s*FINX|CHOICE\s*BROKING/i,               platform:'Choice FinX' },
-];
-
-// ── INSURANCE PATTERNS ──────────────────────────────────────────
-const INSURANCE_PATTERNS = [
-  { regex: /\bLIC\b|LICINDIA|LIC.*PREM/i,           provider:'LIC',                        type:'life' },
-  { regex: /HDFC.*LIFE|HDFCLIFE/i,                   provider:'HDFC Life',                  type:'life' },
-  { regex: /ICICI.*PRU.*LIFE|ICICIPRULIFE/i,         provider:'ICICI Prudential Life',      type:'life' },
-  { regex: /SBI.*LIFE|SBILIFE/i,                     provider:'SBI Life',                   type:'life' },
-  { regex: /MAX.*LIFE|MAXLIFE/i,                     provider:'Max Life',                   type:'life' },
-  { regex: /BAJAJ.*ALLIANZ|BAJAJALLIANZ/i,           provider:'Bajaj Allianz',              type:'life' },
-  { regex: /KOTAK.*LIFE|KOTAKLIFE/i,                 provider:'Kotak Life',                 type:'life' },
-  { regex: /TATA.*AIA|TATAAIA/i,                     provider:'Tata AIA Life',              type:'life' },
-  { regex: /STAR.*HEALTH|STARHEALTH/i,               provider:'Star Health',                type:'health' },
-  { regex: /NIVA.*BUPA|NIVABUPA/i,                   provider:'Niva Bupa',                  type:'health' },
-  { regex: /CARE.*HEALTH|CAREHEALTH/i,               provider:'Care Health',                type:'health' },
-  { regex: /NEW.*INDIA.*ASSU|NEWINDIAASSUR/i,        provider:'New India Assurance',        type:'health' },
-  { regex: /NATIONAL.*INSURANCE/i,                   provider:'National Insurance',          type:'health' },
-  { regex: /DIGIT.*INSURANCE|\bDIGIT\b/i,            provider:'Digit Insurance',            type:'general' },
-  { regex: /RELIANCE.*GENERAL/i,                     provider:'Reliance General Insurance', type:'general' },
-  { regex: /PMSBY/i,                                 provider:'PMSBY (Govt)',               type:'accidental' },
-  { regex: /PMJJBY/i,                                provider:'PMJJBY (Govt)',              type:'life' },
-  { regex: /INSURANCE.*PREM|INS.*PREM|PREM.*INS/i,  provider:'Insurance Premium',          type:'general' },
-];
-
-// ── UTILITY PATTERNS ────────────────────────────────────────────
-const UTILITY_PATTERNS = [
-  { regex: /MSEDCL|MSEB\b|MAHAVITARAN|MAHAVITRAN/i,   category:'electricity' },
-  { regex: /BSES\b|BESCOM|TPDDL|TNEB|WBSEDCL|CESC\b|APEPDCL/i, category:'electricity' },
-  { regex: /JIO\b|JIOFIBER|JIONET/i,                   category:'internet/mobile' },
-  { regex: /AIRTEL\b|BHARTI.*AIRTEL/i,                 category:'mobile' },
-  { regex: /VODAFONE|VODA\b/i,                         category:'mobile' },
-  { regex: /\bBSNL\b/i,                               category:'mobile' },
-  { regex: /GOOGLE.*UTIL|gpay.*utility|GOOGLE.*PAY.*UTIL/i, category:'utility' },
-  { regex: /MAHANAGAR.*GAS|MGL\b|IGL\b|ADANI.*GAS|GAIL\b/i, category:'gas' },
-  { regex: /NETFLIX|AMAZON.*PRIME|HOTSTAR|DISNEY\+|SONY.*LIV|ZEE5/i, category:'OTT' },
-  { regex: /SWIGGY|ZOMATO/i,                           category:'food delivery' },
-  { regex: /IBIBO|MAKEMYTRIP|GOIBIBO|YATRA\b|IXIGO/i, category:'travel' },
-  { regex: /BBMP\b|MCGM\b|\bBMC\b|PROPERTY.*TAX/i,    category:'municipal tax' },
-];
-
-// ── RENT KEYWORDS ───────────────────────────────────────────────
-const RENT_KEYWORDS = [
-  'RENT','HOUSE RENT','H RENT','FLAT RENT','ROOM RENT',
-  'LANDLORD','OWNER RENT','MAKAN','PG RENT','HOSTEL RENT',
-  'ACCOMMODATION','LEASE RENT'
-];
-
-// ── PF / EPFO ───────────────────────────────────────────────────
-const PF_PATTERNS = [
-  /EPFO/i, /EMPLOYEE.*PROVIDENT/i, /PROVIDENT.*FUND/i,
-  /\bEPF\b/i, /PF.*CREDIT/i, /PF.*SETTLE/i, /PROVIDENT/i,
-];
-
-// ── GOVT SCHEME PATTERNS ────────────────────────────────────────
-const GOVT_SCHEME_PATTERNS = [
-  { regex: /LADKI.*BAH|LADKI BAHIN/i, name:'Ladki Bahin Yojana',    type:'govt_scheme' },
-  { regex: /PM.*KISAN/i,              name:'PM Kisan',              type:'govt_scheme' },
-  { regex: /JANDHAN/i,                name:'Jan Dhan Scheme',       type:'govt_scheme' },
-  { regex: /\bDBT\b/i,               name:'DBT Credit',             type:'govt_scheme' },
-  { regex: /APB\//i,                  name:'Aadhaar Payment Bridge', type:'govt_scheme' },
-];
-
-// ── DISBURSEMENT KEYWORDS ───────────────────────────────────────
-const DISBURSEMENT_KEYWORDS = [
-  /DISBURSE/i, /DISBUR/i, /DISBURSAL/i,
-  /LOAN.*CREDIT/i, /LOAN.*PROCEED/i, /SANCTION.*AMT/i,
-  /TERM.*LOAN.*CR/i, /PL.*DISBUR/i,
-];
-
-// ════════════════════════════════════════════════════════════════
-// HELPER FUNCTIONS
-// ════════════════════════════════════════════════════════════════
-
-function parseAmount(str) {
-  if (!str) return 0;
-  let clean = str.toString().replace(/₹/g, '').trim();
-  if (clean.startsWith('(') && clean.endsWith(')')) clean = `-${clean.slice(1, -1)}`;
-  clean = clean.replace(/[,\s]/g, '').replace(/(dr|cr)$/i, '');
-  return parseFloat(clean) || 0;
-}
-
-function parseDate(str) {
-  if (!str) return '';
-  const s = str.toString().trim().replace(/[.,]/g, '');
-
-  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
-
-  const dmyDash4 = s.match(/^(\d{2})-(\d{2})-(\d{4})/);
-  if (dmyDash4) return `${dmyDash4[3]}-${dmyDash4[2]}-${dmyDash4[1]}`;
-
-  const dmySlash4 = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-  if (dmySlash4) return `${dmySlash4[3]}-${dmySlash4[2]}-${dmySlash4[1]}`;
-
-  const dmyDash2 = s.match(/^(\d{2})-(\d{2})-(\d{2})/);
-  if (dmyDash2) return `20${dmyDash2[3]}-${dmyDash2[2]}-${dmyDash2[1]}`;
-
-  const dmySlash2 = s.match(/^(\d{2})\/(\d{2})\/(\d{2})/);
-  if (dmySlash2) return `20${dmySlash2[3]}-${dmySlash2[2]}-${dmySlash2[1]}`;
-
-  const mon = { jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',
-                jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12' };
-  const dMonY = s.match(/^(\d{2})[-\/\s]([A-Za-z]{3})[-\/\s](\d{2,4})/);
-  if (dMonY) {
-    const mm = mon[dMonY[2].toLowerCase()];
-    const yyyy = dMonY[3].length === 2 ? `20${dMonY[3]}` : dMonY[3];
-    if (mm) return `${yyyy}-${mm}-${dMonY[1]}`;
-  }
-
-  const dMonYCompact = s.match(/^(\d{2})([A-Za-z]{3})(\d{2,4})/);
-  if (dMonYCompact) {
-    const mm = mon[dMonYCompact[2].toLowerCase()];
-    const yyyy = dMonYCompact[3].length === 2 ? `20${dMonYCompact[3]}` : dMonYCompact[3];
-    if (mm) return `${yyyy}-${mm}-${dMonYCompact[1]}`;
-  }
-
-  return s.split(' ')[0];
-}
-
-function monthKey(dateStr) {
-  if (!dateStr) return 'Unknown';
-  const d = new Date(dateStr);
-  if (isNaN(d)) return dateStr.slice(0, 7);
-  return d.toLocaleDateString('en-IN', { month:'short', year:'numeric' });
-}
-
-function fmt(n) {
-  if (!n || isNaN(n)) return '0';
-  if (n >= 10000000) return `${(n/10000000).toFixed(2)}Cr`;
-  if (n >= 100000)   return `${(n/100000).toFixed(2)}L`;
-  if (n >= 1000)     return `${(n/1000).toFixed(1)}K`;
-  return n.toFixed(0);
-}
-
-// ── Loan type from description ───────────────────────────────────
-function detectLoanType(desc) {
-  for (const p of LOAN_TYPE_MAP) {
-    if (p.regex.test(desc)) return { code:p.code, label:p.label, color:p.color, icon:p.icon };
-  }
-  return { code:'PL', label:'Personal Loan', color:'red', icon:'👤' };
-}
-
-// ── Lender from description ──────────────────────────────────────
-function detectLender(desc) {
-  for (const p of LENDER_PATTERNS) {
-    if (p.regex.test(desc)) return { name:p.name, category:p.category };
-  }
-  return null;
-}
-
-// ── Infer lender name from NACH/ACH/ECS token ───────────────────
-function inferAutoDebitLender(desc) {
-  const s = (desc || '').toString();
-  const m = s.match(/(?:^|\b)(?:NACH|ACH|ECS|SI|EMANCH)\/([^\/\s]+)/i);
-  if (!m) return '';
-  const token = (m[1] || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 24);
-  return token.length >= 3 ? token.toUpperCase() : '';
-}
-
-// ── Salary employer name ─────────────────────────────────────────
-function inferSalaryEmployer(desc) {
-  const upper = (desc || '').toUpperCase();
-  for (const [key, name] of Object.entries(SALARY_SOURCE_MAP)) {
-    if (upper.includes(key)) return name;
-  }
-  const salaryPay = desc.match(/\bSALARY(?:\s*PAYMENT)?\s*\/\s*([A-Z0-9 &.'-]{3,})/i);
-  if (salaryPay) return salaryPay[1].replace(/\s+/g, ' ').trim().slice(0, 50);
-  const nachMatch = desc.match(/NACH\/\d+\/\d+\/(.+)/i);
-  if (nachMatch) return nachMatch[1].replace(/\//g,' ').trim().slice(0,50);
-  const channelMatch = desc.match(/\b(NEFT|IMPS|RTGS)\b[:\s\-\/]+(.+)/i);
-  if (channelMatch) {
-    let s = (channelMatch[2] || '').toString();
-    s = s
-      .replace(/\bUTR[:\s\-]*[A-Z0-9]{10,25}\b/gi, ' ')
-      .replace(/\bRRN[:\s\-]*[0-9]{10,18}\b/gi, ' ')
-      .replace(/\b[A-Z]{4}0[A-Z0-9]{6}\b/g, ' ')
-      .replace(/\b(?:CR|DR|CREDIT|DEBIT)\b/gi, ' ')
-      .replace(/\b(?:SALARY|PAYROLL|WAGES|STIPEND|BONUS|INCENTIVE)\b/gi, ' ')
-      .replace(/[\/\-]+/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    if (s) return s.slice(0, 50);
-  }
-  const autoToken = inferAutoDebitLender(desc);
-  if (autoToken) return autoToken;
-  return 'Salary Credit';
-}
-
-// ── Extract transaction metadata (UTR, ref, NACH, loan A/c) ─────
-function extractTxnMeta(desc, tx) {
-  const text  = (desc || '').toString();
-  const find  = (re) => { const m = text.match(re); return m ? (m[1]||'').trim() : ''; };
-
-  const utr           = find(/\bUTR[:\s\-]*([A-Z0-9]{10,25})\b/i);
-  const rrn           = find(/\bRRN[:\s\-]*([0-9]{10,18})\b/i);
-  const nach_ref      = find(/\bNACH\/\d{1,4}\/\d{6,20}\b/i);
-  const reference_id  = find(/\bREF(?:ERENCE)?[:\s\-]*([A-Z0-9\-]{6,30})\b/i) || nach_ref;
-  const txn_id        = find(/\bTRAN(?:SACTION)?\s*ID[:\s\-]*([A-Z0-9\-]{6,30})\b/i) ||
-                        find(/\bT\d{7,12}\b/i);
-  const cheque_no     = find(/\bCHQ(?:UE)?\s*(?:NO|NUMBER)?[:\s\-]*([0-9]{4,10})\b/i);
-  const nach_umrn     = find(/\bUMRN[:\s\-]*([A-Z0-9]{10,30})\b/i);
-  const mandate_id    = find(/\bMANDATE[:\s\-]*([A-Z0-9\-]{6,30})\b/i);
-
-  const loan_account_raw =
-    find(/\bLOAN\s*(?:A\/C|AC|ACCOUNT)\s*(?:NO|NUMBER)?[:\s\-]*([Xx*]*\d{3,10})\b/i) ||
-    find(/\bA\/C\s*(?:NO|NUMBER)?[:\s\-]*([Xx*]*\d{3,10})\b/i);
-  const loan_account_masked = loan_account_raw
-    ? loan_account_raw.replace(/[^0-9Xx*]/g,'').slice(-10) : '';
-
-  const principal_raw  = find(/\bPRIN(?:CIPAL)?[:\s\-]*([\d,]+\.\d{2})\b/i);
-  const interest_raw   = find(/\bINT(?:EREST)?[:\s\-]*([\d,]+\.\d{2})\b/i);
-  const principal_amount = principal_raw ? parseAmount(principal_raw) : 0;
-  const interest_amount  = interest_raw  ? parseAmount(interest_raw)  : 0;
-
-  const emiCycleMatch = text.toUpperCase().match(/\b(MONTHLY|MTHLY|QUARTERLY|WEEKLY)\b/);
-  const emi_cycle = emiCycleMatch ? emiCycleMatch[1] : '';
-  const emiDayM   = text.toUpperCase().match(/\bEMI(?:\s*ON)?\s*(\d{1,2})(?:ST|ND|RD|TH)?\b/);
-  const emi_day   = emiDayM ? emiDayM[1] : '';
-
-  const src = tx && tx._source ? tx._source : null;
-  return {
-    reference_id:         reference_id || undefined,
-    utr:                  utr          || undefined,
-    rrn:                  rrn          || undefined,
-    nach_ref:             nach_ref     || undefined,
-    nach_umrn:            nach_umrn    || undefined,
-    mandate_id:           mandate_id   || undefined,
-    txn_id:               txn_id       || undefined,
-    cheque_no:            cheque_no    || undefined,
-    loan_account_masked:  loan_account_masked || undefined,
-    lender_raw:           inferAutoDebitLender(text) || undefined,
-    emi_cycle:            emi_cycle    || undefined,
-    emi_day:              emi_day      || undefined,
-    principal_amount:     principal_amount || undefined,
-    interest_amount:      interest_amount  || undefined,
-    source_type:          src ? (src.type  || undefined) : undefined,
-    source_sheet:         src ? (src.sheet || undefined) : undefined,
-    source_row:           src ? src.row    : undefined,
-    source_page:          src ? src.page   : undefined,
-  };
-}
-
-// ════════════════════════════════════════════════════════════════
-// DETECTION FUNCTIONS
-// ════════════════════════════════════════════════════════════════
-
-function detectSalary(desc, amount, isCredit) {
-  const d = normalizeDesc(desc);
-  if (!isCredit) return null;
-  if (anyMatch(d, SALARY_KEYWORDS)) return inferSalaryEmployer(d);
-
-  if (detectNACH(d)) {
-    const negative = /\b(EMI|INSTAL+MENT|SALARY|LOAN|REPAY|APY|PENSION|INSURANCE|PREM|SIP|MUTUAL|MF\b|CARD|CC\b|BILLDESK|DEMAT|DP\s*CHARGES|CDSL|NSDL|PAYOUT|PAYIN)\b/i;
-    if (!negative.test(d) && amount >= 5000) return inferSalaryEmployer(d);
-  }
-
-  const channel = /\b(NEFT|IMPS|RTGS)\b/i.test(d);
-  if (channel && amount >= 5000) {
-    const salaryLike = /\b(SALARY|PAYROLL|WAGES|STIPEND|BONUS|INCENTIVE|SAL\/|\bSAL\b)\b/i;
-    const negative = /\b(LOAN|DISB|DISBURSE|SANCTION|OD\b|OVERDRAFT|CREDIT\s*LIMIT)\b/i;
-    if (!negative.test(d) && salaryLike.test(d)) return inferSalaryEmployer(d);
-  }
-
-  return null;
-}
-
-function detectNACH(desc) {
-  return NACH_PATTERNS.some(p => p.test(desc));
-}
-
-function detectLoanEMI(desc, amount) {
-  if (/\b(RETURN|INSUFFICIENT|SIGNATURE|ERRORS|DISCREPANCY|DAMAGE|OVERWRITING|CLOSED|FROZEN|BOUNCE|BOUNCED|FAILED|FAILURE|UNPAID|REJECT|REJECTED|CHARGE|CHARGES|PENALTY)\b/i.test(desc)) return null;
-  // Check known lenders first
-  for (const p of LENDER_PATTERNS) {
-    if (p.regex.test(desc) && detectNACH(desc)) {
-      const loanType = detectLoanType(desc);
-      return { bank: p.name, bank_category: p.category, loan_type: loanType };
-    }
-  }
-  // Generic NACH with EMI keyword or large amount
-  const isAutoDebit = detectNACH(desc);
-  if (!isAutoDebit && !/EMI|LOAN\s*INST|INSTALMENT|REPAY/i.test(desc)) return null;
-  if (isAutoDebit && amount >= 500) {
-    const lender = detectLender(desc);
-    const loanType = detectLoanType(desc);
-    return {
-      bank: lender ? lender.name : (inferAutoDebitLender(desc) || 'Unknown Lender (NACH)'),
-      bank_category: lender ? lender.category : 'Unknown',
-      loan_type: loanType,
-    };
-  }
-  return null;
-}
-
-function detectLoanDisbursement(desc, amount, isCredit) {
-  if (!isCredit || amount < 5000) return null;
-  // Explicit disbursement keywords
-  for (const p of DISBURSEMENT_KEYWORDS) {
-    if (p.test(desc)) {
-      const lender = detectLender(desc) || { name:'Unknown Lender', category:'Unknown' };
-      return { lender:lender.name, lender_category:lender.category, loan_type:detectLoanType(desc) };
-    }
-  }
-  // Known NBFC/HFC large credit via NEFT
-  for (const p of LENDER_PATTERNS) {
-    if (p.regex.test(desc) && (p.category==='NBFC'||p.category==='HFC') && amount >= 50000) {
-      return { lender:p.name, lender_category:p.category, loan_type:detectLoanType(desc) };
-    }
-  }
-  return null;
-}
-
-function detectPF(desc) {
-  return PF_PATTERNS.some(p => p.test(desc));
-}
-
-function detectAppLoan(desc) {
-  for (const p of APP_LOAN_PATTERNS) {
-    if (p.regex.test(desc)) return { name:p.name, maxApr:p.maxApr };
-  }
-  return null;
-}
-
-function detectSIP(desc) {
-  const d = (desc || '').toUpperCase();
-  const isMf = /\bMF\b|MUTUAL|SIP|FOLIO|AMC\b|\bCAMS\b|KFIN|KARVY/i.test(d);
-  const isStock = /\bNSE\b|\bBSE\b|\bEQUITY\b|\bSTOCK\b|\bSHARES?\b|\bBROK/i.test(d);
-  if (isStock && !isMf) return null;
-  for (const p of SIP_PATTERNS) {
-    if (p.regex.test(desc)) {
-      if (!isMf && /GROWW|ZERODHA|PAYTM|MOTILAL/i.test(p.platform)) continue;
-      return p.platform;
-    }
-  }
-  return null;
-}
-
-function detectStockMarket(desc) {
-  if (!desc) return null;
-  const d = normUpper(desc);
-  const isMf = /\bMF\b|MUTUAL|SIP|FOLIO|AMC\b|\bCAMS\b|KFIN|KARVY/i.test(d);
-  const isStock = /\bNSE\b|\bBSE\b|\bEQUITY\b|\bSTOCK\b|\bSHARES?\b|\bBROK(ING)?\b|DP\s*CHARGES|\bDEMAT\b|CDSL|NSDL|\bPAYOUT\b|\bPAYIN\b|\bMARGIN\b|\bFNO\b|F&O|\bFUTURES\b|\bOPTIONS\b|\bINTRADAY\b|\bIPO\b/i.test(d);
-  const isUpi = /\bUPI\b|\bUPIAR\b|\bUPI\//i.test(d);
-  for (const p of STOCK_MARKET_PATTERNS) {
-    if (!p.regex.test(desc)) continue;
-    if (isMf && !isStock) return null;
-    return { platform: p.platform };
-  }
-  if (isStock && !isMf) {
-    if (isUpi) {
-      const strong = /DP\s*CHARGES|\bDEMAT\b|CDSL|NSDL|\bPAYOUT\b|\bPAYIN\b|\bFNO\b|F&O|\bFUTURES\b|\bOPTIONS\b|\bINTRADAY\b/i;
-      if (!strong.test(d)) return null;
-    }
-    return { platform:'Stock Market' };
-  }
-  return null;
-}
-
-function detectInsurance(desc) {
-  for (const p of INSURANCE_PATTERNS) {
-    if (p.regex.test(desc)) return { provider:p.provider, type:p.type };
-  }
-  return null;
-}
-
-function detectRent(desc) {
-  const d = desc.toUpperCase();
-  return RENT_KEYWORDS.some(kw => d.includes(kw));
-}
-
-function detectUtility(desc) {
-  for (const p of UTILITY_PATTERNS) { if (p.regex.test(desc)) return p.category; }
-  return null;
-}
-
-function detectAPY(desc) {
-  return /\bAPY\b|ATAL.*PENSION|TRTR.*APY/i.test(desc);
-}
-
-function classifyCreditCardPayment(desc) {
-  const text = normalizeDesc(desc);
-  const d = text.toUpperCase();
-
-  const signalsStrong = [
-    /\bCREDIT\s*CARD\b/i,
-    /\bCRDT\s*CARD\b/i,
-    /\bCARD\s*(?:BILL|DUE)\b/i,
-    /\bCC\s*(?:PAYMENT|PAY|PMT)\b/i,
-    /\bCREDITCARD\b/i,
-  ];
-
-  const signalsIssuer = [
-    /\bCARD\b.*\bPAYMENT\b/i,
-    /\bVISA\b/i,
-    /\bMASTERCARD\b/i,
-    /\bRUPAY\b/i,
-  ];
-
-  const negatives = [
-    /\bUPI\b/i,
-    /\bUPIAR\b/i,
-    /\bUPI\//i,
-  ];
-
-  let score = 0;
-  if (anyMatch(d, signalsStrong)) score += 6;
-  if (/\bBILLDESK\b/i.test(d) && /\b(CARD|CC|CREDIT)\b/i.test(d)) score += 3;
-  if (anyMatch(d, signalsIssuer) && /\b(CARD|CC)\b/i.test(d)) score += 2;
-
-  if (/\bPAID\s+VIA\s+CRED\b/i.test(d) || /\bCREDPAY\b/i.test(d)) return null;
-
-  const isUpi = anyMatch(text, negatives);
-  if (isUpi && score < 5) score -= 4;
-
-  if (score < 4) return null;
-
-  const ccMeta = parseCreditCardPaymentMeta(text);
-  return { confidence: Math.min(1, Math.max(0.4, score / 10)), ...ccMeta };
-}
-
-function detectBounceOrCharges(desc) {
-  const d = normUpper(desc);
-
-  const isBounce =
-    /\bBOUNCE(D)?\b/.test(d) ||
-    /\bRETURN\b/.test(d) ||
-    /\bUNPAID\b/.test(d) ||
-    /\bREJECT(ED)?\b/.test(d) ||
-    /\bFAILED\b|\bFAILURE\b/.test(d) ||
-    /\bINSUFFICIENT\s*FUNDS\b/.test(d) ||
-    /\bRETURN\s*MEMO\b/.test(d);
-
-  const isCharge =
-    /\bCHARGES?\b/.test(d) ||
-    /\bCHG\b/.test(d) ||
-    /\bPENALTY\b/.test(d) ||
-    /\bBOUNCE\s*CHARGES?\b/.test(d) ||
-    /\bRETURN\s*CHARGES?\b/.test(d);
-
-  if (!isBounce && !isCharge) return null;
-
-  let category = 'Charges/Returns';
-  if (/\b(EMI|INSTAL+MENT)\b/.test(d)) category = 'EMI Bounce/Charges';
-  else if (/\b(NACH|ECS|ACH|SI|E-?MANDATE|MANDATE)\b/.test(d)) category = 'Auto-debit Return/Charges';
-  else if (/\b(CHQ|CHEQUE)\b/.test(d)) category = 'Cheque Bounce/Charges';
-
-  let channel = '';
-  if (/\bNACH\b/.test(d)) channel = 'NACH';
-  else if (/\bECS\b/.test(d)) channel = 'ECS';
-  else if (/\bACH\b/.test(d)) channel = 'ACH';
-  else if (/\bSI\b/.test(d) || /\bE-?MANDATE\b/.test(d) || /\bMANDATE\b/.test(d)) channel = 'SI/Mandate';
-  else if (/\bCHQ\b/.test(d) || /\bCHEQUE\b/.test(d)) channel = 'Cheque';
-
-  return { category, channel: channel || undefined };
-}
-
-function parseCreditCardPaymentMeta(desc) {
-  const text = (desc || '').toString();
-  const upper = text.toUpperCase();
-
-  let platform = '';
-  if (/\bPAID\s+VIA\s+CRED\b/i.test(upper) || /\bCREDPAY\b/i.test(upper)) platform = 'CRED';
-  else if (/\bBILLDESK\b/i.test(upper)) platform = 'BillDesk';
-
-  let channel = '';
-  if (/\bUPI\b/i.test(upper) || /\bUPIAR\b/i.test(upper) || /\bUPI\//i.test(text)) channel = 'UPI';
-  else if (/\bNEFT\b/i.test(upper)) channel = 'NEFT';
-  else if (/\bIMPS\b/i.test(upper)) channel = 'IMPS';
-  else if (/\bRTGS\b/i.test(upper)) channel = 'RTGS';
-  else if (/\bNETBANK\b/i.test(upper)) channel = 'NETBANKING';
-
-  let issuer_bank = '';
-  const credBank = text.match(/PAID\s+VIA\s+CRED\/([^\/]{2,60})/i);
-  if (credBank && credBank[1]) issuer_bank = credBank[1].replace(/\s+/g, ' ').trim();
-  if (!issuer_bank) {
-    const m = upper.match(/\b(HDFC|ICICI|SBI|AXIS|KOTAK|INDUSIND|YESB|YES\s*BANK|IDFC|RBL|AU\s*BANK|FEDERAL|PNB|BOB|CANARA|UNION\s*BANK)\b/i);
-    if (m) issuer_bank = m[0].replace(/\s+/g, ' ').trim();
-  }
-
-  let payee = '';
-  const upi = text.match(/UPI\/([^\/\s]{2,80})/i);
-  if (upi && upi[1]) payee = upi[1].trim();
-
-  let last4 = '';
-  const m4 = upper.match(/\b(?:CARD|CC)\b[^0-9X]*(?:XX|X{2,}|\*{2,})\s*(\d{4})\b/);
-  if (m4 && m4[1]) last4 = m4[1];
-
-  const cc_display =
-    platform === 'CRED' ? `CRED → ${issuer_bank || 'Credit Card'}` :
-    platform === 'BillDesk' ? `BillDesk → ${issuer_bank || 'Credit Card'}` :
-    issuer_bank ? `Card Payment → ${issuer_bank}` :
-    'Card Payment';
-
-  return {
-    cc_platform: platform || undefined,
-    cc_channel: channel || undefined,
-    cc_issuer_bank: issuer_bank || undefined,
-    cc_payee: payee || undefined,
-    cc_last4: last4 || undefined,
-    cc_display,
-  };
-}
-
-function detectGovtScheme(desc) {
-  for (const p of GOVT_SCHEME_PATTERNS) {
-    if (p.regex.test(desc)) return { name:p.name, type:p.type };
-  }
-  return null;
-}
-
-// ════════════════════════════════════════════════════════════════
-// MAIN ANALYZER
-// ════════════════════════════════════════════════════════════════
 function analyzeTransactions(transactions) {
-  const result = {
-    account_summary: {
-      total_credits:0, total_debits:0, net_balance:0,
-      transaction_count: transactions.length,
-      period:'', opening_balance:0, closing_balance:0,
-    },
-    // ── Dedicated sections (new tabs) ──
-    salary:             [],
-    pf_epfo:            [],
+  const txns = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+  
+  const analysis = {
+    salary: [],
+    pf_epfo: [],
+    loans: [], // alias for emi_payments
+    emi_payments: [],
     loan_disbursements: [],
-    emi_payments:       [],
-    // ── Other categories ──
-    other_income:       [],
-    rent:               [],
-    sip_investments:    [],
-    insurance:          [],
-    app_loans:          [],
-    utilities:          [],
-    credit_card_payments:[],
-    bounce_charges:      [],
-    stock_market:       [],
-    apy_pension:        [],
-    govt_scheme_credits:[],
-    other_debits:       [],
-    // ── Legacy keys (keep for backward compat) ──
-    loans:              [],      // alias of emi_payments
-    pf_credits:         [],      // alias of pf_epfo credits
-    // ── Summaries ──
+    apy_pension: [],
+    rent: [],
+    app_loans: [],
+    credit_card_payments: [],
+    stock_market: [],
+    insurance: [],
+    utilities: [],
+    transfers_in: [],
+    transfers_out: [],
+    bounce_charges: [],
+    account_summary: {},
     monthly_summary: {},
-    loan_summary:    {},
     insights: {
-      obligation_to_income_ratio:0,
-      savings_rate:0,
-      avg_monthly_salary:0,
-      total_emi_monthly:0,
-      total_disbursed:0,
-      estimated_total_debt:0,
-      risk_flags:[],
-      recommendations:[],
-      additional_fields_needed:[],
+      avg_monthly_salary: 0,
+      total_emi_monthly: 0,
+      obligation_to_income_ratio: 0,
+      savings_rate: 0,
+      risk_flags: [],
+      recommendations: []
     },
+    loan_summary: {}
   };
 
-  if (!transactions.length) return result;
+  if (!txns.length) return analysis;
 
-  transactions.sort((a,b) => new Date(a.date) - new Date(b.date));
-  result.account_summary.period = `${transactions[0].date} to ${transactions[transactions.length-1].date}`;
+  let totalCredits = 0;
+  let totalDebits = 0;
+  const periodStart = txns[0].date;
+  const periodEnd = txns[txns.length - 1].date;
 
-  const emiSeen       = new Set();
-  const processingFees = [];
+  for (const t of txns) {
+    const desc = normUpper(t.description);
+    const amt = Number(t.amount) || 0;
+    const type = (t.type || '').toUpperCase();
 
-  for (const tx of transactions) {
-    const desc    = (tx.description || tx.remarks || '').trim();
-    const debit   = parseAmount(tx.debit  || tx.withdrawal || 0);
-    const credit  = parseAmount(tx.credit || tx.deposit    || 0);
-    const isCredit = credit > 0;
-    const isDebit  = debit  > 0;
-    const date    = tx.date || '';
-    const balance = parseAmount(tx.balance || 0);
-    const month   = monthKey(date);
-    const meta    = extractTxnMeta(desc, tx);
+    if (type === 'CREDIT') totalCredits += amt;
+    else if (type === 'DEBIT') totalDebits += amt;
 
-    // ── Monthly init ─────────────────────────────────────────────
-    if (!result.monthly_summary[month]) {
-      result.monthly_summary[month] = {
-        credits:0, debits:0, salary:0, emi:0, pf:0, disbursements:0,
-        closing_balance:0, transfers_out:0, transfers_in:0
-      };
-    }
-    const ms = result.monthly_summary[month];
-    if (isCredit) { ms.credits += credit; result.account_summary.total_credits += credit; }
-    if (isDebit)  { ms.debits  += debit;  result.account_summary.total_debits  += debit;  }
-    if (balance > 0) ms.closing_balance = balance;
+    // Detect Salary
+    const salary = detectSalary(t);
+    if (salary) analysis.salary.push(salary);
 
-    // ════════════════════════════════
-    // CREDIT SIDE
-    // ════════════════════════════════
-    if (isCredit) {
-      // 1. LOAN DISBURSEMENT
-      const disb = detectLoanDisbursement(desc, credit, true);
-      if (disb) {
-        const rec = {
-          date, description:desc,
-          lender:            disb.lender,
-          lender_category:   disb.lender_category,
-          loan_type_code:    disb.loan_type.code,
-          loan_type_label:   disb.loan_type.label,
-          loan_type_icon:    disb.loan_type.icon,
-          loan_type_color:   disb.loan_type.color,
-          amount:            credit,
-          mode: /NEFT/i.test(desc)?'NEFT':/IMPS/i.test(desc)?'IMPS':/RTGS/i.test(desc)?'RTGS':'NEFT',
-          loan_account_number: meta.loan_account_masked||'',
-          sanction_amount:   credit,
-          ...meta,
-        };
-        result.loan_disbursements.push(rec);
-        ms.disbursements += credit;
-        continue;
-      }
-
-      // 2. SALARY
-      const employer = detectSalary(desc, credit, true);
-      if (employer) {
-        result.salary.push({
-          date, description:desc, employer, amount:credit,
-          mode:/NACH/i.test(desc)?'NACH':/NEFT/i.test(desc)?'NEFT':/IMPS/i.test(desc)?'IMPS':'Other',
-          month, ...meta,
-        });
-        ms.salary += credit;
-        continue;
-      }
-
-      // 3. PF / EPFO
-      if (detectPF(desc)) {
-        const rec = { date, description:desc, amount:credit, type:'credit', source:/EPFO/i.test(desc)?'EPFO':'Employer PF', ...meta };
-        result.pf_epfo.push(rec);
-        result.pf_credits.push(rec);
-        ms.pf += credit;
-        continue;
-      }
-
-      // 4. GOVT SCHEME
-      const govt = detectGovtScheme(desc);
-      if (govt) {
-        result.govt_scheme_credits.push({ date, description:desc, amount:credit, scheme_name:govt.name, type:govt.type });
-        continue;
-      }
-
-      // 5. STOCK MARKET (credit = sale / payout)
-      const smCredit = detectStockMarket(desc);
-      if (smCredit) {
-        result.stock_market.push({ date, direction:'credit', platform:smCredit.platform, amount:credit, description:desc, ...meta });
-        continue;
-      }
-
-      // 6. OTHER INCOME
-      result.other_income.push({ date, description:desc.slice(0,80), amount:credit, type:'other' });
+    // Detect PF/EPFO
+    if (type === 'CREDIT' && (desc.includes('EPFO') || desc.includes('PFUND') || desc.includes('PROV FUND'))) {
+      analysis.pf_epfo.push(t);
     }
 
-    // ════════════════════════════════
-    // DEBIT SIDE
-    // ════════════════════════════════
-    if (isDebit) {
-      // Processing fee — stash for later linkage to disbursement
-      if (/PROCESSING\s*FEE|DOC(?:UMENTATION)?\s*CHARGES?|STAMP\s*DUTY|DISBURSAL\s*CHARGES?|LOAN\s*CHARGES?/i.test(desc)) {
-        processingFees.push({ date, amount:debit, description:desc, ...meta });
-      }
+    // Detect Loan Disbursement
+    const disb = detectLoanDisbursement(t);
+    if (disb) analysis.loan_disbursements.push(disb);
 
-      const bounce = detectBounceOrCharges(desc);
-      if (bounce) {
-        result.bounce_charges.push({ date, description: desc, amount: debit, ...bounce, ...meta });
-        continue;
-      }
-
-      // 1. APY PENSION
-      if (detectAPY(desc)) {
-        result.apy_pension.push({ date, description:desc, amount:debit, ...meta });
-        continue;
-      }
-
-      // 2. LOAN EMI
-      const emiInfo = detectLoanEMI(desc, debit);
-      if (emiInfo) {
-        const key = `${date}|${emiInfo.bank}|${emiInfo.loan_type.code}|${debit}`;
-        if (!emiSeen.has(key)) {
-          emiSeen.add(key);
-          const rec = {
-            date, description:desc,
-            bank:            emiInfo.bank,
-            bank_category:   emiInfo.bank_category,
-            loan_type_code:  emiInfo.loan_type.code,
-            loan_type_label: emiInfo.loan_type.label,
-            loan_type_icon:  emiInfo.loan_type.icon,
-            loan_type_color: emiInfo.loan_type.color,
-            emi_amount:      debit,
-            month,
-            mode: detectNACH(desc) ? 'NACH/ECS' : 'Manual',
-            loan_account_number: meta.loan_account_masked || '',
-            ...meta,
-          };
-          result.emi_payments.push(rec);
-          result.loans.push(rec); // backward compat
-
-          // Loan summary
-          if (!result.loan_summary[emiInfo.bank]) {
-            result.loan_summary[emiInfo.bank] = {
-              bank:            emiInfo.bank,
-              bank_category:   emiInfo.bank_category,
-              loan_type_code:  emiInfo.loan_type.code,
-              loan_type_label: emiInfo.loan_type.label,
-              loan_type_icon:  emiInfo.loan_type.icon,
-              loan_type_color: emiInfo.loan_type.color,
-              emi_amount:      debit,
-              count:           0,
-              total_paid:      0,
-            };
-          }
-          result.loan_summary[emiInfo.bank].count++;
-          result.loan_summary[emiInfo.bank].total_paid += debit;
-          ms.emi += debit;
-        }
-        continue;
-      }
-
-      // 3. INSURANCE
-      const ins = detectInsurance(desc);
-      if (ins) {
-        result.insurance.push({ date, provider:ins.provider, policy_type:ins.type, amount:debit, description:desc, ...meta });
-        continue;
-      }
-
-      // 4. STOCK MARKET
-      const smDebit = detectStockMarket(desc);
-      if (smDebit) {
-        result.stock_market.push({ date, direction:'debit', platform:smDebit.platform, amount:debit, description:desc, ...meta });
-        continue;
-      }
-
-      // 5. SIP
-      const sip = detectSIP(desc);
-      if (sip) {
-        result.sip_investments.push({ date, fund_name:desc.slice(0,60), platform:sip, amount:debit, description:desc, ...meta });
-        continue;
-      }
-
-      // 6. APP LOANS
-      const app = detectAppLoan(desc);
-      if (app) {
-        result.app_loans.push({ date, app_name:app.name, max_apr:app.maxApr, amount:debit, type:'repayment', description:desc, ...meta });
-        continue;
-      }
-
-      // 7. RENT
-      if (detectRent(desc)) {
-        result.rent.push({ date, payee:desc.slice(0,50), amount:debit, description:desc, mode:'UPI', ...meta });
-        continue;
-      }
-
-      // 8. CREDIT CARD
-      const cc = classifyCreditCardPayment(desc);
-      if (cc) {
-        result.credit_card_payments.push({ date, description:desc, amount:debit, ...cc, ...meta });
-        continue;
-      }
-
-      // 9. PF DEBIT (employee contribution)
-      if (detectPF(desc)) {
-        result.pf_epfo.push({ date, description:desc, amount:debit, type:'debit', source:'Employee PF contribution', ...meta });
-        ms.pf += debit;
-        continue;
-      }
-
-      // 10. UTILITIES
-      const util = detectUtility(desc);
-      if (util) {
-        result.utilities.push({ date, description:desc.slice(0,60), amount:debit, category:util, ...meta });
-        continue;
-      }
-
-      // Fallthrough
-      result.other_debits.push({ date, description:desc.slice(0,80), amount:debit });
+    // Detect EMI
+    const emi = detectLoanEMI(t);
+    if (emi) {
+      analysis.emi_payments.push(emi);
+      analysis.loans.push(emi);
     }
+
+    // Detect APY
+    if (type === 'DEBIT' && (desc.includes('APY') || desc.includes('ATAL PENSION'))) {
+      analysis.apy_pension.push(t);
+    }
+
+    // Detect Rent
+    const rent = detectRent(t);
+    if (rent) analysis.rent.push(rent);
+
+    // Detect App Loans
+    const appLoan = detectAppLoan(t);
+    if (appLoan) analysis.app_loans.push(appLoan);
+
+    // Detect Credit Card
+    const cc = detectCreditCardPayment(t);
+    if (cc) analysis.credit_card_payments.push(cc);
+
+    // Detect Stock Market
+    const stock = detectStockMarket(t);
+    if (stock) analysis.stock_market.push(stock);
+
+    // Detect Insurance
+    const ins = detectInsurance(t);
+    if (ins) analysis.insurance.push(ins);
+
+    // Detect Utilities
+    const util = detectUtilities(t);
+    if (util) analysis.utilities.push(util);
+
+    // Detect Transfers
+    const trans = detectTransfers(t);
+    if (trans) {
+      if (type === 'CREDIT') analysis.transfers_in.push(trans);
+      else analysis.transfers_out.push(trans);
+    }
+
+    // Detect Bounce Charges
+    const bounce = detectBounceCharges(t);
+    if (bounce) analysis.bounce_charges.push(bounce);
   }
 
-  // ── Link processing fees to disbursements ───────────────────────
-  if (processingFees.length && result.loan_disbursements.length) {
-    const byMonth = {};
-    for (const d of result.loan_disbursements) {
-      const m = monthKey(d.date);
-      if (!byMonth[m]) byMonth[m] = [];
-      byMonth[m].push(d);
-    }
-    for (const fee of processingFees) {
-      const candidates = byMonth[monthKey(fee.date)] || [];
-      if (!candidates.length) continue;
-      let picked = candidates.length === 1 ? candidates[0] : null;
-      if (!picked) {
-        const fd = new Date(fee.date);
-        for (const d of candidates) {
-          const dd = new Date(d.date);
-          if (!isNaN(dd) && Math.abs((fd-dd)/(86400000)) <= 7) { picked=d; break; }
-        }
-      }
-      if (picked) picked.processing_fee = (picked.processing_fee||0) + (fee.amount||0);
-    }
-  }
+  // Account Summary
+  analysis.account_summary = {
+    period: `${periodStart} to ${periodEnd}`,
+    transaction_count: txns.length,
+    total_credits: totalCredits,
+    total_debits: totalDebits,
+    net_balance: totalCredits - totalDebits
+  };
 
-  // ── COMPUTE INSIGHTS ────────────────────────────────────────────
-  const salaryMonths = result.salary.length > 0
-    ? new Set(result.salary.map(s => monthKey(s.date))).size : 1;
+  // Monthly Summary & Insights
+  computeMonthlySummary(analysis, txns);
+  computeInsights(analysis);
+  computeLoanSummary(analysis);
 
-  result.insights.avg_monthly_salary =
-    result.salary.reduce((s,x) => s+x.amount, 0) / salaryMonths;
-
-  const emiByBank = {};
-  for (const e of result.emi_payments) {
-    if (!emiByBank[e.bank] || e.emi_amount > emiByBank[e.bank])
-      emiByBank[e.bank] = e.emi_amount;
-  }
-  result.insights.total_emi_monthly    = Object.values(emiByBank).reduce((a,b)=>a+b,0);
-  result.insights.total_disbursed      = result.loan_disbursements.reduce((s,x)=>s+x.amount,0);
-  result.insights.estimated_total_debt = result.insights.total_emi_monthly * 36;
-
-  const apyMonthly = result.apy_pension.length > 0
-    ? result.apy_pension.reduce((s,x)=>s+x.amount,0) / salaryMonths : 0;
-
-  result.insights.obligation_to_income_ratio = result.insights.avg_monthly_salary > 0
-    ? Math.round(((result.insights.total_emi_monthly + apyMonthly) / result.insights.avg_monthly_salary) * 100)
-    : 0;
-
-  result.account_summary.net_balance =
-    result.account_summary.total_credits - result.account_summary.total_debits;
-
-  const totalMonths = Object.keys(result.monthly_summary).length || 1;
-  const avgCredit = result.account_summary.total_credits / totalMonths;
-  const avgDebit  = result.account_summary.total_debits  / totalMonths;
-  result.insights.savings_rate = avgCredit > 0
-    ? Math.round(((avgCredit - avgDebit) / avgCredit) * 100) : 0;
-
-  // ── RISK FLAGS ──────────────────────────────────────────────────
-  const R = result.insights.risk_flags;
-  const ratio = result.insights.obligation_to_income_ratio;
-  if (ratio > 60) R.push(`EMI obligation ratio is ${ratio}% — critical (RBI safe limit: 40%)`);
-  else if (ratio > 40) R.push(`EMI obligation ratio is ${ratio}% — moderate risk`);
-
-  const allBals = transactions.filter(t=>t.balance).map(t=>parseAmount(t.balance));
-  if (allBals.length) {
-    const minBal = Math.min(...allBals);
-    if (minBal < 500) R.push(`Balance dropped to ₹${minBal.toFixed(2)} — near-zero liquidity`);
-  }
-  if (result.app_loans.length > 0)
-    R.push(`${result.app_loans.length} app loan repayment(s) — high-interest debt (24–48% APR)`);
-  if (result.loan_disbursements.length > 0)
-    R.push(`${result.loan_disbursements.length} fresh loan disbursement(s) totalling ₹${fmt(result.insights.total_disbursed)}`);
-  if (result.sip_investments.length === 0)
-    R.push('No SIP/mutual fund investment detected — wealth creation gap');
-  if (result.insurance.filter(i=>i.policy_type==='life').length === 0)
-    R.push('No life insurance premium detected — financial protection gap');
-  if (Object.keys(result.loan_summary).length > 2)
-    R.push(`${Object.keys(result.loan_summary).length} active loans — debt consolidation recommended`);
-  const ccTotal = result.credit_card_payments.reduce((s,x)=>s+x.amount,0);
-  if (ccTotal > 0) R.push(`Credit card payments: ₹${fmt(ccTotal)} — monitor revolving debt`);
-
-  // ── RECOMMENDATIONS ─────────────────────────────────────────────
-  const Rec = result.insights.recommendations;
-  if (result.sip_investments.length === 0)
-    Rec.push('Start SIP: ₹1,000/month in index funds builds wealth through compounding');
-  if (result.insurance.length === 0)
-    Rec.push('Get term life (₹1Cr cover ~₹700/month) + health insurance (₹5L cover ~₹500/month)');
-  if (ratio > 50)
-    Rec.push('Loan consolidation or part-prepayment recommended to bring EMI ratio below 40%');
-  if (result.app_loans.length > 0)
-    Rec.push('Clear high-interest app loans first — they charge 24–48% APR vs 10–18% bank loans');
-  if (result.pf_epfo.filter(p=>p.type==='credit').length > 0)
-    Rec.push('PF withdrawal detected — consider VPF top-up for tax-free retirement returns');
-  if (result.insights.savings_rate < 10)
-    Rec.push('Savings rate below 10% — budget review needed to identify discretionary spending');
-
-  // ── ADDITIONAL FIELDS NEEDED ────────────────────────────────────
-  result.insights.additional_fields_needed = [
-    'Loan Account Number (LAN) — links disbursement to EMI repayment',
-    'Principal vs Interest split — for tax benefit (Sec 24b / 80C)',
-    'Outstanding Loan Balance — from loan statement or net banking',
-    'Loan Tenure (months) — to project future cash outflows',
-    'Interest Rate (ROI %) — fixed or floating (MCLR/EBLR based)',
-    'Processing Fee — one-time charge at disbursement',
-    'Bounce / Penal Charges — indicates missed EMI',
-    'Co-applicant Name — for joint loan products',
-    'Security / Collateral Type — for HL, LAP, GL',
-    'Moratorium Period — for EL or restructured loans',
-    'Employer Name on Payslip — to verify salary consistency',
-    'UAN Number — to link EPFO account with salary account',
-    'TDS Certificate (Form 16) — for gross vs net salary reconciliation',
-    'GST / Business Turnover — for BL underwriting',
-  ];
-
-  return result;
+  return analysis;
 }
 
-module.exports = { analyzeTransactions, parseAmount, parseDate, fmt, parseCibilText, crossVerifyCibil, assessEligibility, assessUnderwriting };
+function detectSalary(t) {
+  if (t.type !== 'CREDIT' || t.amount < 5000) return null;
+  const desc = normUpper(t.description);
+  if (anyMatch(desc, SALARY_KEYWORDS)) {
+    return { ...t, employer: inferSalaryEmployer(t.description) };
+  }
+  if (desc.includes('NACH') && !anyMatch(desc, ['REJECT', 'RETURN', 'BOUNCE'])) {
+    return { ...t, employer: inferSalaryEmployer(t.description) };
+  }
+  return null;
+}
+
+function inferSalaryEmployer(desc) {
+  const d = normUpper(desc);
+  for (const [key, name] of Object.entries(SALARY_SOURCE_MAP)) {
+    if (d.includes(key)) return name;
+  }
+  const nachMatch = desc.match(/NACH\/([^\/]+)/i);
+  if (nachMatch) return nachMatch[1].trim();
+  const salMatch = desc.match(/SAL(?:ARY)?\s+(?:FOR\s+)?(?:[A-Z]{3,}\s+)?([A-Z0-9 &.-]{3,})/i);
+  if (salMatch) return salMatch[1].trim();
+  return 'Unknown Employer';
+}
+
+function detectLoanEMI(t) {
+  if (t.type !== 'DEBIT' || t.amount < 500) return null;
+  const desc = normUpper(t.description);
+  const isEmi = anyMatch(desc, NACH_PATTERNS) || desc.includes('EMI') || desc.includes('LOAN') || desc.includes('MANDATE');
+  if (!isEmi) return null;
+  
+  const lender = LENDER_PATTERNS.find(p => p.regex.test(desc));
+  const loanType = LOAN_TYPE_MAP.find(p => p.regex.test(desc));
+  
+  return {
+    ...t,
+    emi_amount: t.amount,
+    bank: lender ? lender.name : 'Unknown Lender',
+    type: loanType ? loanType.code : 'PL',
+    loan_category: loanType ? loanType.label : 'Personal Loan',
+    ...extractTxnMeta(t.description)
+  };
+}
+
+function detectLoanDisbursement(t) {
+  if (t.type !== 'CREDIT' || t.amount < 5000) return null;
+  const desc = normUpper(t.description);
+  if (!anyMatch(desc, [/DISB/i, /LOAN/i, /FINANCE/i, /CREDIT/i])) return null;
+  if (anyMatch(desc, SALARY_KEYWORDS)) return null;
+
+  const lender = LENDER_PATTERNS.find(p => p.regex.test(desc));
+  const loanType = LOAN_TYPE_MAP.find(p => p.regex.test(desc));
+
+  return {
+    ...t,
+    bank: lender ? lender.name : 'Unknown Lender',
+    loan_type: loanType ? loanType.code : 'PL',
+    loan_category: loanType ? loanType.label : 'Personal Loan',
+    ...extractTxnMeta(t.description)
+  };
+}
+
+function detectAppLoan(t) {
+  const desc = normUpper(t.description);
+  const app = APP_LOAN_PATTERNS.find(p => p.regex.test(desc));
+  if (!app) return null;
+
+  return {
+    ...t,
+    app_name: app.name,
+    type: t.type === 'CREDIT' ? 'Credit' : 'Repayment',
+    ...extractTxnMeta(t.description)
+  };
+}
+
+function detectRent(t) {
+  if (t.type !== 'DEBIT' || t.amount < 2000) return null;
+  const desc = normUpper(t.description);
+  if (desc.includes('RENT') || desc.includes('HOUSE RENT')) {
+    return { ...t, payee: 'Unknown' };
+  }
+  return null;
+}
+
+function detectStockMarket(t) {
+  const desc = normUpper(t.description);
+  const platforms = ['ZERODHA', 'KITE', 'UPSTOX', 'GROWW', 'ANGEL', 'FYERS', '5PAISA', 'ICICI DIRECT', 'HDFC SEC', 'NUVAMA', 'EDELWEISS'];
+  const isStock = platforms.some(p => desc.includes(p)) || anyMatch(desc, [/NSE/i, /BSE/i, /DEMAT/i, /DP CHARGES/i]);
+  if (!isStock) return null;
+
+  return {
+    ...t,
+    direction: t.type === 'CREDIT' ? 'credit' : 'debit',
+    platform: platforms.find(p => desc.includes(p)) || 'Stock Market',
+    ...extractTxnMeta(t.description)
+  };
+}
+
+function detectInsurance(t) {
+  if (t.type !== 'DEBIT') return null;
+  const desc = normUpper(t.description);
+  if (desc.includes('INSURANCE') || desc.includes('PREMIUM') || desc.includes('LIC ') || desc.includes('HDFC LIFE') || desc.includes('ICICI PRU')) {
+    return { ...t, provider: 'Insurance' };
+  }
+  return null;
+}
+
+function detectUtilities(t) {
+  if (t.type !== 'DEBIT') return null;
+  const desc = normUpper(t.description);
+  if (desc.includes('ELECTRICITY') || desc.includes('WATER') || desc.includes('GAS') || desc.includes('MOBILE') || desc.includes('INTERNET') || desc.includes('RECHARGE')) {
+    return { ...t, category: 'Utility' };
+  }
+  return null;
+}
+
+function detectTransfers(t) {
+  const desc = normUpper(t.description);
+  if (desc.includes('TRANSFER') || desc.includes('OWN ACC') || desc.includes('SELF')) {
+    return { ...t };
+  }
+  return null;
+}
+
+function detectBounceCharges(t) {
+  const desc = normUpper(t.description);
+  if (anyMatch(desc, [/RETURN/i, /BOUNCE/i, /REJECT/i, /PENALTY/i, /INSUFFICIENT/i, /FUNDS/i])) {
+    return { ...t };
+  }
+  return null;
+}
+
+function detectCreditCardPayment(t) {
+  if (t.type !== 'DEBIT') return null;
+  const desc = normUpper(t.description);
+  if (desc.includes('CREDIT CARD') || desc.includes('CC PAYMENT') || desc.includes('CARD BILL')) {
+    return { ...t, ...extractTxnMeta(t.description) };
+  }
+  return null;
+}
+
+function extractTxnMeta(desc) {
+  const meta = {};
+  const utrMatch = desc.match(/\b([A-Z0-9]{12,})\b/i);
+  if (utrMatch) meta.utr = utrMatch[1];
+  const rrnMatch = desc.match(/\b(\d{12})\b/);
+  if (rrnMatch) meta.rrn = rrnMatch[1];
+  return meta;
+}
+
+function computeMonthlySummary(analysis, txns) {
+  const summary = {};
+  for (const t of txns) {
+    const month = t.date.slice(0, 7);
+    if (!summary[month]) {
+      summary[month] = { credits: 0, debits: 0, salary: 0, emi: 0, apy: 0, transfers_in: 0, transfers_out: 0, closing_balance: 0 };
+    }
+    const amt = Number(t.amount) || 0;
+    if (t.type === 'CREDIT') summary[month].credits += amt;
+    else summary[month].debits += amt;
+    summary[month].closing_balance = t.balance || 0;
+  }
+  
+  for (const s of analysis.salary) summary[s.date.slice(0, 7)].salary += s.amount;
+  for (const e of analysis.emi_payments) summary[e.date.slice(0, 7)].emi += e.amount;
+  for (const a of analysis.apy_pension) summary[a.date.slice(0, 7)].apy += a.amount;
+  for (const i of analysis.transfers_in) summary[i.date.slice(0, 7)].transfers_in += i.amount;
+  for (const o of analysis.transfers_out) summary[o.date.slice(0, 7)].transfers_out += o.amount;
+
+  analysis.monthly_summary = summary;
+}
+
+function computeInsights(analysis) {
+  const months = Object.keys(analysis.monthly_summary);
+  if (!months.length) return;
+
+  const totalSalary = analysis.salary.reduce((s, x) => s + x.amount, 0);
+  analysis.insights.avg_monthly_salary = totalSalary / months.length;
+
+  const totalEmi = analysis.emi_payments.reduce((s, x) => s + x.amount, 0);
+  analysis.insights.total_emi_monthly = totalEmi / months.length;
+
+  if (analysis.insights.avg_monthly_salary > 0) {
+    analysis.insights.obligation_to_income_ratio = (analysis.insights.total_emi_monthly / analysis.insights.avg_monthly_salary) * 100;
+  }
+
+  const totalCredits = analysis.account_summary.total_credits;
+  const totalDebits = analysis.account_summary.total_debits;
+  if (totalCredits > 0) {
+    analysis.insights.savings_rate = ((totalCredits - totalDebits) / totalCredits) * 100;
+  }
+
+  if (analysis.insights.obligation_to_income_ratio > 50) {
+    analysis.insights.risk_flags.push('High debt-to-income ratio');
+    analysis.insights.recommendations.push('Consider reducing non-essential expenses');
+  }
+  if (analysis.bounce_charges.length > 0) {
+    analysis.insights.risk_flags.push('Bounces detected in statement');
+    analysis.insights.recommendations.push('Maintain sufficient balance for EMIs');
+  }
+}
+
+function computeLoanSummary(analysis) {
+  const summary = {};
+  for (const e of analysis.emi_payments) {
+    const bank = e.bank || 'Unknown';
+    if (!summary[bank]) summary[bank] = { count: 0, total_paid: 0, last_emi: null };
+    summary[bank].count++;
+    summary[bank].total_paid += e.amount;
+    summary[bank].last_emi = e.date;
+  }
+  analysis.loan_summary = summary;
+}
+
+module.exports = {
+  LOAN_TYPE_MAP,
+  LENDER_PATTERNS,
+  SALARY_KEYWORDS,
+  NACH_PATTERNS,
+  APP_LOAN_PATTERNS,
+  SIP_PATTERNS,
+  SALARY_SOURCE_MAP,
+  normalizeDesc,
+  normUpper,
+  anyMatch,
+  parseDate,
+  parseCibilText,
+  crossVerifyCibil,
+  assessEligibility,
+  assessUnderwriting,
+  analyzeTransactions,
+};
