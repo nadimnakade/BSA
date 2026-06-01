@@ -22,10 +22,12 @@ export default function Header({ onReset, mode = 'statement', onModeChange }) {
       justifyContent:'space-between', position:'sticky', top:0, zIndex:100
     }}>
       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-        <span style={{ fontSize:20 }}>{mode === 'cibil' ? '🧾' : '🏦'}</span>
+        {/* <span style={{ fontSize:20 }}>{mode === 'cibil' ? '🧾' : '🏦'}</span> */}
+        <span><img src="https://1up.co.in/images/1up.png" alt="1UP AI UNDERWRITING" style={{ width:40, height:40 }} /></span>
         <div>
-          <div style={{ fontWeight:600, fontSize:14, color:'var(--text-primary)', lineHeight:1 }}>{mode === 'cibil' ? 'CIBIL Analyzer' : 'Bank Statement Analyzer'}</div>
-          <div style={{ fontSize:10, color:'var(--text-muted)', fontFamily:'JetBrains Mono,monospace' }}>Rule-Based · No AI · Instant Results</div>
+          {/* <div style={{ fontWeight:600, fontSize:14, color:'var(--text-primary)', lineHeight:1 }}>{mode === 'cibil' ? 'CIBIL Analyzer' : 'Bank Statement Analyzer'}</div> */}
+          <div style={{ fontWeight:600, fontSize:14, color:'var(--text-primary)', lineHeight:1 }}>AI UNDERWRITING</div>
+          {/* <div style={{ fontSize:10, color:'var(--text-muted)', fontFamily:'JetBrains Mono,monospace' }}>Rule-Based · No AI · Instant Results</div> */}
         </div>
       </div>
       <div style={{ display:'flex', alignItems:'center', gap:10 }}>

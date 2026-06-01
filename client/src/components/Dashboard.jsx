@@ -473,11 +473,10 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
   }
   const isClosedAccount = (account) => /CLOSED|SETTLED|WRITTEN\s*OFF|CHARGEOFF|CHARGE\s*OFF/i.test((account?.account_status || '').toString()) || !!account?.closed_date
   const formatDpdHistory = (account) => {
+    if (account?.dpd_history_formatted) return account.dpd_history_formatted
     const history = Array.isArray(account?.dpd_history) ? account.dpd_history : []
     if (!history.length) return account?.dpd_max !== undefined ? `Max - ${account.dpd_max}` : '—'
-    const delayed = history.filter(x => (Number(x.days) || 0) > 0)
-    return (delayed.length ? delayed : history)
-      .slice(0, 8)
+    return history
       .map(x => `${x.month} - ${Number(x.days) || 0}`)
       .join(', ')
   }

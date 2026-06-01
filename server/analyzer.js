@@ -48,8 +48,9 @@ const LENDER_PATTERNS = [
   { regex: /\bYESB\b|YES.*BANK/i,                         name:'Yes Bank',                           category:'Pvt' },
   { regex: /\bINDB\b|INDUS.*IND/i,                        name:'IndusInd Bank',                      category:'Pvt' },
   { regex: /\bFDRL\b|FEDERAL.*BANK/i,                     name:'Federal Bank',                       category:'Pvt' },
-  { regex: /\bIBKL\b|\bIDFC\b/i,                          name:'IDFC First Bank',                    category:'Pvt' },
-  { regex: /\bIDIB\b|\bIDBI\b/i,                          name:'IDBI Bank',                          category:'Pvt' },
+  { regex: /\bIDFB\b|\bIDFC\b/i,                          name:'IDFC First Bank',                    category:'Pvt' },
+  { regex: /\bIBKL\b|\bIDBI\b/i,                          name:'IDBI Bank',                          category:'Pvt' },
+  { regex: /\bIDIB\b|INDIAN.*BANK/i,                      name:'Indian Bank',                        category:'PSB' },
   { regex: /\bRBLB\b|\bRBL\b/i,                           name:'RBL Bank',                           category:'Pvt' },
   { regex: /\bBAND\b|BANDHAN/i,                           name:'Bandhan Bank',                       category:'Pvt' },
   { regex: /\bAUBK\b|AU.*SMALL|AU.*FINANCE/i,             name:'AU Small Finance Bank',              category:'SFB' },
@@ -144,9 +145,13 @@ function parseCibilText(text) {
   const pickScore = () => {
     const m =
       joined.match(/CIBIL\s*SCORE[^0-9]{0,60}([3-9]\d{2})\b/i) ||
-      joined.match(/\bSCORE[^0-9]{0,60}([3-9]\d{2})\b/i);
+      joined.match(/\bSCORE[^0-9]{0,60}([3-9]\d{2})\b/i) ||
+      joined.match(/\b([3-9]\d{2})\b\s*\n\s*Your\s+CIBIL\s+Score/i) ||
+      joined.match(/Equifax\s+Score[^0-9]{0,60}([3-9]\d{2})\b/i) ||
+      joined.match(/Experian\s+Score[^0-9]{0,60}([3-9]\d{2})\b/i) ||
+      joined.match(/CRIF\s+Score[^0-9]{0,60}([3-9]\d{2})\b/i);
     if (!m) return undefined;
-    const n = Number(m[1]);
+    const n = Number(m[1] || m[0].match(/\d{3}/)[0]);
     if (!Number.isFinite(n) || n < 300 || n > 900) return undefined;
     return n;
   };
@@ -160,12 +165,12 @@ function parseCibilText(text) {
 
   const parseNum = (s) => {
     if (!s) return undefined;
-    const n = Number(s.toString().replace(/[,\s]/g, ''));
+    const n = Number(s.toString().replace(/[₹,\s]/g, ''));
     return Number.isFinite(n) ? n : undefined;
   };
   const pickLabeledNumber = (text, labelRe) => {
     const src = (text || '').toString();
-    const re = new RegExp(`${labelRe.source}\\s*(?:Amount|Balance|Limit|Utilization|Payment|Principal|Total)?[^0-9A-Z-]{0,40}(-?\\d[\\d,]*(?:\\.\\d{1,2})?|NA)`, 'i');
+    const re = new RegExp(`${labelRe.source}\\s*(?:Amount|Balance|Limit|Utilization|Payment|Principal|Total)?[^0-9A-Z-₹]{0,40}([₹]?\\s*-?\\d[\\d,]*(?:\\.\\d{1,2})?|NA)`, 'i');
     const m = src.match(re);
     if (!m || /^NA$/i.test(m[1])) return undefined;
     return parseNum(m[1]);
@@ -198,21 +203,31 @@ function parseCibilText(text) {
       out.push({ month: label, days });
     };
 
-    const pairRe = new RegExp(`\\b(${monthRe}\\s*(?:(?:19|20)\\d{2}|[-']\\s*\\d{2}(?!\\d)))\\b\\s*(?:-|:)?\\s*(\\d{1,3}|XXX|STD)\\b`, 'gi');
+    // Very aggressive regex to catch "Month Year Value" in any combination of spacing
+    const regex = new RegExp(`(${monthRe})\\s*((?:19|20)\\d{2})\\s*(\\d{1,3}|XXX|STD)`, 'gi');
     let m;
-    while ((m = pairRe.exec(text)) !== null) add(m[1], m[2]);
+    while ((m = regex.exec(text)) !== null) {
+      add(`${m[1]} ${m[2]}`, m[3]);
+    }
 
-    const linesForDpd = (text || '').split(/\r?\n/).map(x => x.trim()).filter(Boolean);
-    for (let i = 0; i < linesForDpd.length; i++) {
-      const months = Array.from(linesForDpd[i].matchAll(new RegExp(`\\b${monthRe}\\b`, 'gi'))).map(x => x[0]);
-      if (months.length < 2) continue;
-      const valuesLine = [linesForDpd[i + 1] || '', linesForDpd[i + 2] || ''].find(line => {
-        const vals = line.match(/\b(?:\d{3}|XXX|STD)\b/gi) || [];
-        return vals.length >= Math.min(2, months.length);
-      });
-      if (!valuesLine) continue;
-      const values = valuesLine.match(/\b(?:\d{3}|XXX|STD)\b/gi) || [];
-      months.slice(0, values.length).forEach((month, idx) => add(month, values[idx]));
+    // Also catch "Month Year - Value"
+    const regex2 = new RegExp(`(${monthRe})\\s*((?:19|20)\\d{2})\\s*-\\s*(\\d{1,3}|XXX|STD)`, 'gi');
+    while ((m = regex2.exec(text)) !== null) {
+      add(`${m[1]} ${m[2]}`, m[3]);
+    }
+
+    if (out.length === 0) {
+      // Fallback for vertical formats where month and value are on separate lines
+      const lines = text.split(/\n/);
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        const monthMatch = line.match(new RegExp(`^(${monthRe})\\s+((?:19|20)\\d{2})$`, 'i'));
+        if (monthMatch) {
+          const nextLine = (lines[i+1] || '').trim();
+          const valMatch = nextLine.match(/^(\d{1,3}|XXX|STD)$/i);
+          if (valMatch) add(`${monthMatch[1]} ${monthMatch[2]}`, valMatch[1]);
+        }
+      }
     }
 
     return out;
@@ -252,6 +267,33 @@ function parseCibilText(text) {
   if (totalEnq && totalEnq[1]) enquiries.total = parseNum(totalEnq[1]);
 
   const personal = {};
+  
+  // Pass 0: Robust name and identification extraction
+  const helloMatch = joined.match(/\bHello,\s+([A-Z][A-Z ]{2,60})/i);
+  if (helloMatch) personal.name = helloMatch[1].trim();
+
+  // Better name extraction for CIBIL format
+  if (!personal.name) {
+    const personalIdx = joined.toUpperCase().indexOf('PERSONAL DETAILS');
+    if (personalIdx >= 0) {
+      const personalSeg = joined.slice(personalIdx, personalIdx + 500);
+      const nameLineMatch = personalSeg.match(/Name\s*\n\s*([A-Z][A-Z ]{2,80})/i);
+      if (nameLineMatch && !nameLineMatch[1].toUpperCase().includes('PERSONAL DETAILS')) personal.name = nameLineMatch[1].trim();
+    }
+  }
+
+  const panSearch = joined.match(/([A-Z]{5}\d{4}[A-Z])/);
+  if (panSearch) personal.pan = panSearch[1];
+
+  const dobSearch = joined.match(/Date\s*Of\s*Birth\s*(\d{2}[-\/]\d{2}[-\/]\d{4})/i);
+  if (dobSearch) personal.dob = parseDate(dobSearch[1]);
+
+  const genderSearch = joined.match(/Gender\s*(Male|Female|Transgender)/i);
+  if (genderSearch) personal.gender = genderSearch[1];
+
+  const personalStartIdx = joined.toUpperCase().indexOf('PERSONAL DETAILS');
+  const identificationIdx = joined.toUpperCase().indexOf('IDENTIFICATION DETAILS');
+  
   const addresses = [];
   const labelLine = (s) => /^[A-Z][A-Z ]{2,30}\s*[:\-]/.test((s || '').toString());
   const stopAddress = (s) =>
@@ -264,13 +306,52 @@ function parseCibilText(text) {
     const m = line.match(/^([A-Z][A-Z \/_]{2,40})\s*[:\-]\s*(.*)$/);
     if (m) {
       const k = (m[1] || '').toString().trim().toUpperCase().replace(/\s+/g, ' ');
-      const v = (m[2] || '').toString().trim();
+      let v = (m[2] || '').toString().trim();
 
-      if (/^(FULL\s*)?NAME$|^NAME$/.test(k) && !personal.name) personal.name = v;
-      else if (/^DATE OF BIRTH$|^DOB$/.test(k) && !personal.dob) personal.dob = v;
-      else if (/^GENDER$|^SEX$/.test(k) && !personal.gender) personal.gender = v;
-      else if (/^PAN$|^PERMANENT ACCOUNT NUMBER$/.test(k) && !personal.pan) personal.pan = v;
-      else if (/^MOBILE$|^MOBILE NUMBER$|^PHONE$|^PHONE NUMBER$/.test(k) && !personal.mobile) personal.mobile = v;
+      // Check if k is just the label and value is on next line (common in new CIBIL format)
+      if (!v) {
+        let nextIdx = lines.indexOf(line) + 1;
+        while (nextIdx < lines.length && nextIdx < lines.indexOf(line) + 5) {
+          const nextLine = (lines[nextIdx] || '').trim();
+          if (nextLine && !nextLine.includes(':') && nextLine.length > 2) {
+            v = nextLine;
+            break;
+          }
+          if (nextLine.includes(':')) break;
+          nextIdx++;
+        }
+      }
+
+      if (/^(FULL\s*)?NAME$|^NAME$/.test(k)) {
+        const cleanV = v.split('\n')[0].trim();
+        const upperV = cleanV.toUpperCase();
+        if (!personal.name || (personal.name.length < cleanV.length && !personal.name.toUpperCase().includes(upperV))) {
+           if (!upperV.includes('PERSONAL DETAILS') && !upperV.includes('MEMBER NAME') && !/^\s*NAME\s*$/.test(upperV) && !upperV.includes('HELLO') && !upperV.includes('PAGE') && !upperV.includes('CIBIL')) {
+             // If existing name was just a greeting prefix, overwrite it
+             if (personal.name && (upperV.includes(personal.name.toUpperCase()) || personal.name.toUpperCase().includes(upperV))) {
+                if (cleanV.length > 3 && !cleanV.includes('\n')) personal.name = cleanV;
+             } else if (!personal.name) {
+                if (cleanV.length > 3 && !cleanV.includes('\n')) personal.name = cleanV;
+             }
+           }
+        }
+      }
+      else if (/^DATE OF BIRTH$|^DOB$/.test(k)) {
+        if (!personal.dob) personal.dob = parseDate(v) || v;
+      }
+      else if (/^GENDER$|^SEX$/.test(k)) {
+        if (!personal.gender) personal.gender = v;
+      }
+      else if (/^PAN$|^PERMANENT ACCOUNT NUMBER$|^ID NUMBER$/.test(k)) {
+        if (!personal.pan) {
+          const panMatch = v.match(/\b([A-Z]{5}\d{4}[A-Z])\b/i);
+          if (panMatch) personal.pan = panMatch[1].toUpperCase();
+        }
+      }
+      else if (/^MOBILE$|^MOBILE NUMBER$|^PHONE$|^PHONE NUMBER$|^TELEPHONE NUMBER$/.test(k) && !personal.mobile) {
+        const phone = v.replace(/[^0-9]/g, '');
+        if (phone.length >= 10) personal.mobile = phone.slice(-10);
+      }
       else if (/^EMAIL$|^EMAIL ID$/.test(k) && !personal.email) personal.email = v;
       else if (/^COMPANY$|^EMPLOYER$|^ORGANIZATION$|^ORGANISATION$/.test(k) && !personal.company) personal.company = v;
 
@@ -373,6 +454,43 @@ function parseCibilText(text) {
   }
 
   if (!enquiry_details.length) {
+    const enqIdx = joined.toUpperCase().indexOf('ENQUIRY DETAILS');
+    if (enqIdx >= 0) {
+      const enqSeg = joined.slice(enqIdx);
+      const enqSegments = enqSeg.split(/(?=Member\s*Name|Date\s*Of\s*Enquiry|Enquiry\s*Purpose)/i);
+      let currentEnq = null;
+      for (let i = 0; i < enqSegments.length; i++) {
+        let seg = enqSegments[i];
+        const memberMatch = seg.match(/Member\s*Name\s*[:\-]?\s*\n?\s*(.+?)(?:\n|$)/i);
+        const dateMatch = seg.match(/Date\s*Of\s*Enquiry\s*[:\-]?\s*\n?\s*(\d{2}[-\/]\d{2}[-\/]\d{4})/i);
+        const purposeMatch = seg.match(/Enquiry\s*Purpose\s*[:\-]?\s*\n?\s*(.+?)(?:\n|$)/i);
+
+        if (memberMatch) {
+          if (currentEnq && currentEnq.member && currentEnq.date) {
+            enquiry_details.push(currentEnq);
+          }
+          currentEnq = { member: memberMatch[1].trim(), raw: seg.trim() };
+        }
+        
+        if (dateMatch) {
+          if (!currentEnq) currentEnq = { raw: seg.trim() };
+          currentEnq.date = parseDate(dateMatch[1]);
+          currentEnq.raw = (currentEnq.raw || '') + '\n' + seg.trim();
+        }
+
+        if (purposeMatch) {
+          if (!currentEnq) currentEnq = { raw: seg.trim() };
+          currentEnq.purpose = purposeMatch[1].trim();
+          currentEnq.raw = (currentEnq.raw || '') + '\n' + seg.trim();
+        }
+      }
+      if (currentEnq && currentEnq.member && currentEnq.date) {
+        enquiry_details.push(currentEnq);
+      }
+    }
+  }
+
+  if (!enquiry_details.length) {
     const upper = joinedFlat.toUpperCase();
     const start = upper.indexOf('CREDIT ENQUIRIES');
     if (start >= 0) {
@@ -445,6 +563,18 @@ function parseCibilText(text) {
       cur = { lender: memberStart[1].trim() };
       continue;
     }
+    
+    // Equifax / New CIBIL format support
+    if (line.match(/^Member\s*Name/i) && !line.includes(':')) {
+      const nextLine = (lines[lineIdx + 1] || '').trim();
+      if (nextLine && !nextLine.match(/[:\-]/) && nextLine.length > 2) {
+        if (cur && Object.keys(cur).length >= 2) push();
+        cur = { lender: nextLine };
+        lineIdx++; // Skip next line as it was the lender name
+        continue;
+      }
+    }
+
     if (!cur) continue;
 
     const set = (k, re) => {
@@ -514,7 +644,7 @@ function parseCibilText(text) {
     let seg = joinedFlat.slice(idxLoan, idxLoan + 40000);
     const hdr = seg.toUpperCase().indexOf('OUTSTANDING BALANCE');
     if (hdr >= 0) seg = seg.slice(hdr + 'OUTSTANDING BALANCE'.length);
-    const rowRe = new RegExp(`([A-Z][A-Z0-9 &.'-]{2,80}?)\\s+(${typeRe})\\s+(X{3,}\\d{3,})\\s+(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+(Active\\*?\\*?|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|Special\\s*Mention|SMA)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+([\\d,]+)\\s+([\\d,]+)(?:\\s+([\\d,]+))?(?:\\s+([\\d,]+))?`, 'gi');
+    const rowRe = new RegExp(`([A-Z][A-Z0-9 &.'-]{2,80}?)\\s+(${typeRe})\\s+([A-Z0-9X*-]{4,})\\s+(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+(Active\\*?\\*?|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|Special\\s*Mention|SMA)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+([\\d,]+)\\s+([\\d,]+)(?:\\s+([\\d,]+))?(?:\\s+([\\d,]+))?`, 'gi');
     let m;
     while ((m = rowRe.exec(seg)) !== null) {
       const lender = (m[1] || '').toString().trim();
@@ -545,7 +675,7 @@ function parseCibilText(text) {
     let seg = joinedFlat.slice(idxCC, idxCC + 40000);
     const hdr = seg.toUpperCase().indexOf('OUTSTANDING BALANCE');
     if (hdr >= 0) seg = seg.slice(hdr + 'OUTSTANDING BALANCE'.length);
-    const rowRe = new RegExp(`([A-Z][A-Z0-9 &.'-]{2,80}?)\\s+(${typeRe})\\s+(X{3,}\\d{3,})\\s+(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+(Active\\*?\\*?|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|Special\\s*Mention|SMA)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+([\\d,NA-]+)\\s+([\\d,NA-]+)(?:\\s+([\\d,NA-]+))?(?:\\s+([\\d,NA-]+))?`, 'gi');
+    const rowRe = new RegExp(`([A-Z][A-Z0-9 &.'-]{2,80}?)\\s+(${typeRe})\\s+([A-Z0-9X*-]{4,})\\s+(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+(Active\\*?\\*?|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|Special\\s*Mention|SMA)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+([\\d,NA-]+)\\s+([\\d,NA-]+)(?:\\s+([\\d,NA-]+))?(?:\\s+([\\d,NA-]+))?`, 'gi');
     let m;
     while ((m = rowRe.exec(seg)) !== null) {
       const lender = (m[1] || '').toString().trim();
@@ -571,7 +701,7 @@ function parseCibilText(text) {
 
   // Pass 3: Catch-all regex for accounts that might have been missed
   const seenSummaryKeys = new Set(summaryAccounts.map(accountKey));
-  const accountNoRe = /\b(X{3,}\d{3,})\b/gi;
+  const accountNoRe = /\b(?:[X*]{2,}[A-Z0-9*-]*|[0-9]{4,}[A-Z0-9X*-]*)\b/gi;
   let mm;
   while ((mm = accountNoRe.exec(joinedFlat)) !== null) {
     const accountNo = (mm[1] || '').trim();
@@ -630,39 +760,52 @@ function parseCibilText(text) {
     }
   }
 
-  const detailSegments = joined.split(/(?=\b[A-Z][A-Z0-9 &.'-]{2,80}\s+(?:Active|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|Special\s*Mention|SMA)[*]*\s+Account Number:|\n\s*(?:ACCOUNT|ACCT)\s*TYPE\s*[:\-]|\n\s*(?:MEMBER\s*NAME|LENDER|BANK\s*NAME|FINANCIER|INSTITUTION)\s*[:\-])/i);
+  const detailSegments = joined.split(/(?=\b(?:MEMBER\s*NAME|LENDER|BANK\s*NAME|FINANCIER|INSTITUTION|ACCOUNT\s+DETAILS|ACCOUNT\s+INFORMATION|CREDIT\s+ACCOUNT)\b)/i);
   const dpdByAccount = new Map();
-  for (const segment of detailSegments) {
+  for (let i = 0; i < detailSegments.length; i++) {
+    const segment = detailSegments[i];
+    const prevSegment = i > 0 ? detailSegments[i - 1] : '';
+    const searchWindow = prevSegment + '\n' + segment;
+
     const segmentAccountNo =
-      (segment.match(/\b(X{3,}\d{3,})\b/i) || [])[1] ||
-      (segment.match(/\b(?:ACCOUNT\s*(?:NUMBER|NO)|ACCT\s*(?:NUMBER|NO))\s*[:\-]?\s*([A-Z0-9X*]{4,})/i) || [])[1] ||
+      (segment.match(/\b(?:ACCOUNT\s*(?:NUMBER|NO)|ACCT\s*(?:NUMBER|NO))\s*[:\-]?\s*\n?\s*([A-Z0-9X*-]{4,30})/i) || [])[1] ||
+      (segment.match(/\b(?:[X*]{2,}[A-Z0-9*-]*|[0-9]{4,}[A-Z0-9X*-]*)\b/i) || [])[1] ||
       '';
     const segmentLender =
-      (segment.match(/^(?:MEMBER\s*NAME|LENDER|BANK\s*NAME|FINANCIER|INSTITUTION)\s*[:\-]\s*(.+)$/im) || [])[1] ||
+      (segment.match(/\b(?:MEMBER\s*NAME|LENDER|BANK\s*NAME|FINANCIER|INSTITUTION)\s*[:\-]?\s*\n?\s*(.+?)(?:\n|$)/i) || [])[1] ||
+      (segment.match(/Account\s+Details\s+([A-Z][A-Z0-9 &.'-]{2,80})/i) || [])[1] ||
       (segment.match(/^\s*([A-Z][A-Z0-9 &.'-]{2,80})\s*\n\s*Account\s+Number/im) || [])[1] ||
       (segment.match(/\b([A-Z][A-Z0-9 &.'-]{2,60})\s+(?:Active|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|Special\s*Mention|SMA)[*]*\s+Account Number:/i) || [])[1] ||
+      (segment.match(/\b(?:Account\s+Information|Credit\s+Account)\s*\n\s*([A-Z][A-Z0-9 &.'-]{2,80})/i) || [])[1] ||
       '';
     const account_type = 
-      (segment.match(/\b(?:ACCOUNT|ACCT)\s*TYPE\s*[:\-]\s*(.+?)(?:\s{2,}|$)/im) || [])[1] || 
-      (segment.match(/^(?:ACCOUNT|ACCT)\s*TYPE\s*[:\-]\s*(.+)$/im) || [])[1] || '';
+      (segment.match(/\b(?:ACCOUNT|ACCT)\s*TYPE\s*[:\-]?\s*\n?\s*(.+?)(?:\n|\s{2,}|$)/i) || [])[1] || 
+      '';
     const account_status = 
-      (segment.match(/\b(?:ACCOUNT\s*STATUS|STATUS)\s*[:\-]\s*(.+?)(?:\s{2,}|$)/im) || [])[1] ||
-      (segment.match(/^(?:ACCOUNT\s*STATUS|STATUS)\s*[:\-]\s*(.+)$/im) || [])[1] || '';
+      (segment.match(/\b(?:ACCOUNT\s*STATUS|STATUS|CREDIT\s+FACILITY\s+STATUS)\s*[:\-]?\s*\n?\s*([A-Z][A-Z\s-]{2,30})(?:\n|\s{2,}|$)/i) || [])[1] ||
+      '';
     const detailAccount = {
       account_no: segmentAccountNo,
       lender: segmentLender.trim(),
       account_type: account_type.trim() || undefined,
       account_status: account_status.trim() || undefined,
-      opened_date: pickLabeledDate(segment, /\bACCOUNT\s+OPENED\b/i),
-      closed_date: pickLabeledDate(segment, /\bACCOUNT\s+CLOSED\b/i),
-      last_update: pickLabeledDate(segment, /\bLAST\s+BANK\s+UPDATE\b/i),
-      last_payment_date: pickLabeledDate(segment, /\bLAST\s+PAYMENT\b/i),
-      sanctioned_amount: pickLabeledNumber(segment, /\bLOAN\b/i),
-      current_balance: pickLabeledNumber(segment, /\bOUTSTANDING\b/i),
-      overdue_amount: pickLabeledNumber(segment, /\bOVERDUE\b/i),
-      emi: pickLabeledNumber(segment, /\bEMI\b/i) || parseNum((segment.match(/\bEMI\s*Amount\s*[:\-]?\s*([\d,]+)/i) || [])[1]),
-      actual_last_payment: pickLabeledNumber(segment, /\bACTUAL\s+LAST\s+PAYMENT\b/i),
+      opened_date: pickLabeledDate(searchWindow, /\b(?:ACCOUNT\s+OPENED|DATE\s+OPENED\s*\/\s*DISBURSED)\b/i),
+      closed_date: pickLabeledDate(searchWindow, /\b(?:ACCOUNT\s+CLOSED|DATE\s+CLOSED)\b/i),
+      last_update: pickLabeledDate(searchWindow, /\b(?:LAST\s+BANK\s+UPDATE|DATE\s+REPORTED\s+AND\s+CERTIFIED)\b/i),
+      last_payment_date: pickLabeledDate(searchWindow, /\b(?:LAST\s+PAYMENT|DATE\s+OF\s+LAST\s+PAYMENT)\b/i),
+      sanctioned_amount: pickLabeledNumber(searchWindow, /\b(?:LOAN|SANCTIONED\s+AMOUNT|ORIGINAL\s+LOAN\s+AMOUNT|HIGH\s+CREDIT)\b/i),
+      current_balance: pickLabeledNumber(searchWindow, /\b(?:OUTSTANDING|CURRENT\s+BALANCE|TOTAL\s+BALANCE)\b/i),
+      overdue_amount: pickLabeledNumber(searchWindow, /\b(?:OVERDUE|AMOUNT\s+OVERDUE|PAST\s+DUE\s+AMOUNT)\b/i),
+      emi: pickLabeledNumber(searchWindow, /\bEMI\b/i) || parseNum((searchWindow.match(/\bEMI\s*Amount\s*[:\-]?\s*([₹]?\s*[\d,]+)/i) || [])[1]),
+      actual_last_payment: pickLabeledNumber(searchWindow, /\bACTUAL\s+LAST\s+PAYMENT\b/i),
     };
+
+    const history = parseDpdHistory(segment);
+    if (history.length) {
+      detailAccount.dpd_history = history;
+      detailAccount.dpd_max = history.reduce((max, h) => Math.max(max, Number(h.days) || 0), 0);
+      detailAccount.dpd_delay_count = history.filter(h => (Number(h.days) || 0) > 0).length;
+    }
     if (detailAccount.account_no || detailAccount.lender) {
       const key = accountKey(detailAccount);
       const existing = accounts.find(a => accountKey(a) === key) ||
@@ -670,43 +813,12 @@ function parseCibilText(text) {
       if (existing) mergeAccountFields(existing, detailAccount);
       else if (detailAccount.account_no && (detailAccount.lender || detailAccount.account_type)) accounts.push(detailAccount);
     }
-
-    if (!/\b(?:DAYS\s*PAST\s*DUE|DPD|ASSET\s*CLASSIFICATION)\b/i.test(segment)) continue;
-    const accountNo =
-      segmentAccountNo;
-    const lender =
-      segmentLender;
-    const history = parseDpdHistory(segment);
-    if (!history.length) continue;
-    const dpdMax = history.reduce((max, h) => Math.max(max, Number(h.days) || 0), 0);
-    const delayedCount = history.filter(h => (Number(h.days) || 0) > 0).length;
-    dpdByAccount.set(accountKey({ account_no: accountNo, lender }), { history, dpdMax, delayedCount });
   }
 
-  for (const a of accounts) {
-    const direct = dpdByAccount.get(accountKey(a));
-    const fallback = direct || Array.from(dpdByAccount.entries()).find(([key]) => {
-      const [no, lender] = key.split('|');
-      const accountNo = (a.account_no || '').toString().replace(/[^A-Z0-9]/gi, '').toUpperCase();
-      const accountLender = (a.lender || '').toString().toUpperCase().replace(/[^A-Z0-9]/g, '');
-      return (no && accountNo && no === accountNo) || (lender && accountLender && (lender.includes(accountLender) || accountLender.includes(lender)));
-    })?.[1];
-    if (!fallback) {
-      const history = parseDpdHistory(a._dpd_text || '');
-      if (!history.length) continue;
-      a.dpd_history = history;
-    } else {
-      a.dpd_history = fallback.history;
-    }
-    if (a.dpd_history?.length) {
-      a.dpd_max = Math.max(a.dpd_max || 0, ...a.dpd_history.map(h => Number(h.days) || 0));
-      a.dpd_delay_count = a.dpd_history.filter(h => (Number(h.days) || 0) > 0).length;
-      // Format DPD history string: "Month Year - Days, ..."
-      a.dpd_history_formatted = a.dpd_history
-        .map(h => `${h.month} - ${h.days}`)
-        .join(', ');
-    }
-  }
+  const isClosedAccount = (a) => {
+    const st = (a?.account_status || '').toString().toUpperCase();
+    return /CLOSED|SETTLED|WRITTEN\s*OFF|CHARGEOFF|CHARGE\s*OFF|SUIT\s*FILED/i.test(st) || !!a?.closed_date;
+  };
 
   if (accounts.length) {
     const seen = new Set();
@@ -717,7 +829,6 @@ function parseCibilText(text) {
       seen.add(key);
       uniq.push(a);
     }
-    // Secondary deduplication by account_no only for similar lenders
     const finalUniq = [];
     const noMap = new Map();
     for (const a of uniq) {
@@ -730,9 +841,7 @@ function parseCibilText(text) {
         const existing = noMap.get(no);
         const l1 = (existing.lender || '').toUpperCase();
         const l2 = (a.lender || '').toUpperCase();
-        // If one lender name is a substring of the other, or they are very similar, merge them
         if (l1.includes(l2) || l2.includes(l1) || l1.slice(0, 5) === l2.slice(0, 5)) {
-          // Prioritize shorter/cleaner lender name
           if (l2.length < l1.length && l2.length > 3) {
             const old = { ...existing };
             Object.assign(existing, a);
@@ -751,6 +860,13 @@ function parseCibilText(text) {
   }
 
   for (const a of accounts) {
+    if (a.dpd_history?.length) {
+      a.dpd_max = Math.max(a.dpd_max || 0, ...a.dpd_history.map(h => Number(h.days) || 0));
+      a.dpd_delay_count = a.dpd_history.filter(h => (Number(h.days) || 0) > 0).length;
+      a.dpd_history_formatted = a.dpd_history
+        .map(h => `${(h.month || '').toLowerCase()} - ${h.days}`)
+        .join(', ');
+    }
     delete a._dpd_text;
   }
 
@@ -914,7 +1030,7 @@ function assessUnderwriting(bankAnalysis, cibil) {
   const isActive = (a) => {
     const st = norm(a?.account_status);
     if (!st) return true;
-    if (/\bCLOSED\b/.test(st)) return false;
+    if (/\bCLOSED|SETTLED|WRITTEN\s*OFF|CHARGEOFF|CHARGE\s*OFF|SUIT\s*FILED\b/.test(st)) return false;
     return true;
   };
   const classify = (a) => {

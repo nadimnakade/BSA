@@ -452,9 +452,12 @@ app.post('/api/export-cibil', async (req, res) => {
       ['Company', personal.company || '—'],
     ];
 
-    const isClosedAccount = (a) => /CLOSED|SETTLED|WRITTEN\s*OFF|CHARGEOFF|CHARGE\s*OFF/i.test((a?.account_status || '').toString()) || !!a?.closed_date;
+    const isClosedAccount = (a) => {
+      const st = (a?.account_status || '').toString().toUpperCase();
+      return /CLOSED|SETTLED|WRITTEN\s*OFF|CHARGEOFF|CHARGE\s*OFF|SUIT\s*FILED/i.test(st) || !!a?.closed_date;
+    };
     const dpdHistoryText = (a) => Array.isArray(a?.dpd_history)
-      ? a.dpd_history.map(x => `${x.month || ''} - ${Number(x.days) || 0}`).join(' | ')
+      ? a.dpd_history.map(x => `${x.month || ''} - ${Number(x.days) || 0}`).join(', ')
       : '';
     const accountRows = accounts.map(a => ({
       lender: a.lender || '',
