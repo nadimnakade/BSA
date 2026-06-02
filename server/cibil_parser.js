@@ -19,36 +19,36 @@ function parseDate(dateStr) {
 // ── LENDER REGISTRY (Standardized Names) ──────────────────────────
 const LENDER_PATTERNS = [
   // Public Sector Banks
-  { regex: /\bSBIN\b|STATE.*BANK.*INDIA|\bSBI\b/i,       name:'State Bank of India (SBI)',        category:'PSB' },
-  { regex: /\bUBIN\b|UNION.*BANK/i,                       name:'Union Bank of India',               category:'PSB' },
-  { regex: /\bPUNB\b|PUNJAB.*NATIONAL|\bPNB\b/i,          name:'Punjab National Bank (PNB)',         category:'PSB' },
-  { regex: /\bBARB\b|BANK.*BARODA|\bBOB\b/i,              name:'Bank of Baroda (BOB)',               category:'PSB' },
-  { regex: /\bCNRB\b|CANARA.*BANK/i,                      name:'Canara Bank',                        category:'PSB' },
-  { regex: /\bIOBA\b|INDIAN.*OVERSEAS/i,                  name:'Indian Overseas Bank (IOB)',          category:'PSB' },
-  { regex: /\bBKID\b|BANK.*INDIA\b/i,                     name:'Bank of India (BOI)',                 category:'PSB' },
-  { regex: /\bMAHB\b|BANK.*MAHARASHTRA/i,                 name:'Bank of Maharashtra',                category:'PSB' },
-  { regex: /CENTRAL.*BANK.*INDIA|\bCBIN\b/i,              name:'Central Bank of India',              category:'PSB' },
-  { regex: /\bUCO\b|UCO.*BANK/i,                          name:'UCO Bank',                           category:'PSB' },
+  { regex: /\bSBIN\b|STATE.*BANK.*INDIA|\bSBI\b/i, name: 'State Bank of India (SBI)', category: 'PSB' },
+  { regex: /\bUBIN\b|UNION.*BANK/i, name: 'Union Bank of India', category: 'PSB' },
+  { regex: /\bPUNB\b|PUNJAB.*NATIONAL|\bPNB\b/i, name: 'Punjab National Bank (PNB)', category: 'PSB' },
+  { regex: /\bBARB\b|BANK.*BARODA|\bBOB\b/i, name: 'Bank of Baroda (BOB)', category: 'PSB' },
+  { regex: /\bCNRB\b|CANARA.*BANK/i, name: 'Canara Bank', category: 'PSB' },
+  { regex: /\bIOBA\b|INDIAN.*OVERSEAS/i, name: 'Indian Overseas Bank (IOB)', category: 'PSB' },
+  { regex: /\bBKID\b|BANK.*INDIA\b/i, name: 'Bank of India (BOI)', category: 'PSB' },
+  { regex: /\bMAHB\b|BANK.*MAHARASHTRA/i, name: 'Bank of Maharashtra', category: 'PSB' },
+  { regex: /CENTRAL.*BANK.*INDIA|\bCBIN\b/i, name: 'Central Bank of India', category: 'PSB' },
+  { regex: /\bUCO\b|UCO.*BANK/i, name: 'UCO Bank', category: 'PSB' },
   // Private Sector Banks
-  { regex: /\bHDFC\b|HDFCBANK/i,                          name:'HDFC Bank',                          category:'Pvt' },
-  { regex: /ICICI|ICICIBANK/i,                            name:'ICICI Bank',                         category:'Pvt' },
-  { regex: /\bUTIB\b|AXIS.*BANK|AXISBANK/i,               name:'Axis Bank',                          category:'Pvt' },
-  { regex: /\bKKBK\b|KOTAK/i,                             name:'Kotak Mahindra Bank',                 category:'Pvt' },
-  { regex: /\bYESB\b|YES.*BANK|YESBANK/i,                 name:'Yes Bank',                           category:'Pvt' },
-  { regex: /\bINDB\b|INDUSIND|INDUS.*IND/i,               name:'IndusInd Bank',                      category:'Pvt' },
-  { regex: /\bFDRL\b|FEDERAL.*BANK/i,                     name:'Federal Bank',                       category:'Pvt' },
-  { regex: /\bIDFB\b|IDFC/i,                              name:'IDFC First Bank',                    category:'Pvt' },
-  { regex: /\bIBKL\b|\bIDBI\b/i,                          name:'IDBI Bank',                          category:'Pvt' },
-  { regex: /\bIDIB\b|INDIAN.*BANK/i,                      name:'Indian Bank',                        category:'PSB' },
-  { regex: /\bRBLB\b|\bRBL\b/i,                           name:'RBL Bank',                           category:'Pvt' },
-  { regex: /\bBAND\b|BANDHAN/i,                           name:'Bandhan Bank',                       category:'Pvt' },
-  { regex: /\bAUBK\b|AU.*SMALL|AU.*FINANCE/i,             name:'AU Small Finance Bank',              category:'SFB' },
+  { regex: /\bHDFC\b|HDFCBANK/i, name: 'HDFC Bank', category: 'Pvt' },
+  { regex: /ICICI|ICICIBANK/i, name: 'ICICI Bank', category: 'Pvt' },
+  { regex: /\bUTIB\b|AXIS.*BANK|AXISBANK/i, name: 'Axis Bank', category: 'Pvt' },
+  { regex: /\bKKBK\b|KOTAK/i, name: 'Kotak Mahindra Bank', category: 'Pvt' },
+  { regex: /\bYESB\b|YES.*BANK|YESBANK/i, name: 'Yes Bank', category: 'Pvt' },
+  { regex: /\bINDB\b|INDUSIND|INDUS.*IND/i, name: 'IndusInd Bank', category: 'Pvt' },
+  { regex: /\bFDRL\b|FEDERAL.*BANK/i, name: 'Federal Bank', category: 'Pvt' },
+  { regex: /\bIDFB\b|IDFC/i, name: 'IDFC First Bank', category: 'Pvt' },
+  { regex: /\bIBKL\b|\bIDBI\b/i, name: 'IDBI Bank', category: 'Pvt' },
+  { regex: /\bIDIB\b|INDIAN.*BANK/i, name: 'Indian Bank', category: 'PSB' },
+  { regex: /\bRBLB\b|\bRBL\b/i, name: 'RBL Bank', category: 'Pvt' },
+  { regex: /\bBAND\b|BANDHAN/i, name: 'Bandhan Bank', category: 'Pvt' },
+  { regex: /\bAUBK\b|AU.*SMALL|AU.*FINANCE/i, name: 'AU Small Finance Bank', category: 'SFB' },
 ];
 
 function normalizeLenderName(rawName) {
   if (!rawName) return rawName;
   const d = rawName.toUpperCase().replace(/\s+/g, '');
-  
+
   // High priority exact matches - very explicit to prevent misidentification
   if (d.includes('INDUSIND')) return 'IndusInd Bank';
   if (d.includes('ICICI')) return 'ICICI Bank';
@@ -69,44 +69,13 @@ function normalizeLenderName(rawName) {
 }
 
 /**
- * Pre-process CIBIL text from dense single-line-per-page format.
- * Many CIBIL PDFs (from Paisabazaar, CIBIL portal, etc.) extract as one long line per page.
- * This function detects that format and splits into proper multi-line text.
+ * Pre-process CIBIL text from dense single-line-per-page format or squished format.
  */
 function preprocessCibilText(rawText) {
-  const text = (rawText || '').toString();
-  const rawLines = text.split('\n').map(x => x.trim()).filter(Boolean);
+  let text = (rawText || '').toString();
 
-  // Heuristic: if we have very few lines but lots of content, it's a dense format
-  const totalChars = text.length;
-  const avgLineLen = rawLines.length > 0 ? totalChars / rawLines.length : 0;
-  if (rawLines.length > 150 || avgLineLen < 200) return text; // Already multi-line, no processing needed
-
-  // Remove repeated page headers: "Report Number (ECN) : ... Report to CIBIL   Table of Contents"
-  let cleaned = text.replace(/Report Number \(ECN\)\s*:\s*\d+\s*Report Date\s*:\s*\d{2}-\d{2}-\d{4}\s*Report to CIBIL\s*Table of Contents/gi, '\n');
-
-  // Remove noise text that appears at end of pages
-  cleaned = cleaned.replace(/This section (?:has information|shows|displays)[^.]*\./gi, '\n');
-  cleaned = cleaned.replace(/Paid on time\s+1-89 days late\s+90\+ days late\s+Not Reported/gi, '\n');
-  cleaned = cleaned.replace(/Powered by/gi, '');
-
-  // Split Account Detail blocks: Each starts with "LENDER_NAME   Active/Closed  Account Number:"
-  // Pattern: "BANKNAME   Active  Account Number:   XXXX1234"
-  cleaned = cleaned.replace(/(?=(?:^|\s{2,})([A-Z][A-Z0-9 &.'\-]{2,40})\s{2,}(Active\*{0,2}|Closed)\s{2,}Account Number\s*:\s*)/gi, '\n---ACCOUNT_BREAK---\n');
-
-  // Split summary section rows: Detect "LENDER_NAME   Loan Type   XXXX1234   Individual/Guarantor/Joint"
-  // This is the summary table format
-  const loanTypePattern = '(?:Personal Loan|Education Loan|Home Loan|Housing Loan|Vehicle Loan|Two Wheeler Loan|Used Car Loan|Gold Loan|Business Loan(?: General)?|Consumer Loan|Loan Against Property|Property Loan|Overdraft|Credit Card|Loan on Credit Card|Other)';
-
-  // Split enquiry rows: "1   Personal Loan   KOTAK BANK   27-12-2025"
-  // Pattern: number + purpose + institution + date
-  cleaned = cleaned.replace(new RegExp(`(?=\\s{2,}(\\d{1,3})\\s{2,}(${loanTypePattern}|Credit Card|Other)\\s{2,}([A-Z][A-Z0-9 &.'\-]{2,60})\\s{2,}(\\d{2}-\\d{2}-\\d{4}))`, 'gi'), '\n');
-
-  // Split summary table rows before each bank/institution name followed by loan type and account number
-  cleaned = cleaned.replace(new RegExp(`(?=\\s{2,}([A-Z][A-Z0-9 &.'\-]{2,40})\\s{2,}(${loanTypePattern})\\s{2,}(XXXX[A-Z0-9\\-]{2,10}|[A-Z0-9X*]{4,}))`, 'gi'), '\n');
-
-  // Split field labels in Account Details sections onto their own lines
-  const fieldLabels = [
+  // 1) Handle squished labels (e.g. from Xavier PDF: "Account Number:XXXX9705Account type:")
+  const squishedLabels = [
     'Account Opened Date', 'Account Closed Date', 'Last Bank Update',
     'Last Payment Date', 'Pay Start Date', 'Pay End Date', 'Repayment Tenure',
     'Loan Amount', 'Settlement Amount', 'Overdue Amount', 'EMI Amount',
@@ -116,11 +85,37 @@ function preprocessCibilText(rawText) {
     'Account Number', 'Account type', 'Account Status', 'Ownership',
     'Account Details', 'Payment History',
     'Written-O[\\x00\\uFFFD]?\\s*Principal\\s*Amount',
-    'Written-O[\\x00\\uFFFD]?\\s*Total\\s*Amount',
+    'Written-O[\\x00\\uFFFD]?\\s*Total\\s*Amount'
   ];
-  for (const label of fieldLabels) {
-    cleaned = cleaned.replace(new RegExp(`\\s{2,}(?=${label}\\s)`, 'gi'), '\n');
+
+  for (const label of squishedLabels) {
+    // Add newline before label if squished
+    text = text.replace(new RegExp(`(?<=[a-z0-9])(${label})`, 'gi'), '\n$1');
+    // Add space after colon if squished
+    text = text.replace(new RegExp(`(${label})\\s*:?\\s*(?=\\S)`, 'gi'), '\n$1: ');
   }
+
+  const rawLines = text.split('\n').map(x => x.trim()).filter(Boolean);
+  const totalChars = text.length;
+  const avgLineLen = rawLines.length > 0 ? totalChars / rawLines.length : 0;
+
+  if (rawLines.length > 150 && avgLineLen < 200) {
+    // It's already mostly multi-line, just return it (Xavier's PDF falls here)
+    return text.trim();
+  }
+
+  // 2) Handle dense single-line-per-page format (Harvinder PDF)
+  let cleaned = text.replace(/Report Number \(ECN\)\s*:\s*\d+\s*Report Date\s*:\s*\d{2}-\d{2}-\d{4}\s*Report to CIBIL\s*Table of Contents/gi, '\n');
+  cleaned = cleaned.replace(/This section (?:has information|shows|displays)[^.]*\./gi, '\n');
+  cleaned = cleaned.replace(/Paid on time\s+1-89 days late\s+90\+ days late\s+Not Reported/gi, '\n');
+  cleaned = cleaned.replace(/Powered by/gi, '');
+
+  cleaned = cleaned.replace(/(?=(?:^|\s{2,})([A-Z][A-Z0-9 &.'\-]{2,40})\s{2,}(Active\*{0,2}|Closed)\s{2,}Account Number\s*:\s*)/gi, '\n---ACCOUNT_BREAK---\n');
+
+  const loanTypePattern = '(?:Personal Loan|Education Loan|Home Loan|Housing Loan|Vehicle Loan|Two Wheeler Loan|Used Car Loan|Gold Loan|Business Loan(?: General)?|Consumer Loan|Loan Against Property|Property Loan|Overdraft|Credit Card|Loan on Credit Card|Other)';
+
+  cleaned = cleaned.replace(new RegExp(`(?=\\s{2,}(\\d{1,3})\\s{2,}(${loanTypePattern}|Credit Card|Other)\\s{2,}([A-Z][A-Z0-9 &.'\-]{2,60})\\s{2,}(\\d{2}-\\d{2}-\\d{4}))`, 'gi'), '\n');
+  cleaned = cleaned.replace(new RegExp(`(?=\\s{2,}([A-Z][A-Z0-9 &.'\-]{2,40})\\s{2,}(${loanTypePattern})\\s{2,}(XXXX[A-Z0-9\\-]{2,10}|[A-Z0-9X*]{4,}))`, 'gi'), '\n');
 
   // Split "Credit Enquiries" section header
   cleaned = cleaned.replace(/(?=Credit Enquiries)/gi, '\n');
@@ -129,24 +124,15 @@ function preprocessCibilText(rawText) {
   cleaned = cleaned.replace(/(?=Account Details\s)/gi, '\n');
   cleaned = cleaned.replace(/(?=Contact Information)/gi, '\n');
 
-  // Split score line: "754  GOOD" or "632  POOR"
   cleaned = cleaned.replace(/(\d{3})\s+(EXCELLENT|GOOD|FAIR|POOR|VERY\s*POOR|LOW|HIGH|NA)/gi, '\nSCORE: $1\n$2\n');
-
-  // Handle "Hey Name," greeting on same line
   cleaned = cleaned.replace(/(Hey\s+[A-Za-z]+,)/gi, '\n$1\n');
-
-  // Split Report Summary section
   cleaned = cleaned.replace(/(?=Report Summary)/gi, '\n');
-
-  // Split "Active Loans" / "Active Credit Cards" summary
   cleaned = cleaned.replace(/(\d+)\s+(Active\s+(?:Loans?|Credit\s+Cards?))/gi, '\n$1 $2');
   cleaned = cleaned.replace(/(Total\s+(?:loan|limit))/gi, '\n$1');
   cleaned = cleaned.replace(/(Current\s+Outstanding)/gi, '\n$1');
   cleaned = cleaned.replace(/(Overdue\s+Payments)/gi, '\n$1');
   cleaned = cleaned.replace(/(Age\s+of\s+Accounts)/gi, '\n$1');
   cleaned = cleaned.replace(/(Recent\s+Enquiries)/gi, '\n$1');
-
-  // Split Contact Information fields
   cleaned = cleaned.replace(/(?=Address Details)/gi, '\n');
   cleaned = cleaned.replace(/(?=Phone Number)/gi, '\n');
   cleaned = cleaned.replace(/(?=Email ID)/gi, '\n');
@@ -154,10 +140,7 @@ function preprocessCibilText(rawText) {
   cleaned = cleaned.replace(/(?=Home Phone)/gi, '\n');
   cleaned = cleaned.replace(/(?=Office Phone)/gi, '\n');
 
-  // Remove ACCOUNT_BREAK markers and clean up
   cleaned = cleaned.replace(/---ACCOUNT_BREAK---/g, '\n');
-
-  // Clean up multiple newlines
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
 
   return cleaned.trim();
@@ -250,7 +233,7 @@ function parseCibilText(text) {
       const months = text.match(new RegExp(`\\b(${monthRe})\\b`, 'gi'));
       const years = text.match(/\b((?:19|20)\\d{2})\\b/g);
       const values = text.match(/\b(\\d{1,3}|XXX|STD)\\b/g);
-      
+
       if (months && years && values && values.length >= months.length) {
         for (let i = 0; i < months.length; i++) {
           const year = years[Math.floor(i / 12)] || years[0];
@@ -266,7 +249,7 @@ function parseCibilText(text) {
         const line = lines[i].trim();
         const monthMatch = line.match(new RegExp(`^(${monthRe})\\s+((?:19|20)\\d{2})$`, 'i'));
         if (monthMatch) {
-          const nextLine = (lines[i+1] || '').trim();
+          const nextLine = (lines[i + 1] || '').trim();
           const valMatch = nextLine.match(/^(\d{1,3}|XXX|STD)$/i);
           if (valMatch) add(`${monthMatch[1]} ${monthMatch[2]}`, valMatch[1]);
         }
@@ -356,7 +339,7 @@ function parseCibilText(text) {
   personal.mobile = extractMobile(joined);
 
   const dobSearch = joined.match(/(?:Date\s*Of\s*Birth|DOB)\s*[:\-]?\s*(\d{2}[-\/]\d{2}[-\/]\d{4})/i) ||
-                    joined.match(/\b(\d{2}[-\/]\d{2}[-\/]\d{4})\b(?=.*Gender)/i);
+    joined.match(/\b(\d{2}[-\/]\d{2}[-\/]\d{4})\b(?=.*Gender)/i);
   if (dobSearch) personal.dob = parseDate(dobSearch[1]);
 
   const genderSearch = joined.match(/Gender\s*(Male|Female|Transgender)/i);
@@ -396,13 +379,13 @@ function parseCibilText(text) {
         const cleanV = v.split('\n')[0].trim();
         const upperV = cleanV.toUpperCase();
         if (!personal.name || (personal.name.length < cleanV.length && !personal.name.toUpperCase().includes(upperV))) {
-           if (!upperV.includes('PERSONAL DETAILS') && !upperV.includes('MEMBER NAME') && !/^\s*NAME\s*$/.test(upperV) && !upperV.includes('HELLO') && !upperV.includes('PAGE') && !upperV.includes('CIBIL')) {
-             if (personal.name && (upperV.includes(personal.name.toUpperCase()) || personal.name.toUpperCase().includes(upperV))) {
-                if (cleanV.length > 3 && !cleanV.includes('\n')) personal.name = cleanV;
-             } else if (!personal.name) {
-                if (cleanV.length > 3 && !cleanV.includes('\n')) personal.name = cleanV;
-             }
-           }
+          if (!upperV.includes('PERSONAL DETAILS') && !upperV.includes('MEMBER NAME') && !/^\s*NAME\s*$/.test(upperV) && !upperV.includes('HELLO') && !upperV.includes('PAGE') && !upperV.includes('CIBIL')) {
+            if (personal.name && (upperV.includes(personal.name.toUpperCase()) || personal.name.toUpperCase().includes(upperV))) {
+              if (cleanV.length > 3 && !cleanV.includes('\n')) personal.name = cleanV;
+            } else if (!personal.name) {
+              if (cleanV.length > 3 && !cleanV.includes('\n')) personal.name = cleanV;
+            }
+          }
         }
       }
       else if (/^DATE OF BIRTH$|^DOB$/.test(k)) {
@@ -451,11 +434,11 @@ function parseCibilText(text) {
 
   const enquiry_details = [];
   const enqDateRe = /\b(\d{2}[-\/]\d{2}[-\/]\d{4})\b/;
-  
+
   // Extract enquiries using logical lines for better table row detection
   let enqSectionIdx = upper.indexOf('ENQUIRY PURPOSE');
   if (enqSectionIdx < 0) enqSectionIdx = upper.indexOf('CREDIT ENQUIRIES');
-  
+
   if (enqSectionIdx >= 0) {
     let enqText = joined.slice(enqSectionIdx);
     const endIdx = enqText.slice(50).search(/\bSUMMARY:|\bACCOUNT DETAILS\b|\bCONTACT INFORMATION\b/i);
@@ -469,7 +452,7 @@ function parseCibilText(text) {
       const purpose = m[2].trim();
       const member = m[3].trim();
       const date = parseDate(m[4]);
-      
+
       if (purpose && member && date && !/Report|Number|ECN|Table|Contents|Sr\. No|Date|Page/i.test(member) && !/Report|Number|ECN|Date/i.test(purpose)) {
         enquiry_details.push({ date, member, purpose });
       }
@@ -534,8 +517,8 @@ function parseCibilText(text) {
       if (/\bSUMMARY:\b/i.test(line)) break;
 
       const dm = line.match(enqDateRe);
-       if (!dm) continue;
-      
+      if (!dm) continue;
+
       const date = parseDate(dm[1]);
       let member = '';
       let purpose = '';
@@ -636,15 +619,18 @@ function parseCibilText(text) {
     if (cur.last_payment_date === undefined) cur.last_payment_date = pickLabeledDate(lookahead, /\bLAST\s+PAYMENT\b/i);
 
     if (/\b(WRITE\s*OFF|WRITTEN\s*OFF|SETTLED|SETTLEMENT|SUIT\s*FILED|WILFUL\s*DEFAULT|LOSS|SPECIAL\s*MENTION)\b/i.test(line)) {
-      cur.adverse_flags = cur.adverse_flags || [];
-      const f = line.toUpperCase();
-      if (/WRITE\s*OFF|WRITTEN\s*OFF/i.test(f)) cur.adverse_flags.push('WRITTEN_OFF');
-      if (/SETTLED|SETTLEMENT/i.test(f)) cur.adverse_flags.push('SETTLED');
-      if (/SUIT\s*FILED/i.test(f)) cur.adverse_flags.push('SUIT_FILED');
-      if (/WILFUL\s*DEFAULT/i.test(f)) cur.adverse_flags.push('WILFUL_DEFAULT');
-      if (/\bLOSS\b/i.test(f)) cur.adverse_flags.push('LOSS');
-      if (/SPECIAL\s*MENTION/i.test(f)) cur.adverse_flags.push('SMA');
-      cur.adverse_flags = Array.from(new Set(cur.adverse_flags));
+      // Ignore if it's just an empty field label like "Settlement Amount NA" or "Suit Filed Status NA"
+      if (!/(?:Settlement\s+Amount|Suit\s+Filed\s+Status)\s*NA/i.test(line)) {
+        cur.adverse_flags = cur.adverse_flags || [];
+        const f = line.toUpperCase();
+        if (/WRITE\s*OFF|WRITTEN\s*OFF/i.test(f)) cur.adverse_flags.push('WRITTEN_OFF');
+        if (/SETTLED|SETTLEMENT/i.test(f)) cur.adverse_flags.push('SETTLED');
+        if (/SUIT\s*FILED/i.test(f)) cur.adverse_flags.push('SUIT_FILED');
+        if (/WILFUL\s*DEFAULT/i.test(f)) cur.adverse_flags.push('WILFUL_DEFAULT');
+        if (/\bLOSS\b/i.test(f)) cur.adverse_flags.push('LOSS');
+        if (/SPECIAL\s*MENTION/i.test(f)) cur.adverse_flags.push('SMA');
+        cur.adverse_flags = Array.from(new Set(cur.adverse_flags));
+      }
     }
 
     if (/\bDPD\b/i.test(line)) {
@@ -666,14 +652,14 @@ function parseCibilText(text) {
   const parseSummaryRows = (sectionText, isCC = false) => {
     const rows = [];
     const rawLines = sectionText.split('\n').map(l => l.trim()).filter(l => l);
-    
+
     // Combine lines that look like they belong together (e.g. bank name split from rest of row)
     const lines = [];
     for (let i = 0; i < rawLines.length; i++) {
       let current = rawLines[i];
       // If current line is just a bank name and next line starts with account type, combine them
       if (i + 1 < rawLines.length) {
-        const next = rawLines[i+1];
+        const next = rawLines[i + 1];
         const nextStartsWithType = new RegExp(`^${typeRe}`, 'i').test(next);
         if (!new RegExp(`${typeRe}`, 'i').test(current) && nextStartsWithType) {
           current += ' ' + next;
@@ -683,19 +669,29 @@ function parseCibilText(text) {
       lines.push(current);
     }
 
-    const rowRegex = new RegExp(`([A-Z][A-Z0-9 &.'-]{2,40})\\s+(${typeRe})\\s+([A-Z0-9X*]{4,})\\s+(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+(Active\\*?\\*?|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|Special\\s*Mention|SMA)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+([\\d,NA-]+)\\s+([\\d,NA-]+)(?:\\s+([\\d,NA-]+))?(?:\\s+([\\d,NA-]+))?`, 'i');
-    
+    //const rowRegex = new RegExp(`([A-Z][A-Z0-9 &.'-]{2,40})\\s+(${typeRe})\\s+([A-Z0-9X*]{4,})\\s+(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+(Active\\*?\\*?|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|Special\\s*Mention|SMA)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+([\\d,NA-]+)\\s+([\\d,NA-]+)(?:\\s+([\\d,NA-]+))?(?:\\s+([\\d,NA-]+))?`, 'i');
+    // Match lender + account type + account number
+    const rowRegex = new RegExp(
+      `([A-Z][A-Z0-9 &.'-]{2,50})\\s+` +
+      `(${typeRe})\\s+` +
+      `(XXXX[A-Z0-9]+|[A-Z0-9X*]{4,})\\s+` +
+      `(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|Authorized User|Authorised User)\\s+` +
+      `(\\d{2}-\\d{2}-\\d{4})\\s+` +
+      `(Active|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|SMA)`,
+      "gi"
+    );
+
     for (const line of lines) {
       const m = line.match(rowRegex);
       if (m) {
         const lenderRaw = m[1].trim();
         if (/\bDATE\b|\bACCOUNT\b|\bSTATUS\b|\bUPDATE\b|\bTYPE\b/i.test(lenderRaw)) continue;
-        
+
         const lender = normalizeLenderName(lenderRaw);
         const account_type = m[2].trim();
         const n1 = parseNum(m[8]) || undefined;
         const n2 = parseNum(m[9]) || undefined;
-        
+
         const rec = {
           lender,
           account_type,
@@ -708,7 +704,7 @@ function parseCibilText(text) {
           overdue_amount: parseNum(m[10]) || undefined,
           emi: parseNum(m[11]) || undefined,
         };
-        
+
         if (isCC || /credit\s*card/i.test(account_type)) {
           rec.high_credit = n1;
         } else {
@@ -727,7 +723,7 @@ function parseCibilText(text) {
     let sectionText = t.slice(sectionStart);
     const nextSectionIdx = sectionText.slice(20).search(/\bSUMMARY:|\bACCOUNT DETAILS\b/i);
     if (nextSectionIdx > 0) sectionText = sectionText.slice(0, nextSectionIdx + 20);
-    
+
     summaryAccounts.push(...parseSummaryRows(sectionText, false));
   }
 
@@ -738,7 +734,7 @@ function parseCibilText(text) {
     let sectionText = t.slice(sectionStart);
     const nextSectionIdx = sectionText.slice(20).search(/\bSUMMARY:|\bACCOUNT DETAILS\b/i);
     if (nextSectionIdx > 0) sectionText = sectionText.slice(0, nextSectionIdx + 20);
-    
+
     summaryAccounts.push(...parseSummaryRows(sectionText, true));
   }
 
@@ -753,7 +749,7 @@ function parseCibilText(text) {
     const after = joinedFlat.slice(mm.index + accountNo.length, mm.index + accountNo.length + 250).replace(/\s+/g, ' ').trim();
     const beforeMatch = before.match(new RegExp(`(?:^|\\s)([A-Z][A-Z0-9 &.'-]{2,60})\\s+(${typeRe})\\s*$`, 'i'));
     const afterMatch = after.match(/^\s*(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\s+(\d{2}-\d{2}-\d{4})\s+(Active\*?\*?|Closed|Settled|Written\*?\s*Off|Suit\*?\s*Filed|Wilful\*?\s*Default|Loss|Special\*?\s*Mention|SMA)\s+(\d{2}-\d{2}-\d{4})\s+([\d,NA-]+)\s+([\d,NA-]+)(?:\s+([\d,NA-]+))?(?:\s+([\d,NA-]+))/i);
-    
+
     if (beforeMatch && afterMatch) {
       const lenderRaw = (beforeMatch[1] || '').trim();
       if (!lenderRaw || /\bDATE\b|\bACCOUNT\b|\bSTATUS\b|\bUPDATE\b/i.test(lenderRaw)) continue;
@@ -820,10 +816,10 @@ function parseCibilText(text) {
       (segment.match(/\b(?:Account\s+Information|Credit\s+Account)\s*\n\s*([A-Z][A-Z0-9 &.'-]{2,80})/i) || [])[1] ||
       '';
     const segmentLender = normalizeLenderName(segmentLenderRaw);
-    const account_type = 
-      (segment.match(/\b(?:ACCOUNT|ACCT)\s*TYPE\s*[:\-]?\s*\n?\s*(.+?)(?:\n|\s{2,}|$)/i) || [])[1] || 
+    const account_type =
+      (segment.match(/\b(?:ACCOUNT|ACCT)\s*TYPE\s*[:\-]?\s*\n?\s*(.+?)(?:\n|\s{2,}|$)/i) || [])[1] ||
       '';
-    const account_status = 
+    const account_status =
       (segment.match(/\b(?:ACCOUNT\s*STATUS|STATUS|CREDIT\s+FACILITY\s+STATUS)\s*[:\-]?\s*\n?\s*([A-Z][A-Z\s-]{2,30})(?:\n|\s{2,}|$)/i) || [])[1] ||
       '';
     const detailAccount = {
@@ -851,7 +847,7 @@ function parseCibilText(text) {
     if (detailAccount.account_no || detailAccount.lender) {
       if (detailAccount.lender && /\b(?:ACCOUNT|DATE|STATUS|TYPE|OWNERSHIP|LIMIT|BALANCE|AMOUNT|REPORT|SUMMARY|ENQUIRY)\b/i.test(detailAccount.lender)) continue;
       if (detailAccount.account_no && /\b(?:ACCOUNT|NUMBER|NO|OWNERSHIP|TYPE|STATUS|DATE|AMOUNT|BALANCE|LIMIT|INSTITUTION|LENDER|SR|NO)\b/i.test(detailAccount.account_no)) continue;
-      
+
       const key = accountKey(detailAccount);
       const existing = accounts.find(a => accountKey(a) === key);
       if (existing) mergeAccountFields(existing, detailAccount);
