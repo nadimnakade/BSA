@@ -45,7 +45,7 @@ export default function LoansTab({ a }) {
       <div style={{display:'flex',justifyContent:'space-between',marginBottom:18}}>
         <div>
           <div style={{fontSize:15,fontWeight:600,color:'var(--text-primary)'}}>Loan EMIs & Obligations</div>
-          <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{loans.length} EMI debits across {Object.keys(uniqueLoans).length} lenders</div>
+          <div style={{fontSize:14,color:'var(--text-muted)',marginTop:2}}>{loans.length} EMI debits across {Object.keys(uniqueLoans).length} lenders</div>
         </div>
         <div style={{textAlign:'right'}}>
           <div style={{fontSize:20,fontWeight:700,color:'var(--red)',fontFamily:'JetBrains Mono,monospace'}}>{f(totalEMI+totalAPY)}</div>
@@ -76,7 +76,7 @@ export default function LoansTab({ a }) {
         )}
       </div>
 
-      <div style={{fontSize:12,fontWeight:500,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:8}}>All EMI Transactions</div>
+      <div style={{fontSize:14,fontWeight:500,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:8}}>All EMI Transactions</div>
       <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
         <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}}>
           <input className="ctrl" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search EMI..." style={{minWidth:240}} />
@@ -99,7 +99,7 @@ export default function LoansTab({ a }) {
         <tbody>
           {loans.map((l,i)=>(
             <tr key={i}>
-              <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12}}>{l.date}</td>
+              <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:14}}>{l.date}</td>
               <td style={{color:'var(--text-primary)',fontWeight:500}}>{l.bank}</td>
               <td><span className={`badge badge-${TYPE_COLOR[l.type]||'blue'}`}>{l.type}</span></td>
               <td style={{fontSize:11,color:'var(--text-muted)',maxWidth:200}}>{(l.description||'').slice(0,60)}</td>
@@ -108,7 +108,7 @@ export default function LoansTab({ a }) {
           ))}
           {apy.map((x,i)=>(
             <tr key={`apy-${i}`}>
-              <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12}}>{x.date}</td>
+              <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:14}}>{x.date}</td>
               <td style={{color:'var(--text-primary)',fontWeight:500}}>Atal Pension Yojana</td>
               <td><span className="badge badge-amber">pension</span></td>
               <td style={{fontSize:11,color:'var(--text-muted)'}}>{(x.description||'').slice(0,60)}</td>
@@ -120,14 +120,14 @@ export default function LoansTab({ a }) {
 
       {cc.length>0&&(
         <>
-          <div style={{fontSize:12,fontWeight:500,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'.07em',margin:'20px 0 8px'}}>Credit Card Payments</div>
+          <div style={{fontSize:14,fontWeight:500,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'.07em',margin:'20px 0 8px'}}>Credit Card Payments</div>
           <table>
             <thead><tr><th>Date</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {cc.map((x,i)=>(
                 <tr key={i}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12}}>{x.date}</td>
-                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{x.description.slice(0,80)}</td>
+                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:14}}>{x.date}</td>
+                  <td style={{fontSize:14,color:'var(--text-secondary)'}}>{x.description.slice(0,80)}</td>
                   <td style={{textAlign:'right'}}><span className="amount-debit">{f(x.amount)}</span></td>
                 </tr>
               ))}

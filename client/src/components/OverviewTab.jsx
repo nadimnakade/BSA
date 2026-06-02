@@ -2,7 +2,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 const f = n => n>=100000?`₹${(n/100000).toFixed(1)}L`:n>=1000?`₹${(n/1000).toFixed(1)}K`:`₹${n.toFixed(0)}`
 const COLORS = ['#22c55e','#ef4444','#f59e0b','#3b82f6','#a855f7','#14b8a6','#f97316','#ec4899']
 const Tip = ({active,payload}) => active&&payload?.length ? (
-  <div style={{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:8,padding:'8px 12px',fontSize:12}}>
+  <div style={{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:8,padding:'8px 12px',fontSize:14}}>
     <div style={{color:'var(--text-primary)',fontWeight:500}}>{payload[0].name}</div>
     <div style={{color:payload[0].fill||'var(--blue)',fontFamily:'JetBrains Mono'}}>{f(payload[0].value)}</div>
   </div>

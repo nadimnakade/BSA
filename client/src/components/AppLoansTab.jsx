@@ -39,7 +39,7 @@ export default function AppLoansTab({ a, onTx }) {
       <div style={{display:'flex',justifyContent:'space-between',marginBottom:16}}>
         <div>
           <div style={{fontSize:15,fontWeight:600,color:'var(--text-primary)'}}>Mobile App Loans</div>
-          <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>KreditBee · LazyPay · Navi · mPokket · CASHe · EarlySalary · Finagle & more</div>
+          <div style={{fontSize:14,color:'var(--text-muted)',marginTop:2}}>KreditBee · LazyPay · Navi · mPokket · CASHe · EarlySalary · Finagle & more</div>
         </div>
         <div style={{fontSize:20,fontWeight:700,color:'var(--purple)',fontFamily:'JetBrains Mono,monospace'}}>{f(total)}</div>
       </div>
@@ -76,7 +76,7 @@ export default function AppLoansTab({ a, onTx }) {
             <tbody>
               {loans.map((x,i)=>(
                 <tr key={i} onClick={()=>onTx && onTx(x)} style={{cursor:onTx?'pointer':'default'}}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12}}>{x.date}</td>
+                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:14}}>{x.date}</td>
                   <td style={{color:'var(--purple)',fontWeight:500}}>{x.app_name}</td>
                   <td><span className={`badge badge-${x.type==='credit'?'green':'red'}`}>{x.type}</span></td>
                   <td style={{fontSize:11,color:'var(--text-muted)',maxWidth:200}}>{(x.description||'').slice(0,60)}</td>

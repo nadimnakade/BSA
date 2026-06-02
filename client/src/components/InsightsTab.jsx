@@ -64,7 +64,7 @@ export default function InsightsTab({ a, onTx }) {
       </div>
 
       <div style={{background:'var(--bg-secondary)',borderRadius:10,padding:16,marginBottom:20}}>
-        <div style={{fontSize:12,fontWeight:600,color:'var(--text-secondary)',marginBottom:12}}>Cash Flow Summary (Avg Monthly)</div>
+        <div style={{fontSize:14,fontWeight:600,color:'var(--text-secondary)',marginBottom:12}}>Cash Flow Summary (Avg Monthly)</div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:12}}>
           {[
             {l:'Avg Salary',v:ins.avg_monthly_salary,c:'var(--green)'},
@@ -83,22 +83,22 @@ export default function InsightsTab({ a, onTx }) {
 
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
         <div>
-          <div style={{fontSize:12,fontWeight:600,color:'var(--red)',marginBottom:10}}>⚠ Risk Flags ({ins.risk_flags.length})</div>
+          <div style={{fontSize:14,fontWeight:600,color:'var(--red)',marginBottom:10}}>⚠ Risk Flags ({ins.risk_flags.length})</div>
           {ins.risk_flags.length>0 ? ins.risk_flags.map((f,i)=>(
-            <div key={i} style={{fontSize:12,color:'var(--text-secondary)',marginBottom:8,paddingLeft:12,borderLeft:'2px solid rgba(239,68,68,.5)',lineHeight:1.6}}>{f}</div>
-          )) : <div style={{fontSize:12,color:'var(--green)'}}>✓ No major risk flags detected</div>}
+            <div key={i} style={{fontSize:14,color:'var(--text-secondary)',marginBottom:8,paddingLeft:12,borderLeft:'2px solid rgba(239,68,68,.5)',lineHeight:1.6}}>{f}</div>
+          )) : <div style={{fontSize:14,color:'var(--green)'}}>✓ No major risk flags detected</div>}
         </div>
         <div>
-          <div style={{fontSize:12,fontWeight:600,color:'var(--green)',marginBottom:10}}>💡 Recommendations</div>
+          <div style={{fontSize:14,fontWeight:600,color:'var(--green)',marginBottom:10}}>💡 Recommendations</div>
           {ins.recommendations.length>0 ? ins.recommendations.map((r,i)=>(
-            <div key={i} style={{fontSize:12,color:'var(--text-secondary)',marginBottom:8,paddingLeft:12,borderLeft:'2px solid rgba(34,197,94,.5)',lineHeight:1.6}}>{r}</div>
-          )) : <div style={{fontSize:12,color:'var(--text-muted)'}}>No recommendations generated</div>}
+            <div key={i} style={{fontSize:14,color:'var(--text-secondary)',marginBottom:8,paddingLeft:12,borderLeft:'2px solid rgba(34,197,94,.5)',lineHeight:1.6}}>{r}</div>
+          )) : <div style={{fontSize:14,color:'var(--text-muted)'}}>No recommendations generated</div>}
         </div>
       </div>
 
       {(a.loan_disbursements||[]).length>0&&(
         <div style={{marginTop:20}}>
-          <div style={{fontSize:12,fontWeight:600,color:'var(--amber)',marginBottom:10}}>🏦 Loan Disbursements Detected</div>
+          <div style={{fontSize:14,fontWeight:600,color:'var(--amber)',marginBottom:10}}>🏦 Loan Disbursements Detected</div>
           <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
             <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}}>
               <input className="ctrl" value={disbQuery} onChange={e=>setDisbQuery(e.target.value)} placeholder="Search disbursements..." style={{minWidth:240}} />
@@ -123,7 +123,7 @@ export default function InsightsTab({ a, onTx }) {
             <tbody>
               {disbRows.map((x,i)=>(
                 <tr key={i} onClick={()=>onTx && onTx(x)} style={{cursor:onTx?'pointer':'default'}}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12}}>{x.date}</td>
+                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:14}}>{x.date}</td>
                   <td style={{color:'var(--text-primary)',fontWeight:500}}>{x.lender}</td>
                   <td>{badge(x.loan_type||'—', x.loan_type==='HL'?'blue':x.loan_type==='PL'?'red':x.loan_type==='BL'?'purple':x.loan_type==='GL'?'amber':x.loan_type==='AL'?'amber':x.loan_type==='EL'?'teal':'gray')}</td>
                   <td style={{fontSize:11,color:'var(--text-muted)'}}>{x.description?.slice(0,80)}</td>

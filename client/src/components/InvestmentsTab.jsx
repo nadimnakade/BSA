@@ -59,7 +59,7 @@ export default function InvestmentsTab({ a, onTx }) {
       <div style={{display:'flex',justifyContent:'space-between',marginBottom:18}}>
         <div>
           <div style={{fontSize:15,fontWeight:600,color:'var(--text-primary)'}}>Investments & Insurance</div>
-          <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>Mutual Fund SIPs + Insurance Premiums</div>
+          <div style={{fontSize:14,color:'var(--text-muted)',marginTop:2}}>Mutual Fund SIPs + Insurance Premiums</div>
         </div>
         <div style={{fontSize:20,fontWeight:700,color:'var(--amber)',fontFamily:'JetBrains Mono,monospace'}}>{f(sipTotal+insTotal)}</div>
       </div>
@@ -89,7 +89,7 @@ export default function InvestmentsTab({ a, onTx }) {
             <tbody>
               {sips.map((x,i)=>(
                 <tr key={i} onClick={()=>onTx && onTx(x)} style={{cursor:onTx?'pointer':'default'}}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12}}>{x.date}</td>
+                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:14}}>{x.date}</td>
                   <td style={{color:'var(--text-primary)',fontWeight:500}}>{x.fund_name?.slice(0,50)||'—'}</td>
                   <td><span className="badge badge-amber">{x.platform||'MF'}</span></td>
                   <td style={{textAlign:'right'}}><span className="amount-invest">{f(x.amount)}</span></td>
@@ -130,7 +130,7 @@ export default function InvestmentsTab({ a, onTx }) {
             <tbody>
               {ins.map((x,i)=>(
                 <tr key={i} onClick={()=>onTx && onTx(x)} style={{cursor:onTx?'pointer':'default'}}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12}}>{x.date}</td>
+                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:14}}>{x.date}</td>
                   <td style={{color:'var(--text-primary)',fontWeight:500}}>{x.provider}</td>
                   <td><span className="badge badge-teal">{x.policy_type}</span></td>
                   <td style={{textAlign:'right'}}><span className="amount-invest">{f(x.amount)}</span></td>

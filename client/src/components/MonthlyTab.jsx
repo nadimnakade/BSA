@@ -38,7 +38,7 @@ export default function MonthlyTab({ a }) {
   }, [months, ms, query, sort])
 
   const Tip = ({active,payload,label}) => active&&payload?.length ? (
-    <div style={{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:8,padding:'10px 14px',fontSize:12}}>
+    <div style={{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:8,padding:'10px 14px',fontSize:14}}>
       <div style={{color:'var(--text-primary)',fontWeight:500,marginBottom:6}}>{label}</div>
       {payload.map((p,i)=>(
         <div key={i} style={{color:p.fill,fontFamily:'JetBrains Mono,monospace',marginBottom:2}}>{p.name}: {f(p.value)}</div>

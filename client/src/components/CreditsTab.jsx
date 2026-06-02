@@ -41,7 +41,7 @@ export default function CreditsTab({ a }) {
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
         <div>
           <div style={{fontSize:15,fontWeight:600,color:'var(--text-primary)'}}>All Credits & Income</div>
-          <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{rows.length} credit transactions</div>
+          <div style={{fontSize:14,color:'var(--text-muted)',marginTop:2}}>{rows.length} credit transactions</div>
         </div>
         <div style={{fontSize:20,fontWeight:700,color:'var(--green)',fontFamily:'JetBrains Mono,monospace'}}>{f(total)}</div>
       </div>

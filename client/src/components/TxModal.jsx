@@ -12,7 +12,7 @@ export default function TxModal({ open, tx, onClose, file, filename }) {
   const field = (label, value) => (
     <div style={{display:'grid',gridTemplateColumns:'140px 1fr',gap:10,marginBottom:8}}>
       <div style={{fontSize:11,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'.06em'}}>{label}</div>
-      <div style={{fontSize:12,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace'}}>{value ?? '—'}</div>
+      <div style={{fontSize:14,color:'var(--text-secondary)',fontFamily:'JetBrains Mono,monospace'}}>{value ?? '—'}</div>
     </div>
   )
 
@@ -142,7 +142,7 @@ export default function TxModal({ open, tx, onClose, file, filename }) {
         {field('Amount', tx.amount ?? tx.emi_amount)}
 
         {anyMeta && (
-          <div style={{marginTop:14,marginBottom:6,fontSize:12,fontWeight:600,color:'var(--text-primary)'}}>Location</div>
+          <div style={{marginTop:14,marginBottom:6,fontSize:14,fontWeight:600,color:'var(--text-primary)'}}>Location</div>
         )}
         {anyMeta && (
           <div style={{background:'var(--bg-secondary)',border:'1px solid var(--border)',borderRadius:10,padding:14,marginBottom:14}}>
@@ -154,7 +154,7 @@ export default function TxModal({ open, tx, onClose, file, filename }) {
           </div>
         )}
 
-        <div style={{marginTop:8,marginBottom:6,fontSize:12,fontWeight:600,color:'var(--text-primary)'}}>Extracted Snippet</div>
+        <div style={{marginTop:8,marginBottom:6,fontSize:14,fontWeight:600,color:'var(--text-primary)'}}>Extracted Snippet</div>
         <pre style={{
           whiteSpace:'pre-wrap',
           wordBreak:'break-word',
@@ -162,7 +162,7 @@ export default function TxModal({ open, tx, onClose, file, filename }) {
           border:'1px solid var(--border)',
           borderRadius:10,
           padding:14,
-          fontSize:12,
+          fontSize:14,
           color:'var(--text-secondary)',
           fontFamily:'JetBrains Mono,monospace',
           lineHeight:1.5
@@ -170,17 +170,17 @@ export default function TxModal({ open, tx, onClose, file, filename }) {
 
         {showFileText && (
           <>
-            <div style={{marginTop:14,marginBottom:6,fontSize:12,fontWeight:600,color:'var(--text-primary)'}}>File View</div>
+            <div style={{marginTop:14,marginBottom:6,fontSize:14,fontWeight:600,color:'var(--text-primary)'}}>File View</div>
             <div style={{background:'var(--bg-secondary)',border:'1px solid var(--border)',borderRadius:10,padding:12}}>
               {fileTextErr ? (
-                <div style={{fontSize:12,color:'var(--red)'}}>{fileTextErr}</div>
+                <div style={{fontSize:14,color:'var(--red)'}}>{fileTextErr}</div>
               ) : !fileText ? (
-                <div style={{fontSize:12,color:'var(--text-muted)'}}>Loading...</div>
+                <div style={{fontSize:14,color:'var(--text-muted)'}}>Loading...</div>
               ) : (
                 <pre style={{
                   whiteSpace:'pre-wrap',
                   wordBreak:'break-word',
-                  fontSize:12,
+                  fontSize:14,
                   color:'var(--text-secondary)',
                   fontFamily:'JetBrains Mono,monospace',
                   lineHeight:1.5,
@@ -199,7 +199,7 @@ export default function TxModal({ open, tx, onClose, file, filename }) {
                 </pre>
               )}
               {highlight.start === null && (
-                <div style={{marginTop:8,fontSize:12,color:'var(--text-muted)'}}>No source line/row info available to highlight.</div>
+                <div style={{marginTop:8,fontSize:14,color:'var(--text-muted)'}}>No source line/row info available to highlight.</div>
               )}
             </div>
           </>
@@ -207,7 +207,7 @@ export default function TxModal({ open, tx, onClose, file, filename }) {
 
         {showPdf && (
           <>
-            <div style={{marginTop:14,marginBottom:6,fontSize:12,fontWeight:600,color:'var(--text-primary)'}}>PDF View</div>
+            <div style={{marginTop:14,marginBottom:6,fontSize:14,fontWeight:600,color:'var(--text-primary)'}}>PDF View</div>
             <PdfHighlightViewer
               file={file}
               initialQuery={pdfQuery}

@@ -49,7 +49,7 @@ export default function TransfersTab({ a, onTx }) {
     <div style={{padding:24}}>
       <div style={{marginBottom:18}}>
         <div style={{fontSize:15,fontWeight:600,color:'var(--text-primary)',marginBottom:4}}>Family / Internal Transfers</div>
-        <div style={{fontSize:12,color:'var(--text-muted)'}}>Transfers to/from NISHIKANT HIRE and related accounts</div>
+        <div style={{fontSize:14,color:'var(--text-muted)'}}>Transfers to/from NISHIKANT HIRE and related accounts</div>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:24}}>
         <div style={{background:'rgba(239,68,68,.06)',border:'1px solid rgba(239,68,68,.15)',borderRadius:10,padding:'14px 16px'}}>
@@ -89,7 +89,7 @@ export default function TransfersTab({ a, onTx }) {
               {out.map((x,i)=>(
                 <tr key={i} onClick={()=>onTx && onTx(x)} style={{cursor:onTx?'pointer':'default'}}>
                   <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:11}}>{x.date}</td>
-                  <td style={{fontSize:12,color:'var(--text-secondary)',maxWidth:160}}>{x.description?.slice(0,50)||x.to}</td>
+                  <td style={{fontSize:14,color:'var(--text-secondary)',maxWidth:160}}>{x.description?.slice(0,50)||x.to}</td>
                   <td style={{textAlign:'right'}}><span className="amount-debit">{f(x.amount)}</span></td>
                 </tr>
               ))}
@@ -116,7 +116,7 @@ export default function TransfersTab({ a, onTx }) {
               {inn.map((x,i)=>(
                 <tr key={i} onClick={()=>onTx && onTx(x)} style={{cursor:onTx?'pointer':'default'}}>
                   <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:11}}>{x.date}</td>
-                  <td style={{fontSize:12,color:'var(--text-secondary)',maxWidth:160}}>{x.description?.slice(0,50)||x.from}</td>
+                  <td style={{fontSize:14,color:'var(--text-secondary)',maxWidth:160}}>{x.description?.slice(0,50)||x.from}</td>
                   <td style={{textAlign:'right'}}><span className="amount-credit">{f(x.amount)}</span></td>
                 </tr>
               ))}

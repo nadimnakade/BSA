@@ -626,7 +626,7 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
           if (!q) return true
           const loanAmt = r.sanctioned_amount || r.high_credit || r.credit_limit || 0
           const dpd = Array.isArray(r.dpd_history) ? r.dpd_history.map(x => `${x.month} ${x.days}`).join(' ') : ''
-          const hay = `${r.lender || ''} ${r.account_type || ''} ${r.account_status || ''} ${r.opened_date || ''} ${r.closed_date || ''} ${r.account_no || ''} ${r.ownership || ''} ${r.last_update || ''} ${r.emi || ''} ${loanAmt || ''} ${r.current_balance || ''} ${r.overdue_amount || ''} ${r.dpd_max ?? ''} ${dpd}`.toLowerCase()
+          const hay = `${r.lender || ''} ${r.account_type || ''} ${r.account_status || ''} ${r.opened_date || ''} ${r.closed_date || ''} ${r.last_payment_date || ''} ${r.account_no || ''} ${r.ownership || ''} ${r.last_update || ''} ${r.emi || ''} ${loanAmt || ''} ${r.current_balance || ''} ${r.overdue_amount || ''} ${r.dpd_max ?? ''} ${dpd}`.toLowerCase()
           return hay.includes(q)
         })
         .slice()
@@ -666,13 +666,14 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
 
         {rows.length ? (
           <table>
-            <thead><tr><th>Lender</th><th>Type</th><th>Opened</th><th style={{textAlign:'right'}}>EMI</th><th style={{textAlign:'right'}}>Loan Amt</th><th style={{textAlign:'right'}}>Balance</th><th style={{textAlign:'right'}}>Overdue</th><th>DPD History</th></tr></thead>
+            <thead><tr><th>Lender</th><th>Type</th><th>Opened</th><th>Last Payment</th><th style={{textAlign:'right'}}>EMI</th><th style={{textAlign:'right'}}>Loan Amt</th><th style={{textAlign:'right'}}>Balance</th><th style={{textAlign:'right'}}>Overdue</th><th>DPD History</th></tr></thead>
             <tbody>
               {rows.map((x, i) => (
                 <tr key={i}>
                   <td style={{fontSize:12,color:'var(--text-secondary)'}}>{x.lender || '—'}</td>
                   <td style={{fontSize:12,color:'var(--text-secondary)'}}>{x.account_type || '—'}</td>
                   <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.opened_date || '—'}</td>
+                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.last_payment_date || '—'}</td>
                   <td style={{textAlign:'right'}}>{x.emi ? f(x.emi) : '—'}</td>
                   <td style={{textAlign:'right'}}>{x.sanctioned_amount ? f(x.sanctioned_amount) : (x.high_credit ? f(x.high_credit) : (x.credit_limit ? f(x.credit_limit) : '—'))}</td>
                   <td style={{textAlign:'right'}}>{x.current_balance ? f(x.current_balance) : '—'}</td>
