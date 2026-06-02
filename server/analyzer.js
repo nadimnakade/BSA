@@ -42,14 +42,15 @@ const LENDER_PATTERNS = [
   { regex: /\bUCO\b|UCO.*BANK/i,                          name:'UCO Bank',                           category:'PSB' },
   // Private Sector Banks
   { regex: /\bHDFC\b|HDFCBANK/i,                          name:'HDFC Bank',                          category:'Pvt' },
-  { regex: /\bICIC\b|\bICICI\b/i,                         name:'ICICI Bank',                         category:'Pvt' },
-  { regex: /\bUTIB\b|AXIS.*BANK/i,                        name:'Axis Bank',                          category:'Pvt' },
+  { regex: /ICICI|ICICIBANK/i,                            name:'ICICI Bank',                         category:'Pvt' },
+  { regex: /\bUTIB\b|AXIS.*BANK|AXISBANK/i,               name:'Axis Bank',                          category:'Pvt' },
   { regex: /\bKKBK\b|KOTAK/i,                             name:'Kotak Mahindra Bank',                 category:'Pvt' },
-  { regex: /\bYESB\b|YES.*BANK/i,                         name:'Yes Bank',                           category:'Pvt' },
-  { regex: /\bINDB\b|INDUS.*IND/i,                        name:'IndusInd Bank',                      category:'Pvt' },
+  { regex: /\bYESB\b|YES.*BANK|YESBANK/i,                 name:'Yes Bank',                           category:'Pvt' },
+  { regex: /\bINDB\b|INDUSIND|INDUS.*IND/i,               name:'IndusInd Bank',                      category:'Pvt' },
   { regex: /\bFDRL\b|FEDERAL.*BANK/i,                     name:'Federal Bank',                       category:'Pvt' },
-  { regex: /\bIBKL\b|\bIDFC\b/i,                          name:'IDFC First Bank',                    category:'Pvt' },
-  { regex: /\bIDIB\b|\bIDBI\b/i,                          name:'IDBI Bank',                          category:'Pvt' },
+  { regex: /\bIDFB\b|IDFC/i,                              name:'IDFC First Bank',                    category:'Pvt' },
+  { regex: /\bIBKL\b|\bIDBI\b/i,                          name:'IDBI Bank',                          category:'Pvt' },
+  { regex: /\bIDIB\b|INDIAN.*BANK/i,                      name:'Indian Bank',                        category:'PSB' },
   { regex: /\bRBLB\b|\bRBL\b/i,                           name:'RBL Bank',                           category:'Pvt' },
   { regex: /\bBAND\b|BANDHAN/i,                           name:'Bandhan Bank',                       category:'Pvt' },
   { regex: /\bAUBK\b|AU.*SMALL|AU.*FINANCE/i,             name:'AU Small Finance Bank',              category:'SFB' },
@@ -99,6 +100,29 @@ const SALARY_KEYWORDS = [
   'NACH.*PAYROLL',
 ];
 
+function normalizeLenderName(rawName) {
+  if (!rawName) return rawName;
+  const d = rawName.toUpperCase().replace(/\s+/g, '');
+  
+  // High priority exact matches - very explicit to prevent misidentification
+  if (d.includes('INDUSIND')) return 'IndusInd Bank';
+  if (d.includes('ICICI')) return 'ICICI Bank';
+  if (d.includes('IDFC')) return 'IDFC First Bank';
+  if (d.includes('HDFC')) return 'HDFC Bank';
+  if (d.includes('AXIS')) return 'Axis Bank';
+  if (d.includes('KOTAK')) return 'Kotak Mahindra Bank';
+  if (d.includes('YESBANK')) return 'Yes Bank';
+  if (d.includes('SBIN') || d.includes('STATEBANK')) return 'State Bank of India (SBI)';
+  if (d.includes('CITI')) return 'CITIBANK';
+  if (d.includes('SCB') || d.includes('STANDARDCHARTERED')) return 'SCB';
+  if (d.includes('AMEX') || d.includes('AMERICANEXPRESS')) return 'AMEX';
+
+  for (const p of LENDER_PATTERNS) {
+    if (p.regex.test(d) || p.regex.test(rawName)) return p.name;
+  }
+  return rawName;
+}
+
 function normalizeDesc(desc) {
   return (desc || '')
     .toString()
@@ -135,11 +159,28 @@ function parseDate(s) {
   return `${year}-${mon.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
 }
 
+function parseAmount(str) {
+  if (!str) return 0;
+  let clean = str.toString().replace(/₹/g, '').trim();
+  if (clean.startsWith('(') && clean.endsWith(')')) clean = `-${clean.slice(1, -1)}`;
+  clean = clean.replace(/[,\s]/g, '').replace(/(dr|cr)$/i, '');
+  return parseFloat(clean) || 0;
+}
+
+// function parseAmount(value) {
+//   if (value === undefined || value === null || value === '') return 0;
+//   const normalized = value.toString().replace(/[₹,\s]/g, '').replace(/[^0-9.\-]/g, '');
+//   const number = Number(normalized);
+//   return Number.isFinite(number) ? Math.abs(number) : 0;
+// }
+
 function parseCibilText(text) {
   const t = (text || '').toString();
   const lines = t.split('\n').map(x => x.trim()).filter(Boolean);
   const joined = lines.join('\n');
   const joinedFlat = lines.join(' ').replace(/\s+/g, ' ').trim();
+  const upper = joinedFlat.toUpperCase();
+  const typeRe = '(?:Personal\\s+Loan|Education\\s+Loan|Home\\s+Loan|Housing\\s+Loan|Vehicle\\s+Loan|Two\\s+Wheeler\\s+Loan|Used\\s+Car\\s+Loan|Gold\\s+Loan|Business\\s+Loan(?:\\s+General)?|Consumer\\s+Loan|Loan\\s+Against\\s+Property|Property\\s+Loan|Overdraft|Credit\\s+Card|Loan\\s+on\\s+Credit\\s+Card|Other)';
 
   const pickScore = () => {
     const m =
@@ -280,9 +321,36 @@ function parseCibilText(text) {
   if (totalEnq && totalEnq[1]) enquiries.total = parseNum(totalEnq[1]);
 
   const personal = {};
-  
+
+  const extractPan = (text) => {
+    if (!text) return undefined;
+    const labelMatch = text.match(/PAN\s*[:\-]?\s*([A-Z0-9\s\-]{10,20})/i);
+    if (labelMatch) {
+      const candidate = (labelMatch[1] || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (/^[A-Z]{5}\d{4}[A-Z]$/.test(candidate)) return candidate;
+    }
+    const rawMatch = text.match(/\b([A-Z]{5}\s*\d{4}\s*[A-Z])\b/i);
+    if (rawMatch) {
+      const candidate = (rawMatch[1] || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (/^[A-Z]{5}\d{4}[A-Z]$/.test(candidate)) return candidate;
+    }
+    const fallback = text.toUpperCase().replace(/[^A-Z0-9]/g, '').match(/([A-Z]{5}\d{4}[A-Z])/);
+    return fallback ? fallback[1] : undefined;
+  };
+
+  const extractMobile = (text) => {
+    if (!text) return undefined;
+    const labelMatch = text.match(/\b(?:Mobile\s*Phone|Mobile(?:\s*No(?:\.)?)?|Mobile\s*Number|Phone(?:\s*Number)?|Telephone(?:\s*Number)?)\s*[:\-]?\s*([6-9][0-9\-\s]{9,14})\b/i);
+    if (labelMatch) {
+      const digits = (labelMatch[1] || '').replace(/[^0-9]/g, '');
+      if (digits.length >= 10) return digits.slice(-10);
+    }
+    const fallback = text.match(/\b([6-9]\d{9})\b/);
+    return fallback ? fallback[1] : undefined;
+  };
+
   // Pass 0: Robust name and identification extraction
-  const helloMatch = joined.match(/\bHello,\s+([A-Z][A-Z ]{2,60})/i);
+  const helloMatch = joined.match(/\b(?:Hello|Hey),?\s+([A-Z][a-zA-Z ]{2,60})/i);
   if (helloMatch) personal.name = helloMatch[1].trim();
 
   // Better name extraction for CIBIL format
@@ -290,19 +358,23 @@ function parseCibilText(text) {
     const personalIdx = joined.toUpperCase().indexOf('PERSONAL DETAILS');
     if (personalIdx >= 0) {
       const personalSeg = joined.slice(personalIdx, personalIdx + 500);
-      const nameLineMatch = personalSeg.match(/Name\s*\n\s*([A-Z][A-Z ]{2,80})/i);
+      const nameLineMatch = personalSeg.match(/Name\s*\n\s*([A-Z][a-zA-Z ]{2,80})/i);
       if (nameLineMatch && !nameLineMatch[1].toUpperCase().includes('PERSONAL DETAILS')) personal.name = nameLineMatch[1].trim();
     }
   }
 
-  const panSearch = joined.match(/([A-Z]{5}\d{4}[A-Z])/);
-  if (panSearch) personal.pan = panSearch[1];
+  personal.pan = extractPan(joined);
+  personal.mobile = extractMobile(joined);
 
-  const dobSearch = joined.match(/Date\s*Of\s*Birth\s*(\d{2}[-\/]\d{2}[-\/]\d{4})/i);
+  const dobSearch = joined.match(/(?:Date\s*Of\s*Birth|DOB)\s*[:\-]?\s*(\d{2}[-\/]\d{2}[-\/]\d{4})/i) ||
+                    joined.match(/\b(\d{2}[-\/]\d{2}[-\/]\d{4})\b(?=.*Gender)/i);
   if (dobSearch) personal.dob = parseDate(dobSearch[1]);
 
   const genderSearch = joined.match(/Gender\s*(Male|Female|Transgender)/i);
   if (genderSearch) personal.gender = genderSearch[1];
+
+  const emailMatch = joined.match(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/);
+  if (emailMatch && !personal.email) personal.email = emailMatch[1];
 
   const addresses = [];
   const labelLine = (s) => /^[A-Z][A-Z ]{2,30}\s*[:\-]/.test((s || '').toString());
@@ -313,7 +385,7 @@ function parseCibilText(text) {
   let addrBuf = [];
   let inAddr = false;
   for (const line of lines) {
-    const m = line.match(/^([A-Z][A-Z \/_]{2,40})\s*[:\-]\s*(.*)$/);
+    const m = line.match(/^([A-Z][A-Z \/_]{2,40})(?:\s*[:\-])?\s*(.*)$/);
     if (m) {
       const k = (m[1] || '').toString().trim().toUpperCase().replace(/\s+/g, ' ');
       let v = (m[2] || '').toString().trim();
@@ -390,37 +462,110 @@ function parseCibilText(text) {
 
   const enquiry_details = [];
   const enqDateRe = /\b(\d{2}[-\/]\d{2}[-\/]\d{4})\b/;
-  let inEnq = false;
-  for (const line of lines) {
-    if (!inEnq && /\bENQUIR(?:Y|IES)\b/i.test(line) && /\bDETAIL|HISTORY|INFORMATION\b/i.test(line)) {
-      inEnq = true;
-      continue;
+  
+  // Extract enquiries using logical lines for better table row detection
+  let enqSectionIdx = upper.indexOf('ENQUIRY PURPOSE');
+  if (enqSectionIdx < 0) enqSectionIdx = upper.indexOf('CREDIT ENQUIRIES');
+  
+  if (enqSectionIdx >= 0) {
+    let enqText = joined.slice(enqSectionIdx);
+    const endIdx = enqText.slice(50).search(/\bSUMMARY:|\bACCOUNT DETAILS\b|\bCONTACT INFORMATION\b/i);
+    if (endIdx > 0) enqText = enqText.slice(0, endIdx + 50);
+
+    // Pattern: [SrNo] [Purpose] [Lender] [Date]
+    // Use a very flexible regex to capture rows, requiring at least 2 spaces between columns
+    const enqRowRe = /(\d{1,3})\s{2,}([A-Z][a-zA-Z\s]{2,40}?)\s{2,}([A-Z][A-Z0-9 &.'-]{2,60}?)\s{2,}(\d{2}[-\/]\d{2}[-\/]\d{4})/gi;
+    let m;
+    while ((m = enqRowRe.exec(enqText)) !== null) {
+      const purpose = m[2].trim();
+      const member = m[3].trim();
+      const date = parseDate(m[4]);
+      
+      if (purpose && member && date && !/Report|Number|ECN|Table|Contents|Sr\. No|Date|Page/i.test(member) && !/Report|Number|ECN|Date/i.test(purpose)) {
+        enquiry_details.push({ date, member, purpose });
+      }
     }
-    if (!inEnq && (/\bENQUIR(?:Y|IES)\s+PURPOSE\b/i.test(line) || /\bENQUIRE[D|D]\s+ON\b/i.test(line) || /\bENQUIR(?:IED|ED)\s+ON\b/i.test(line))) {
-      inEnq = true;
-      continue;
+
+    if (enquiry_details.length === 0) {
+      const enqLines = enqText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      let current = {};
+      for (let i = 0; i < enqLines.length; i++) {
+        const line = enqLines[i];
+        const memberMatch = line.match(/^(?:Member\s+Name)\s*[:\-]?\s*(.+)$/i);
+        const dateMatch = line.match(/^(?:Date\s+Of\s+Enquiry)\s*[:\-]?\s*(.+)$/i);
+        const purposeMatch = line.match(/^(?:Enquiry\s+Purpose)\s*[:\-]?\s*(.+)$/i);
+
+        if (memberMatch) {
+          if (current.member || current.date || current.purpose) {
+            if (current.member && current.date && current.purpose) enquiry_details.push({ ...current });
+            current = {};
+          }
+          current.member = memberMatch[1].trim();
+          continue;
+        }
+
+        if (dateMatch) {
+          current.date = parseDate(dateMatch[1].trim()) || undefined;
+          continue;
+        }
+
+        if (purposeMatch) {
+          current.purpose = purposeMatch[1].trim();
+          continue;
+        }
+
+        // Support cases where the field label is on one line and value on the next line
+        const labelOnlyMatch = line.match(/^(Member\s+Name|Date\s+Of\s+Enquiry|Enquiry\s+Purpose)\s*[:\-]?$/i);
+        if (labelOnlyMatch && i + 1 < enqLines.length) {
+          const nextValue = enqLines[i + 1].trim();
+          if (/^Member\s+Name$/i.test(labelOnlyMatch[1])) {
+            current.member = nextValue;
+          } else if (/^Date\s+Of\s+Enquiry$/i.test(labelOnlyMatch[1])) {
+            current.date = parseDate(nextValue) || undefined;
+          } else if (/^Enquiry\s+Purpose$/i.test(labelOnlyMatch[1])) {
+            current.purpose = nextValue;
+          }
+          i += 1;
+          continue;
+        }
+      }
+      if (current.member && current.date && current.purpose) enquiry_details.push({ ...current });
     }
-    if (!inEnq) continue;
-    if (/\bACCOUNT\b/i.test(line) && /\bTYPE\b/i.test(line)) break;
-    const dm = line.match(enqDateRe);
-    if (!dm) continue;
-    
-    const date = parseDate(dm[1]);
-    let member = '';
-    let purpose = '';
-    let amount = undefined;
-    const rest = line.replace(enqDateRe, '').trim();
-    const parts = rest.split(/\s{2,}/).map(x => x.trim()).filter(Boolean);
-    if (parts.length >= 2) {
-      member = parts[0] || '';
-      purpose = parts[1] || '';
-      if (parts[2]) amount = parseNum(parts[2]);
-    } else {
-      const amt = rest.match(/\b(\d[\d,]{3,})\b(?!.*\b\d[\d,]{3,}\b)/);
-      if (amt) amount = parseNum(amt[1]);
-      purpose = rest;
+  }
+
+  // Fallback to line-by-line if global extraction found nothing
+  if (enquiry_details.length === 0) {
+    let inEnq = false;
+    for (const line of lines) {
+      if (!inEnq && /\bENQUIR(?:Y|IES)\b/i.test(line) && (/\bDETAIL|HISTORY|INFORMATION\b/i.test(line) || /\bPURPOSE\b/i.test(line))) {
+        inEnq = true;
+      }
+      if (!inEnq) continue;
+      if (/\bACCOUNT\b/i.test(line) && /\bTYPE\b/i.test(line)) break;
+      if (/\bSUMMARY:\b/i.test(line)) break;
+
+      const dm = line.match(enqDateRe);
+       if (!dm) continue;
+      
+      const date = parseDate(dm[1]);
+      let member = '';
+      let purpose = '';
+      let amount = undefined;
+      const rest = line.replace(enqDateRe, '').trim();
+      const parts = rest.split(/\s{2,}/).map(x => x.trim()).filter(Boolean);
+      if (parts.length >= 2) {
+        member = parts[0] || '';
+        purpose = parts[1] || '';
+        if (parts[2]) amount = parseNum(parts[2]);
+      } else {
+        const amt = rest.match(/\b(\d[\d,]{3,})\b(?!.*\b\d[\d,]{3,}\b)/);
+        if (amt) amount = parseNum(amt[1]);
+        purpose = rest;
+      }
+      if (member && !/Report|Number|ECN|Table|Date/i.test(member)) {
+        enquiry_details.push({ date, member, purpose, amount, raw: line });
+      }
     }
-    enquiry_details.push({ date, member, purpose, amount, raw: line });
   }
 
   const accounts = [];
@@ -527,82 +672,104 @@ function parseCibilText(text) {
   push();
 
   const summaryAccounts = [];
-  const upper = joinedFlat.toUpperCase();
-  const typeRe = '(?:Personal\\s+Loan|Education\\s+Loan|Home\\s+Loan|Housing\\s+Loan|Vehicle\\s+Loan|Two\\s+Wheeler\\s+Loan|Used\\s+Car\\s+Loan|Gold\\s+Loan|Business\\s+Loan(?:\\s+General)?|Consumer\\s+Loan|Loan\\s+Against\\s+Property|Property\\s+Loan|Overdraft|Credit\\s+Card|Loan\\s+on\\s+Credit\\s+Card|Other)';
 
+  // Helper to parse summary rows with better accuracy (handles potential 2-line wraps)
+  const parseSummaryRows = (sectionText, isCC = false) => {
+    const rows = [];
+    const rawLines = sectionText.split('\n').map(l => l.trim()).filter(l => l);
+    
+    // Combine lines that look like they belong together (e.g. bank name split from rest of row)
+    const lines = [];
+    for (let i = 0; i < rawLines.length; i++) {
+      let current = rawLines[i];
+      // If current line is just a bank name and next line starts with account type, combine them
+      if (i + 1 < rawLines.length) {
+        const next = rawLines[i+1];
+        const nextStartsWithType = new RegExp(`^${typeRe}`, 'i').test(next);
+        if (!new RegExp(`${typeRe}`, 'i').test(current) && nextStartsWithType) {
+          current += ' ' + next;
+          i++;
+        }
+      }
+      lines.push(current);
+    }
+
+    const rowRegex = new RegExp(`([A-Z][A-Z0-9 &.'-]{2,40})\\s+(${typeRe})\\s+([A-Z0-9X*]{4,})\\s+(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+(Active\\*?\\*?|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|Special\\s*Mention|SMA)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+([\\d,NA-]+)\\s+([\\d,NA-]+)(?:\\s+([\\d,NA-]+))?(?:\\s+([\\d,NA-]+))?`, 'i');
+    
+    for (const line of lines) {
+      const m = line.match(rowRegex);
+      if (m) {
+        const lenderRaw = m[1].trim();
+        if (/\bDATE\b|\bACCOUNT\b|\bSTATUS\b|\bUPDATE\b|\bTYPE\b/i.test(lenderRaw)) continue;
+        
+        const lender = normalizeLenderName(lenderRaw);
+        const account_type = m[2].trim();
+        const n1 = parseNum(m[8]) || undefined;
+        const n2 = parseNum(m[9]) || undefined;
+        
+        const rec = {
+          lender,
+          account_type,
+          account_no: m[3].trim(),
+          ownership: m[4].trim(),
+          opened_date: parseDate(m[5]),
+          account_status: m[6].replace(/\s+/g, ' ').trim(),
+          last_update: parseDate(m[7]),
+          current_balance: n2,
+          overdue_amount: parseNum(m[10]) || undefined,
+          emi: parseNum(m[11]) || undefined,
+        };
+        
+        if (isCC || /credit\s*card/i.test(account_type)) {
+          rec.high_credit = n1;
+        } else {
+          rec.sanctioned_amount = n1;
+        }
+        rows.push(rec);
+      }
+    }
+    return rows;
+  };
+
+  // Pass 1: Summary: Loan Accounts
   const idxLoan = upper.indexOf('SUMMARY: LOAN ACCOUNTS');
   if (idxLoan >= 0) {
-    let seg = joinedFlat.slice(idxLoan, idxLoan + 40000);
-    const hdr = seg.toUpperCase().indexOf('OUTSTANDING BALANCE');
-    if (hdr >= 0) seg = seg.slice(hdr + 'OUTSTANDING BALANCE'.length);
-    const rowRe = new RegExp(`([A-Z][A-Z0-9 &.'-]{2,80}?)\\s+(${typeRe})\\s+(X{3,}\\d{3,})\\s+(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+(Active\\*?\\*?|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|Special\\s*Mention|SMA)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+([\\d,]+)\\s+([\\d,]+)(?:\\s+([\\d,]+))?(?:\\s+([\\d,]+))?`, 'gi');
-    let m;
-    while ((m = rowRe.exec(seg)) !== null) {
-      const lender = (m[1] || '').toString().trim();
-      if (!lender || /\bDATE\b|\bACCOUNT\b|\bSTATUS\b|\bUPDATE\b/i.test(lender)) continue;
-      const account_type = (m[2] || '').toString().trim();
-      const n1 = parseNum(m[8]) || undefined;
-      const n2 = parseNum(m[9]) || undefined;
-      summaryAccounts.push({
-        lender,
-        account_type,
-        account_no: (m[3] || '').trim(),
-        ownership: (m[4] || '').trim(),
-        opened_date: parseDate(m[5]),
-        account_status: (m[6] || '').replace(/\s+/g, ' ').trim(),
-        last_update: parseDate(m[7]),
-        sanctioned_amount: /credit\s*card/i.test(account_type) ? undefined : n1,
-        high_credit: /credit\s*card/i.test(account_type) ? n1 : undefined,
-        current_balance: n2,
-        overdue_amount: parseNum(m[10]) || undefined,
-        emi: parseNum(m[11]) || undefined,
-      });
-    }
+    const sectionStart = t.toUpperCase().indexOf('SUMMARY: LOAN ACCOUNTS');
+    let sectionText = t.slice(sectionStart);
+    const nextSectionIdx = sectionText.slice(20).search(/\bSUMMARY:|\bACCOUNT DETAILS\b/i);
+    if (nextSectionIdx > 0) sectionText = sectionText.slice(0, nextSectionIdx + 20);
+    
+    summaryAccounts.push(...parseSummaryRows(sectionText, false));
   }
 
+  // Pass 2: Summary: Credit Cards
   const idxCC = upper.indexOf('SUMMARY: CREDIT CARDS');
   if (idxCC >= 0) {
-    let seg = joinedFlat.slice(idxCC, idxCC + 40000);
-    const hdr = seg.toUpperCase().indexOf('OUTSTANDING BALANCE');
-    if (hdr >= 0) seg = seg.slice(hdr + 'OUTSTANDING BALANCE'.length);
-    const rowRe = new RegExp(`([A-Z][A-Z0-9 &.'-]{2,80}?)\\s+(${typeRe})\\s+(X{3,}\\d{3,})\\s+(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+(Active\\*?\\*?|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|Special\\s*Mention|SMA)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+([\\d,NA-]+)\\s+([\\d,NA-]+)(?:\\s+([\\d,NA-]+))?(?:\\s+([\\d,NA-]+))?`, 'gi');
-    let m;
-    while ((m = rowRe.exec(seg)) !== null) {
-      const lender = (m[1] || '').toString().trim();
-      if (!lender || /\bDATE\b|\bACCOUNT\b|\bSTATUS\b|\bUPDATE\b/i.test(lender)) continue;
-      const account_type = (m[2] || '').toString().trim();
-      const n1 = parseNum(m[8]) || undefined;
-      const n2 = parseNum(m[9]) || undefined;
-      summaryAccounts.push({
-        lender,
-        account_type,
-        account_no: (m[3] || '').trim(),
-        ownership: (m[4] || '').trim(),
-        opened_date: parseDate(m[5]),
-        account_status: (m[6] || '').replace(/\s+/g, ' ').trim(),
-        last_update: parseDate(m[7]),
-        high_credit: n1,
-        current_balance: n2,
-        overdue_amount: parseNum(m[10]) || undefined,
-        emi: parseNum(m[11]) || undefined,
-      });
-    }
+    const sectionStart = t.toUpperCase().indexOf('SUMMARY: CREDIT CARDS');
+    let sectionText = t.slice(sectionStart);
+    const nextSectionIdx = sectionText.slice(20).search(/\bSUMMARY:|\bACCOUNT DETAILS\b/i);
+    if (nextSectionIdx > 0) sectionText = sectionText.slice(0, nextSectionIdx + 20);
+    
+    summaryAccounts.push(...parseSummaryRows(sectionText, true));
   }
 
+  // Pass 3: Catch-all regex for accounts that might have been missed
   const seenSummaryKeys = new Set(summaryAccounts.map(accountKey));
-  const accountNoRe = /\b(X{3,}\d{3,})\b/gi;
+  const accountNoRe = /\b([A-Z0-9X*]{4,})\b/gi;
   let mm;
   while ((mm = accountNoRe.exec(joinedFlat)) !== null) {
     const accountNo = (mm[1] || '').trim();
+    if (!accountNo || /\b(?:ACCOUNT|NUMBER|NO|OWNERSHIP|TYPE|STATUS|DATE|AMOUNT|BALANCE|LIMIT|INSTITUTION|LENDER|SR|NO)\b/i.test(accountNo)) continue;
     const before = joinedFlat.slice(Math.max(0, mm.index - 150), mm.index).replace(/\s+/g, ' ').trim();
     const after = joinedFlat.slice(mm.index + accountNo.length, mm.index + accountNo.length + 250).replace(/\s+/g, ' ').trim();
     const beforeMatch = before.match(new RegExp(`(?:^|\\s)([A-Z][A-Z0-9 &.'-]{2,60})\\s+(${typeRe})\\s*$`, 'i'));
-    const afterMatch = after.match(/^\s*(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\s+(\d{2}-\d{2}-\d{4})\s+(Active\*?\*?|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|Special\s*Mention|SMA)\s+(\d{2}-\d{2}-\d{4})\s+([\d,NA-]+)\s+([\d,NA-]+)(?:\s+([\d,NA-]+))?(?:\s+([\d,NA-]+))?/i);
+    const afterMatch = after.match(/^\s*(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\s+(\d{2}-\d{2}-\d{4})\s+(Active\*?\*?|Closed|Settled|Written\*?\s*Off|Suit\*?\s*Filed|Wilful\*?\s*Default|Loss|Special\*?\s*Mention|SMA)\s+(\d{2}-\d{2}-\d{4})\s+([\d,NA-]+)\s+([\d,NA-]+)(?:\s+([\d,NA-]+))?(?:\s+([\d,NA-]+))?/i);
     
     if (beforeMatch && afterMatch) {
-      const lender = (beforeMatch[1] || '').trim();
+      const lenderRaw = (beforeMatch[1] || '').trim();
+      if (!lenderRaw || /\bDATE\b|\bACCOUNT\b|\bSTATUS\b|\bUPDATE\b/i.test(lenderRaw)) continue;
+      const lender = normalizeLenderName(lenderRaw);
       const account_type = (beforeMatch[2] || '').trim();
-      if (!lender || /\bDATE\b|\bACCOUNT\b|\bSTATUS\b|\bUPDATE\b/i.test(lender)) continue;
 
       const rec = {
         lender,
@@ -648,23 +815,24 @@ function parseCibilText(text) {
     }
   }
 
-  const detailSegments = joined.split(/(?=\b(?:MEMBER\s*NAME|LENDER|BANK\s*NAME|FINANCIER|INSTITUTION)\b|Account\s+Details\s+[A-Z][A-Z0-9 &.'-]{2,60}\s+(?:Active|Closed|Settled))/i);
+  const detailSegments = joined.split(/(?=\b(?:MEMBER\s*NAME|LENDER|BANK\s*NAME|FINANCIER|INSTITUTION)\b|Account\s+Details\s+[A-Z][A-Z0-9 &.'-]{2,60}\s+(?:Active|Closed|Settled|Written|Suit|Wilful|Loss|SMA))/i);
   const dpdByAccount = new Map();
   for (let i = 0; i < detailSegments.length; i++) {
     const segment = detailSegments[i];
-    const prevSegment = i > 0 ? detailSegments[i - 1] : '';
-    const searchWindow = prevSegment + '\n' + segment;
+    // Removed prevSegment from searchWindow to prevent data leakage between accounts
+    const searchWindow = segment;
 
     const segmentAccountNo =
       (segment.match(/\b(?:ACCOUNT\s*(?:NUMBER|NO)|ACCT\s*(?:NUMBER|NO))\s*[:\-]?\s*\n?\s*([A-Z0-9X*]{4,})/i) || [])[1] ||
       (segment.match(/\b([A-Z0-9X*]{4,})\b/i) || [])[1] ||
       '';
-    const segmentLender =
+    const segmentLenderRaw =
       (segment.match(/\b(?:MEMBER\s*NAME|LENDER|BANK\s*NAME|FINANCIER|INSTITUTION)\s*[:\-]?\s*\n?\s*(.+?)(?:\n|$)/i) || [])[1] ||
       (segment.match(/^\s*([A-Z][A-Z0-9 &.'-]{2,80})\s*\n\s*Account\s+Number/im) || [])[1] ||
       (segment.match(/\b([A-Z][A-Z0-9 &.'-]{2,60})\s+(?:Active|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|Special\s*Mention|SMA)[*]*\s+Account Number:/i) || [])[1] ||
       (segment.match(/\b(?:Account\s+Information|Credit\s+Account)\s*\n\s*([A-Z][A-Z0-9 &.'-]{2,80})/i) || [])[1] ||
       '';
+    const segmentLender = normalizeLenderName(segmentLenderRaw);
     const account_type = 
       (segment.match(/\b(?:ACCOUNT|ACCT)\s*TYPE\s*[:\-]?\s*\n?\s*(.+?)(?:\n|\s{2,}|$)/i) || [])[1] || 
       '';
@@ -698,8 +866,7 @@ function parseCibilText(text) {
       if (detailAccount.account_no && /\b(?:ACCOUNT|NUMBER|NO|OWNERSHIP|TYPE|STATUS|DATE|AMOUNT|BALANCE|LIMIT|INSTITUTION|LENDER|SR|NO)\b/i.test(detailAccount.account_no)) continue;
       
       const key = accountKey(detailAccount);
-      const existing = accounts.find(a => accountKey(a) === key) ||
-        accounts.find(a => detailAccount.account_no && (a.account_no || '').toString().replace(/[^A-Z0-9]/gi, '').toUpperCase() === detailAccount.account_no.toString().replace(/[^A-Z0-9]/gi, '').toUpperCase());
+      const existing = accounts.find(a => accountKey(a) === key);
       if (existing) mergeAccountFields(existing, detailAccount);
       else if (detailAccount.account_no && (detailAccount.lender || detailAccount.account_type)) accounts.push(detailAccount);
     }
@@ -1041,5 +1208,5 @@ function computeLoanSummary(analysis) {
 
 module.exports = {
   LOAN_TYPE_MAP, LENDER_PATTERNS, SALARY_KEYWORDS, NACH_PATTERNS, APP_LOAN_PATTERNS, SIP_PATTERNS, SALARY_SOURCE_MAP,
-  normalizeDesc, normUpper, anyMatch, parseDate, parseCibilText, crossVerifyCibil, assessEligibility, assessUnderwriting, analyzeTransactions,
+  normalizeDesc, normUpper, anyMatch, parseDate, parseAmount, parseCibilText, crossVerifyCibil, assessEligibility, assessUnderwriting, analyzeTransactions,
 };
