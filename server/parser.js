@@ -14,14 +14,14 @@ const MONEY_RE = /(?:\d{1,3}(?:,\s?\d{2,3})+|\d+)\.\d{2}/g;
 const PDF_TEXT_ITEM_THRESHOLD = 5;
 
 const salaryKeywords = [/\bSALARY\b/i, /\bPAYROLL\b/i, /VARAHE/i, /SIPL/i, /INFOSYS/i, /WIPRO/i, /TATA\s+CONSULTANCY/i, /HCL\s+TECH/i];
-  const emiKeywords = [/EMI/i, /LOAN/i, /NACH/i, /ACH/i, /MANDATE/i];
+const emiKeywords = [/EMI/i, /LOAN/i, /NACH/i, /ACH/i, /MANDATE/i];
 
-  // Helper to categorize transaction during parsing
-  const categorizeTx = (tx) => {
-    const d = (tx.description || '').toUpperCase();
-    if (salaryKeywords.some(k => k.test(d))) tx.isSalary = true;
-    if (emiKeywords.some(k => k.test(d))) tx.isEMI = true;
-  };
+// Helper to categorize transaction during parsing
+const categorizeTx = (tx) => {
+  const d = (tx.description || '').toUpperCase();
+  if (salaryKeywords.some(k => k.test(d))) tx.isSalary = true;
+  if (emiKeywords.some(k => k.test(d))) tx.isEMI = true;
+};
 
 function errWithCode(message, code) {
   const e = new Error(message);
@@ -37,7 +37,7 @@ function extractAmounts(line) {
   const out = [];
   let m;
   MONEY_RE.lastIndex = 0;
-  
+
   // Use a modified regex to catch amounts joined without spaces (common in ICICI/Kotak text)
   // e.g. "1,850.007,31,191.66"
   const joinedMoneyRe = /(\d[0-9,]*\.\d{2})(\d[0-9,]*\.\d{2})/g;
@@ -98,7 +98,7 @@ async function extractPdfTextPdfjs(filePath) {
   }
   try {
     await doc.destroy();
-  } catch {}
+  } catch { }
   return out;
 }
 
@@ -128,7 +128,7 @@ async function classifyPdfPages(filePath, threshold = PDF_TEXT_ITEM_THRESHOLD) {
   } finally {
     try {
       await doc.destroy();
-    } catch {}
+    } catch { }
   }
 
   return {
@@ -150,7 +150,7 @@ function runExternal(cmd, args, timeoutMs = 300_000) {
       killed = true;
       try {
         child.kill("SIGKILL");
-      } catch {}
+      } catch { }
       reject(errWithCode(`${cmd} timed out while doing OCR`, "OCR_TIMEOUT"));
     }, timeoutMs);
 
@@ -174,10 +174,10 @@ async function extractPdfTextOcr(filePath) {
   try {
     try {
       fs.unlinkSync(sidecar);
-    } catch {}
+    } catch { }
     try {
       fs.unlinkSync(outPdf);
-    } catch {}
+    } catch { }
 
     const args = [
       "-m",
@@ -226,10 +226,10 @@ async function extractPdfTextOcr(filePath) {
   } finally {
     try {
       if (fs.existsSync(sidecar)) fs.unlinkSync(sidecar);
-    } catch {}
+    } catch { }
     try {
       if (fs.existsSync(outPdf)) fs.unlinkSync(outPdf);
-    } catch {}
+    } catch { }
   }
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "bank-ocr-"));
@@ -297,7 +297,7 @@ async function extractPdfTextOcr(filePath) {
   } finally {
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true });
-    } catch {}
+    } catch { }
   }
 }
 
@@ -359,7 +359,7 @@ async function parsePDF(filePath) {
 
   try {
     pageClassification = await classifyPdfPages(filePath);
-    console.log("[PDF] page classification:", pageClassification);
+
     if (pageClassification.ocrPages > 0) {
       metadataWarnings.push(
         `${pageClassification.ocrPages} page(s) appear to require OCR`,
@@ -394,7 +394,7 @@ async function parsePDF(filePath) {
     const pdfParse = require("pdf-parse");
     const data2 = await pdfParse(fs.readFileSync(filePath));
     rawAlt = data2.text || "";
-  } catch {}
+  } catch { }
 
   if ((raw || "").trim().length < 50) {
     try {
@@ -413,7 +413,7 @@ async function parsePDF(filePath) {
     }
   }
 
-  console.log("[PDF] raw text length:", (raw || "").length);
+
   if ((raw || "").trim().length < 50) {
     throw errWithCode(
       "No extractable text found in this PDF. This looks like a scanned/image-only statement. Please export CSV/XLSX from netbanking or download a text-based PDF.",
@@ -421,15 +421,15 @@ async function parsePDF(filePath) {
     );
   }
 
-  console.log("[PDF] first 800 chars:\n", raw.slice(0, 800));
+
 
   let bestRaw = raw;
   let best = parseText(raw);
-  console.log("[PDF] Generic text parser:", best.length);
+
 
   if ((rawAlt || "").trim().length >= 50) {
     const txAlt = parseText(rawAlt);
-    console.log("[PDF] Generic text parser (alt):", txAlt.length);
+
     if (txAlt.length > best.length) {
       best = txAlt;
       bestRaw = rawAlt;
@@ -440,7 +440,7 @@ async function parsePDF(filePath) {
     const rawJs = await extractPdfTextPdfjs(filePath);
     if ((rawJs || "").trim().length >= 50) {
       const txJs = parseText(rawJs);
-      console.log("[PDF] Generic text parser (pdfjs):", txJs.length);
+
       if (txJs.length > best.length) {
         best = txJs;
         bestRaw = rawJs;
@@ -451,7 +451,7 @@ async function parsePDF(filePath) {
   }
 
   const union = parseUnionBankText(raw);
-  console.log("[PDF] Union Bank parser:", union.length);
+
   if (union.length > best.length) {
     best = union;
     bestRaw = raw;
@@ -667,27 +667,27 @@ function parseText(text) {
   }
   if (currentTx) transactions.push(currentTx);
 
-    // Post-process: fill debit/credit using balance deltas
-    let lastBalance = null;
-    for (let i = 0; i < transactions.length; i++) {
-      const tx = transactions[i];
-      const prevBalance = lastBalance;
-      if (prevBalance !== null && tx.balance !== 0 && !tx.debit && !tx.credit) {
-        const delta = tx.balance - prevBalance;
-        if (delta > 0) {
-          tx.credit = delta;
-          tx.debit = 0;
-        } else if (delta < 0) {
-          tx.debit = Math.abs(delta);
-          tx.credit = 0;
-        }
+  // Post-process: fill debit/credit using balance deltas
+  let lastBalance = null;
+  for (let i = 0; i < transactions.length; i++) {
+    const tx = transactions[i];
+    const prevBalance = lastBalance;
+    if (prevBalance !== null && tx.balance !== 0 && !tx.debit && !tx.credit) {
+      const delta = tx.balance - prevBalance;
+      if (delta > 0) {
+        tx.credit = delta;
+        tx.debit = 0;
+      } else if (delta < 0) {
+        tx.debit = Math.abs(delta);
+        tx.credit = 0;
       }
-      if (tx.balance !== 0) lastBalance = tx.balance;
-
-      // Clean description and categorize
-      tx.description = cleanDesc(tx.description || tx.raw || "");
-      categorizeTx(tx);
     }
+    if (tx.balance !== 0) lastBalance = tx.balance;
+
+    // Clean description and categorize
+    tx.description = cleanDesc(tx.description || tx.raw || "");
+    categorizeTx(tx);
+  }
 
   const cleaned = transactions.filter(
     (t) =>

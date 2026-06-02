@@ -123,7 +123,7 @@ app.post('/api/analyze', upload.single('statement'), async (req, res) => {
 });
 
 app.post('/api/analyze-cibil', upload.single('cibil'), async (req, res) => {
-  console.log("Active Loans:");
+
   const filePath = req.file?.path;
   const cibilPassword = normStr(req.body?.cibil_password);
   try {
@@ -136,17 +136,11 @@ app.post('/api/analyze-cibil', upload.single('cibil'), async (req, res) => {
 
     const cibil = parseCibilText(cibilText);
 
-    console.log("CIBIL KEYS:", Object.keys(cibil));
-    console.log("CIBIL:", JSON.stringify(cibil, null, 2));
+
     const analysis = analyzeTransactions([]);
     analysis.cibil = { filename: req.file.originalname, ...cibil };
     analysis.underwriting = assessUnderwriting(analysis, analysis.cibil);
 
-    console.log(
-      "Active Loans:",
-      cibil.activeLoans?.length,
-      cibil.activeLoans
-    );
     res.json({ success: true, filename: req.file.originalname, transaction_count: 0, analysis });
   } catch (err) {
     const msg = (err?.message || 'Failed to parse CIBIL report').toString();
