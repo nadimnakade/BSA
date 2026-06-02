@@ -4,7 +4,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { parseFile } = require('./parser');
-const { analyzeTransactions, parseCibilText, assessUnderwriting } = require('./analyzer');
+const { analyzeTransactions } = require('./analyzer');
+const { parseCibilText, assessUnderwriting } = require('./cibil_parser');
 
 const app = express();
 const PORT = process.env.PORT || 5000;

@@ -9,16 +9,17 @@ const Tip = ({active,payload}) => active&&payload?.length ? (
 ) : null
 
 export default function OverviewTab({ a }) {
-  const loanT = a.loans.reduce((s,x)=>s+(x.emi_amount||0),0)
-  const rentT = a.rent.reduce((s,x)=>s+x.amount,0)
-  const sipT = a.sip_investments.reduce((s,x)=>s+x.amount,0)
-  const insT = a.insurance.reduce((s,x)=>s+x.amount,0)
-  const appT = a.app_loans.reduce((s,x)=>s+x.amount,0)
-  const utilT = a.utilities.reduce((s,x)=>s+x.amount,0)
-  const apyT = (a.apy_pension||[]).reduce((s,x)=>s+x.amount,0)
-  const salT = a.salary.reduce((s,x)=>s+x.amount,0)
-  const pfT = (a.pf_credits||[]).reduce((s,x)=>s+x.amount,0)
-  const transOut = (a.family_transfers?.out||[]).reduce((s,x)=>s+x.amount,0)
+  const safeA = a || {}
+  const loanT = (safeA.loans||[]).reduce((s,x)=>s+((x.emi_amount||0)),0)
+  const rentT = (safeA.rent||[]).reduce((s,x)=>s+(x.amount||0),0)
+  const sipT = (safeA.sip_investments||[]).reduce((s,x)=>s+(x.amount||0),0)
+  const insT = (safeA.insurance||[]).reduce((s,x)=>s+(x.amount||0),0)
+  const appT = (safeA.app_loans||[]).reduce((s,x)=>s+(x.amount||0),0)
+  const utilT = (safeA.utilities||[]).reduce((s,x)=>s+(x.amount||0),0)
+  const apyT = (safeA.apy_pension||[]).reduce((s,x)=>s+(x.amount||0),0)
+  const salT = (safeA.salary||[]).reduce((s,x)=>s+(x.amount||0),0)
+  const pfT = (safeA.pf_credits||[]).reduce((s,x)=>s+(x.amount||0),0)
+  const transOut = (safeA.family_transfers?.out||[]).reduce((s,x)=>s+(x.amount||0),0)
 
   const pie = [
     loanT>0&&{name:'Loan EMIs',value:loanT},

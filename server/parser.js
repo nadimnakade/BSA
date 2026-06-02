@@ -13,6 +13,16 @@ const { parseAmount, parseDate } = require("./analyzer");
 const MONEY_RE = /(?:\d{1,3}(?:,\s?\d{2,3})+|\d+)\.\d{2}/g;
 const PDF_TEXT_ITEM_THRESHOLD = 5;
 
+const salaryKeywords = [/\bSALARY\b/i, /\bPAYROLL\b/i, /VARAHE/i, /SIPL/i, /INFOSYS/i, /WIPRO/i, /TATA\s+CONSULTANCY/i, /HCL\s+TECH/i];
+  const emiKeywords = [/EMI/i, /LOAN/i, /NACH/i, /ACH/i, /MANDATE/i];
+
+  // Helper to categorize transaction during parsing
+  const categorizeTx = (tx) => {
+    const d = (tx.description || '').toUpperCase();
+    if (salaryKeywords.some(k => k.test(d))) tx.isSalary = true;
+    if (emiKeywords.some(k => k.test(d))) tx.isEMI = true;
+  };
+
 function errWithCode(message, code) {
   const e = new Error(message);
   e.code = code;
@@ -27,15 +37,21 @@ function extractAmounts(line) {
   const out = [];
   let m;
   MONEY_RE.lastIndex = 0;
-  while ((m = MONEY_RE.exec(line)) !== null) {
+  
+  // Use a modified regex to catch amounts joined without spaces (common in ICICI/Kotak text)
+  // e.g. "1,850.007,31,191.66"
+  const joinedMoneyRe = /(\d[0-9,]*\.\d{2})(\d[0-9,]*\.\d{2})/g;
+  const splitLine = line.replace(joinedMoneyRe, '$1 $2');
+
+  while ((m = MONEY_RE.exec(splitLine)) !== null) {
     const idx = m.index ?? 0;
     let j = idx - 1;
-    while (j >= 0 && /\s/.test(line[j])) j--;
+    while (j >= 0 && /\s/.test(splitLine[j])) j--;
     let sign = 0;
-    if (j >= 0 && (line[j] === "+" || line[j] === "-"))
-      sign = line[j] === "+" ? 1 : -1;
+    if (j >= 0 && (splitLine[j] === "+" || splitLine[j] === "-"))
+      sign = splitLine[j] === "+" ? 1 : -1;
 
-    const after = line
+    const after = splitLine
       .slice(idx + m[0].length, idx + m[0].length + 8)
       .toUpperCase();
     if (!sign && /\bCR\b/.test(after)) sign = 1;
@@ -561,9 +577,9 @@ function parseText(text) {
         balance = amounts[amounts.length - 1].value;
         const txAmt = amounts[amounts.length - 2];
         // Look for debit or credit markers
-        if (/withdrawal|debit|dr\b/i.test(line)) {
+        if (/withdrawal|debit|dr\b/i.test(line) || /withdrawal|debit|dr\b/i.test(descNoRow)) {
           debit = txAmt.value;
-        } else if (/deposit|credit|cr\b/i.test(line)) {
+        } else if (/deposit|credit|cr\b/i.test(line) || /deposit|credit|cr\b/i.test(descNoRow)) {
           credit = txAmt.value;
         } else if (txAmt.sign > 0) {
           credit = txAmt.value;
@@ -575,9 +591,9 @@ function parseText(text) {
         }
       } else if (amounts.length === 1) {
         const txAmt = amounts[0];
-        if (/withdrawal|debit|dr\b/i.test(line) || txAmt.sign < 0)
+        if (/withdrawal|debit|dr\b/i.test(line) || /withdrawal|debit|dr\b/i.test(descNoRow) || txAmt.sign < 0)
           debit = txAmt.value;
-        else if (/deposit|credit|cr\b/i.test(line) || txAmt.sign > 0)
+        else if (/deposit|credit|cr\b/i.test(line) || /deposit|credit|cr\b/i.test(descNoRow) || txAmt.sign > 0)
           credit = txAmt.value;
         else {
           pendingBalance = true;
@@ -651,26 +667,27 @@ function parseText(text) {
   }
   if (currentTx) transactions.push(currentTx);
 
-  // Post-process: fill debit/credit using balance deltas
-  let lastBalance = null;
-  for (let i = 0; i < transactions.length; i++) {
-    const tx = transactions[i];
-    const prevBalance = lastBalance;
-    if (prevBalance !== null && tx.balance !== 0 && !tx.debit && !tx.credit) {
-      const delta = tx.balance - prevBalance;
-      if (delta > 0) {
-        tx.credit = delta;
-        tx.debit = 0;
-      } else if (delta < 0) {
-        tx.debit = Math.abs(delta);
-        tx.credit = 0;
+    // Post-process: fill debit/credit using balance deltas
+    let lastBalance = null;
+    for (let i = 0; i < transactions.length; i++) {
+      const tx = transactions[i];
+      const prevBalance = lastBalance;
+      if (prevBalance !== null && tx.balance !== 0 && !tx.debit && !tx.credit) {
+        const delta = tx.balance - prevBalance;
+        if (delta > 0) {
+          tx.credit = delta;
+          tx.debit = 0;
+        } else if (delta < 0) {
+          tx.debit = Math.abs(delta);
+          tx.credit = 0;
+        }
       }
-    }
-    if (tx.balance !== 0) lastBalance = tx.balance;
+      if (tx.balance !== 0) lastBalance = tx.balance;
 
-    // Clean description
-    tx.description = cleanDesc(tx.description || tx.raw || "");
-  }
+      // Clean description and categorize
+      tx.description = cleanDesc(tx.description || tx.raw || "");
+      categorizeTx(tx);
+    }
 
   const cleaned = transactions.filter(
     (t) =>

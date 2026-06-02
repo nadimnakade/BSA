@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { parseCibilText } = require('./analyzer');
+const { parseCibilText } = require('./cibil_parser');
 
 async function extractPdfTextPdfjs(buffer) {
   try {

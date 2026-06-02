@@ -35,8 +35,10 @@ const CIBIL_TABS = [
 export default function Dashboard({ mode = 'statement', result, onReset, uploadedStatementFile, uploadedCibilFile }) {
   const isCibil = mode === 'cibil'
   const [tab, setTab] = useState(isCibil ? 'score' : 'overview')
-  const { analysis: a, filename, transaction_count } = result
-  const as = a.account_summary
+  const a = result?.analysis || {}
+  const filename = result?.filename
+  const transaction_count = result?.transaction_count
+  const as = a.account_summary || {}
   const f = n => n ? `₹${Number(n).toLocaleString('en-IN')}` : '—'
   const badge = (label, color='blue') => <span className={`badge badge-${color}`}>{label}</span>
   const norm = v => (v ?? '').toString().toLowerCase()
