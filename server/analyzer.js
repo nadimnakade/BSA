@@ -140,7 +140,12 @@ function analyzeTransactions(transactions) {
     const bounce = detectBounceCharges(t); if (bounce) analysis.bounce_charges.push(bounce);
   }
   analysis.account_summary = { period: `${periodStart} to ${periodEnd}`, transaction_count: txns.length, total_credits: totalCredits, total_debits: totalDebits, net_balance: totalCredits - totalDebits };
-  computeMonthlySummary(analysis, txns); computeInsights(analysis); computeLoanSummary(analysis);
+  computeMonthlySummary(analysis, txns);
+  computeInsights(analysis);
+  computeLoanSummary(analysis);
+  analysis.pf_credits = analysis.pf_epfo || [];
+  analysis.sip_investments = analysis.sip_investments || [];
+  analysis.family_transfers = { in: analysis.transfers_in || [], out: analysis.transfers_out || [] };
   return analysis;
 }
 
