@@ -44,7 +44,7 @@ async function extractPdfTextPdfjs(buffer, password) {
       const tc = await page.getTextContent();
       out += (tc.items || []).map(it => it.str).join(' ') + '\n';
     }
-    try { await doc.destroy(); } catch {}
+    try { await doc.destroy(); } catch { }
     return out;
   } catch (e) {
     const msg = (e?.message || '').toString();
@@ -78,11 +78,12 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok', mode: 'rule-based'
 
 // --- FILE UPLOAD ANALYZE ---
 app.post('/api/analyze', upload.single('statement'), async (req, res) => {
+  console.log(1);
   const statementFile = req.file;
   const filePath = statementFile?.path;
   try {
     if (!statementFile) return res.status(400).json({ error: 'No statement file uploaded' });
-    console.log(`\n[Analyze] ${statementFile.originalname} (${(statementFile.size/1024).toFixed(1)} KB)`);
+    console.log(`\n[Analyze] ${statementFile.originalname} (${(statementFile.size / 1024).toFixed(1)} KB)`);
 
     const parsed = await parseFile(filePath, statementFile.originalname);
     const transactions = parsed.transactions || [];
@@ -100,7 +101,7 @@ app.post('/api/analyze', upload.single('statement'), async (req, res) => {
           if (text.trim().length < 50) {
             return res.status(400).json({ error: 'No extractable text found in this PDF. If it is a scanned/image PDF, export CSV/XLSX from netbanking or use a text-based PDF.' });
           }
-        } catch {}
+        } catch { }
       }
       return res.status(400).json({ error: 'No transactions found. Try /api/debug-pdf-text (PDF) or /api/parse-only to see what was extracted.' });
     }
@@ -122,6 +123,7 @@ app.post('/api/analyze', upload.single('statement'), async (req, res) => {
 });
 
 app.post('/api/analyze-cibil', upload.single('cibil'), async (req, res) => {
+  console.log("Active Loans:");
   const filePath = req.file?.path;
   const cibilPassword = normStr(req.body?.cibil_password);
   try {
@@ -133,10 +135,18 @@ app.post('/api/analyze-cibil', upload.single('cibil'), async (req, res) => {
     const cibilText = await extractCibilText(filePath, req.file.originalname, cibilPassword);
 
     const cibil = parseCibilText(cibilText);
+
+    console.log("CIBIL KEYS:", Object.keys(cibil));
+    console.log("CIBIL:", JSON.stringify(cibil, null, 2));
     const analysis = analyzeTransactions([]);
     analysis.cibil = { filename: req.file.originalname, ...cibil };
     analysis.underwriting = assessUnderwriting(analysis, analysis.cibil);
 
+    console.log(
+      "Active Loans:",
+      cibil.activeLoans?.length,
+      cibil.activeLoans
+    );
     res.json({ success: true, filename: req.file.originalname, transaction_count: 0, analysis });
   } catch (err) {
     const msg = (err?.message || 'Failed to parse CIBIL report').toString();
@@ -651,7 +661,6 @@ app.post('/api/debug-pdf-text', upload.single('statement'), async (req, res) => 
 });
 
 const server = app.listen(PORT, () => {
-  console.log(`\n🏦 Bank Statement Analyzer v2 (Rule-Based — No AI needed)`);
   console.log(`   http://localhost:${PORT}`);
   console.log(`   Supports: PDF · CSV · XLSX · TXT\n`);
 });

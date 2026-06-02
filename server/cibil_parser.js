@@ -68,8 +68,103 @@ function normalizeLenderName(rawName) {
   return rawName;
 }
 
+/**
+ * Pre-process CIBIL text from dense single-line-per-page format.
+ * Many CIBIL PDFs (from Paisabazaar, CIBIL portal, etc.) extract as one long line per page.
+ * This function detects that format and splits into proper multi-line text.
+ */
+function preprocessCibilText(rawText) {
+  const text = (rawText || '').toString();
+  const rawLines = text.split('\n').map(x => x.trim()).filter(Boolean);
+
+  // Heuristic: if we have very few lines but lots of content, it's a dense format
+  const totalChars = text.length;
+  const avgLineLen = rawLines.length > 0 ? totalChars / rawLines.length : 0;
+  if (rawLines.length > 150 || avgLineLen < 200) return text; // Already multi-line, no processing needed
+
+  // Remove repeated page headers: "Report Number (ECN) : ... Report to CIBIL   Table of Contents"
+  let cleaned = text.replace(/Report Number \(ECN\)\s*:\s*\d+\s*Report Date\s*:\s*\d{2}-\d{2}-\d{4}\s*Report to CIBIL\s*Table of Contents/gi, '\n');
+
+  // Remove noise text that appears at end of pages
+  cleaned = cleaned.replace(/This section (?:has information|shows|displays)[^.]*\./gi, '\n');
+  cleaned = cleaned.replace(/Paid on time\s+1-89 days late\s+90\+ days late\s+Not Reported/gi, '\n');
+  cleaned = cleaned.replace(/Powered by/gi, '');
+
+  // Split Account Detail blocks: Each starts with "LENDER_NAME   Active/Closed  Account Number:"
+  // Pattern: "BANKNAME   Active  Account Number:   XXXX1234"
+  cleaned = cleaned.replace(/(?=(?:^|\s{2,})([A-Z][A-Z0-9 &.'\-]{2,40})\s{2,}(Active\*{0,2}|Closed)\s{2,}Account Number\s*:\s*)/gi, '\n---ACCOUNT_BREAK---\n');
+
+  // Split summary section rows: Detect "LENDER_NAME   Loan Type   XXXX1234   Individual/Guarantor/Joint"
+  // This is the summary table format
+  const loanTypePattern = '(?:Personal Loan|Education Loan|Home Loan|Housing Loan|Vehicle Loan|Two Wheeler Loan|Used Car Loan|Gold Loan|Business Loan(?: General)?|Consumer Loan|Loan Against Property|Property Loan|Overdraft|Credit Card|Loan on Credit Card|Other)';
+
+  // Split enquiry rows: "1   Personal Loan   KOTAK BANK   27-12-2025"
+  // Pattern: number + purpose + institution + date
+  cleaned = cleaned.replace(new RegExp(`(?=\\s{2,}(\\d{1,3})\\s{2,}(${loanTypePattern}|Credit Card|Other)\\s{2,}([A-Z][A-Z0-9 &.'\-]{2,60})\\s{2,}(\\d{2}-\\d{2}-\\d{4}))`, 'gi'), '\n');
+
+  // Split summary table rows before each bank/institution name followed by loan type and account number
+  cleaned = cleaned.replace(new RegExp(`(?=\\s{2,}([A-Z][A-Z0-9 &.'\-]{2,40})\\s{2,}(${loanTypePattern})\\s{2,}(XXXX[A-Z0-9\\-]{2,10}|[A-Z0-9X*]{4,}))`, 'gi'), '\n');
+
+  // Split field labels in Account Details sections onto their own lines
+  const fieldLabels = [
+    'Account Opened Date', 'Account Closed Date', 'Last Bank Update',
+    'Last Payment Date', 'Pay Start Date', 'Pay End Date', 'Repayment Tenure',
+    'Loan Amount', 'Settlement Amount', 'Overdue Amount', 'EMI Amount',
+    'Outstanding Balance', 'Credit Limit', 'Actual Last Payment',
+    'Interest Rate', 'Collateral Type', 'Collateral', 'Suit Filed Status',
+    'Cash Limit', 'Payment Frequency', 'Maximum Utilization',
+    'Account Number', 'Account type', 'Account Status', 'Ownership',
+    'Account Details', 'Payment History',
+    'Written-O[\\x00\\uFFFD]?\\s*Principal\\s*Amount',
+    'Written-O[\\x00\\uFFFD]?\\s*Total\\s*Amount',
+  ];
+  for (const label of fieldLabels) {
+    cleaned = cleaned.replace(new RegExp(`\\s{2,}(?=${label}\\s)`, 'gi'), '\n');
+  }
+
+  // Split "Credit Enquiries" section header
+  cleaned = cleaned.replace(/(?=Credit Enquiries)/gi, '\n');
+  cleaned = cleaned.replace(/(?=Sr\.\s*No\.\s*Enquiry Purpose)/gi, '\n');
+  cleaned = cleaned.replace(/(?=Summary:\s*(?:Loan Accounts|Credit Cards))/gi, '\n');
+  cleaned = cleaned.replace(/(?=Account Details\s)/gi, '\n');
+  cleaned = cleaned.replace(/(?=Contact Information)/gi, '\n');
+
+  // Split score line: "754  GOOD" or "632  POOR"
+  cleaned = cleaned.replace(/(\d{3})\s+(EXCELLENT|GOOD|FAIR|POOR|VERY\s*POOR|LOW|HIGH|NA)/gi, '\nSCORE: $1\n$2\n');
+
+  // Handle "Hey Name," greeting on same line
+  cleaned = cleaned.replace(/(Hey\s+[A-Za-z]+,)/gi, '\n$1\n');
+
+  // Split Report Summary section
+  cleaned = cleaned.replace(/(?=Report Summary)/gi, '\n');
+
+  // Split "Active Loans" / "Active Credit Cards" summary
+  cleaned = cleaned.replace(/(\d+)\s+(Active\s+(?:Loans?|Credit\s+Cards?))/gi, '\n$1 $2');
+  cleaned = cleaned.replace(/(Total\s+(?:loan|limit))/gi, '\n$1');
+  cleaned = cleaned.replace(/(Current\s+Outstanding)/gi, '\n$1');
+  cleaned = cleaned.replace(/(Overdue\s+Payments)/gi, '\n$1');
+  cleaned = cleaned.replace(/(Age\s+of\s+Accounts)/gi, '\n$1');
+  cleaned = cleaned.replace(/(Recent\s+Enquiries)/gi, '\n$1');
+
+  // Split Contact Information fields
+  cleaned = cleaned.replace(/(?=Address Details)/gi, '\n');
+  cleaned = cleaned.replace(/(?=Phone Number)/gi, '\n');
+  cleaned = cleaned.replace(/(?=Email ID)/gi, '\n');
+  cleaned = cleaned.replace(/(?=Mobile Phone)/gi, '\n');
+  cleaned = cleaned.replace(/(?=Home Phone)/gi, '\n');
+  cleaned = cleaned.replace(/(?=Office Phone)/gi, '\n');
+
+  // Remove ACCOUNT_BREAK markers and clean up
+  cleaned = cleaned.replace(/---ACCOUNT_BREAK---/g, '\n');
+
+  // Clean up multiple newlines
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+
+  return cleaned.trim();
+}
+
 function parseCibilText(text) {
-  const t = (text || '').toString();
+  const t = preprocessCibilText((text || '').toString());
   const lines = t.split('\n').map(x => x.trim()).filter(Boolean);
   const joined = lines.join('\n');
   const joinedFlat = lines.join(' ').replace(/\s+/g, ' ').trim();
@@ -943,5 +1038,6 @@ module.exports = {
   parseCibilText,
   assessUnderwriting,
   assessEligibility,
-  normalizeLenderName
+  normalizeLenderName,
+  preprocessCibilText
 };

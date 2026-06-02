@@ -437,19 +437,45 @@ function parseCibilText(text) {
     const upper = joinedFlat.toUpperCase();
     const idx = upper.indexOf('SUMMARY: LOAN ACCOUNTS');
     if (idx >= 0) {
-      let seg = joinedFlat.slice(idx, idx + 40000);
+      let seg = joinedFlat.slice(idx, idx + 50000);
       const hdr = seg.toUpperCase().indexOf('OUTSTANDING BALANCE');
       if (hdr >= 0) seg = seg.slice(hdr + 'OUTSTANDING BALANCE'.length);
-      const typeRe = '(?:Personal\\s+Loan|Education\\s+Loan|Home\\s+Loan|Vehicle\\s+Loan|Two\\s+Wheeler\\s+Loan|Gold\\s+Loan|Business\\s+Loan(?:\\s+General)?|Consumer\\s+Loan|Loan\\s+Against\\s+Property|Overdraft|Credit\\s+Card|Other)';
-      const rowRe = new RegExp(`([A-Z][A-Z0-9 &.'-]{2,80}?)\\s+(${typeRe})\\s+(X{3,}\\d{3,})\\s+(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+(Active\\*?\\*?|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|Special\\s*Mention|SMA)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+([\\d,]+)\\s+([\\d,]+)`, 'gi');
+      
+      // Try original regex with optional spaces first
+      const typeRe = '(?:Personal\\s*Loan|Education\\s*Loan|Home\\s*Loan|Housing\\s*Loan|Vehicle\\s*Loan|Two\\s*Wheeler\\s*Loan|Gold\\s*Loan|Business\\s*Loan(?:\\s*General)?|Consumer\\s*Loan|Loan\\s*Against\\s*Property|Overdraft|Credit\\s*Card|Other)';
+      const rowRe = new RegExp(`([A-Z][A-Z0-9 &.'-]{2,80}?)(${typeRe})(X{3,}\\d{3,})(Individual|Guarantor|Joint|Co-?Applicant|Co\\s+Applicant|Authorized?\\s*User)(\\d{2}-\\d{2}-\\d{4})(Active\\*?\\*?|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|Special\\s*Mention|SMA)(\\d{2}-\\d{2}-\\d{4})((?:[\\d,]+\\.?\\d*)?)((?:[\\d,]+\\.?\\d*)?)`, 'gi');
+      
       let m;
-      while ((m = rowRe.exec(seg)) !== null) {
+      let foundCount = 0;
+      while ((m = rowRe.exec(seg)) !== null && foundCount < 100) {
+        foundCount++;
         const lender = (m[1] || '').toString().trim();
         if (!lender || /\bDATE\b|\bACCOUNT\b|\bSTATUS\b|\bUPDATE\b/i.test(lender)) continue;
+        
+        const typeStr = (m[2] || '').toString().replace(/\s+/g, '').toLowerCase();
+        const displayTypeMap = {
+          'personalloan': 'Personal Loan',
+          'educationloan': 'Education Loan',
+          'homeloan': 'Housing Loan',
+          'housingloan': 'Housing Loan',
+          'vehicleloan': 'Vehicle Loan',
+          'twowhelloan': 'Two-Wheeler Loan',
+          'goldloan': 'Gold Loan',
+          'businessloangeneraloan': 'Business Loan - General',
+          'businessloan': 'Business Loan',
+          'consumerloan': 'Consumer Loan',
+          'loanagainstproperty': 'Loan Against Property',
+          'creditcard': 'Credit Card'
+        };
+        const displayType = displayTypeMap[typeStr] || (m[2] || '').toString().trim();
+        
+        const account_no = (m[3] || '').trim();
+        if (!account_no || /^X+$/.test(account_no)) continue;
+        
         accounts.push({
           lender,
-          account_type: (m[2] || '').toString().trim(),
-          account_no: (m[3] || '').trim(),
+          account_type: displayType,
+          account_no,
           ownership: (m[4] || '').trim(),
           opened_date: parseDate(m[5]),
           account_status: (m[6] || '').replace(/\s+/g, ' ').trim(),
@@ -1922,7 +1948,406 @@ function computeLoanSummary(analysis) {
   analysis.loan_summary = summary;
 }
 
+// ════════════════════════════════════════════════════════════════
+// CIBIL PARSER v3 — handles CIBIL/Paisabazaar PDFs whose tables
+// extract from pdf-parse with NO spaces between columns. Splits
+// rows by anchoring on the masked account number (XXXXdddd) and
+// the trailing date, then merges each account with its labelled
+// detail block to fill in balance/EMI/limit/overdue.
+// ════════════════════════════════════════════════════════════════
+
+function _cibilV3SplitRowByAcct(rawRow) {
+  // Anchor on masked account number, then read the trailing fields
+  // row: [LENDER][TYPE][XXXXdddd(+optional letter)][OWNER][DD-MM-YYYY][STATUS][DD-MM-YYYY][AMT1][AMT2]
+  const m = rawRow.match(/^(.+?)(X{3,}-?\d{2,}[A-Z]?|X{3,}\d{2,}[A-Z]?)(Individual|Guarantor|Joint|Co-?Applicant|Co\s+Applicant|Authorized?\s*User|Primary|Supp\.?\s*Account)0?(\d{2}-\d{2}-\d{4})(Active\*?\*?|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|Special\s*Mention|SMA|Active|NA)0?(\d{2}-\d{2}-\d{4})([\d,]+\.?\d*)([\d,]+\.?\d*)\s*$/i);
+  if (!m) return null;
+  // Lender: text before the type keyword, type: between lender and account
+  const head = m[1];
+  const acct = m[2];
+  // Find type keyword in head. Try longest first so "Personal Loan" wins over "Loan".
+  const TYPE_KEYS = [
+    'Personal Loan','Housing Loan','Home Loan','Education Loan','Vehicle Loan',
+    'Two Wheeler Loan','Used Car Loan','Gold Loan','Business Loan General',
+    'Business Loan','Consumer Loan','Consumer Durable Loan','Loan Against Property',
+    'Property Loan','Overdraft','Credit Card','Loan on Credit Card','Other',
+    'Loan'
+  ];
+  let lender = head, typeStr = '';
+  for (const t of TYPE_KEYS) {
+    const idx = head.lastIndexOf(t);
+    if (idx > 0 && idx + t.length < head.length) {
+      lender = head.slice(0, idx).trim();
+      typeStr = t;
+      break;
+    }
+  }
+  if (!typeStr) {
+    // Fallback: split on last uppercase word boundary near acct
+    const idx = head.lastIndexOf(acct);
+    if (idx > 4) {
+      const left = head.slice(0, idx);
+      lender = left.replace(/[A-Z][a-zA-Z]+\s*$/, '').trim() || left.trim();
+      typeStr = left.slice(lender.length).trim() || 'Other';
+    }
+  }
+  return {
+    lender: lender.trim(),
+    account_type: typeStr.trim(),
+    account_no: acct,
+    ownership: m[3],
+    opened_date: m[4],
+    account_status: m[5],
+    last_update: m[6],
+    sanctioned_amount: _cibilV3Num(m[7]),
+    current_balance: _cibilV3Num(m[8]),
+  };
+}
+
+function _cibilV3Num(s) {
+  if (!s) return undefined;
+  const n = Number(String(s).replace(/[,\s]/g, ''));
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function _cibilV3NormalizeStatus(s) {
+  const u = (s || '').toString().trim();
+  if (!u) return undefined;
+  if (/^active\*?\*?$/i.test(u)) return 'Active';
+  if (/closed/i.test(u)) return 'Closed';
+  if (/settled/i.test(u)) return 'Settled';
+  if (/writ/i.test(u)) return 'Written Off';
+  if (/suit/i.test(u)) return 'Suit Filed';
+  if (/wilful/i.test(u)) return 'Wilful Default';
+  if (/loss/i.test(u)) return 'Loss';
+  if (/sma|special/i.test(u)) return 'Special Mention';
+  return u;
+}
+
+function _cibilV3NormalizeType(s) {
+  const map = {
+    'personalloan':'Personal Loan','educationloan':'Education Loan',
+    'homeloan':'Home Loan','housingloan':'Housing Loan','vehicleloan':'Vehicle Loan',
+    'twowheelerloan':'Two Wheeler Loan','usedcarloan':'Used Car Loan',
+    'goldloan':'Gold Loan','businessloangeneral':'Business Loan - General',
+    'businessloan':'Business Loan','consumerloan':'Consumer Loan',
+    'consumerdurableloan':'Consumer Durable Loan','loanagainstproperty':'Loan Against Property',
+    'propertyloan':'Property Loan','overdraft':'Overdraft',
+    'creditcard':'Credit Card','loanoncreditcard':'Loan on Credit Card','other':'Other',
+    'loan':'Loan'
+  };
+  return map[String(s||'').toLowerCase().replace(/\s+/g,'')] || (s||'Other');
+}
+
+function _cibilV3ExtractEnquiryRows(text) {
+  // Anchored on trailing DD-MM-YYYY; number + purpose + lender + date.
+  const rows = [];
+  // Match a number (sr) immediately followed by purpose then lender, ending with date.
+  // Enquiry rows have NO spaces between fields, e.g. "1Housing LoanSBI22-04-2026".
+  const re = /(\d{1,3})((?:Housing\s+Loan|Personal\s+Loan|Education\s+Loan|Vehicle\s+Loan|Two\s+Wheeler\s+Loan|Used\s+Car\s+Loan|Gold\s+Loan|Business\s+Loan(?:\s+General)?|Consumer\s+Loan|Consumer\s+Durable\s+Loan|Loan\s+Against\s+Property|Property\s+Loan|Overdraft|Credit\s+Card|Loan\s+on\s+Credit\s+Card|Other|Loan)([A-Z][A-Z0-9 &.'-]{2,80}?))0?(\d{2}-\d{2}-\d{4})(?=\s|$)/gi;
+  let m;
+  // Need to iterate, not exec, because of the non-capturing structure
+  const seg = text;
+  // Use a simpler anchored scan: find each "<n>" then read up to the next date
+  const anchor = /(\d{1,3})([A-Z][a-zA-Z\s]{3,40}?)([A-Z][A-Z0-9 &.'-]{2,80}?)(\d{2}-\d{2}-\d{4})/g;
+  let last = -1;
+  while ((m = anchor.exec(seg)) !== null) {
+    if (m.index <= last) continue;
+    const sr = Number(m[1]);
+    if (!Number.isFinite(sr) || sr < 1 || sr > 999) continue;
+    const purpose = (m[2] || '').trim();
+    const member = (m[3] || '').trim();
+    if (!/Report|Number|ECN|Table|Contents|Page|Sr\.?\s*No/i.test(member) && purpose.length >= 3) {
+      // Normalize purpose using the known list
+      const normPurpose = (() => {
+        const t = purpose.toLowerCase().replace(/\s+/g,'');
+        const map = {
+          'housingloan':'Housing Loan','personalloan':'Personal Loan',
+          'educationloan':'Education Loan','vehicleloan':'Vehicle Loan',
+          'twowheelerloan':'Two Wheeler Loan','usedcarloan':'Used Car Loan',
+          'goldloan':'Gold Loan','businessloangeneral':'Business Loan - General',
+          'businessloan':'Business Loan','consumerloan':'Consumer Loan',
+          'consumerdurableloan':'Consumer Durable Loan','loanagainstproperty':'Loan Against Property',
+          'propertyloan':'Property Loan','overdraft':'Overdraft',
+          'creditcard':'Credit Card','loanoncreditcard':'Loan on Credit Card',
+          'other':'Other','loan':'Loan'
+        };
+        return map[t] || purpose;
+      })();
+      rows.push({ sr, date: m[4], member, purpose: normPurpose });
+      last = m.index + m[0].length;
+    }
+  }
+  return rows;
+}
+
+function _cibilV3SplitFieldsBlock(block) {
+  // Walk a labelled field block and extract key:value pairs.
+  // Handles three forms:
+  //   (a) "FieldName:ValueFieldName:Value"  (no whitespace between pairs)
+  //   (b) "FieldName:Value\nOtherField:OtherValue"
+  //   (c) "FieldName\nValue" (label on its own line, value on next)
+  const out = {};
+  // First normalize: convert form (c) to form (b) by joining "Label\nValue" -> "Label:Value"
+  let normalized = block;
+  // Insert ":" if a line is a pure label (no colon) and the next line is a value.
+  // The labels in the data are: Account Opened Date, Account Closed Date, Last Bank Update,
+  // Last Payment Date, Pay Start Date, Pay End Date, Repayment Tenure, Loan Amount, Settlement Amount,
+  // Overdue Amount, EMI Amount, Interest Rate, Collateral, Collateral Type, Suit Filed Status,
+  // Cash Limit, Payment Frequency, Credit Limit, Actual Last Payment, Maximum Utilization, Outstanding Balance
+  const LABEL_RE = /^(Account Opened Date|Account Closed Date|Last Bank Update|Last Payment Date|Pay Start Date|Pay End Date|Repayment Tenure|Loan Amount|Settlement Amount|Overdue Amount|EMI Amount|Interest Rate|Collateral Type|Suit Filed Status|Cash Limit|Payment Frequency|Credit Limit|Actual Last Payment|Maximum Utilization|Outstanding Balance|Collateral|Written-Off Principal Amount|Written-Off Total Amount)\s*$/i;
+  // Replace "Label\nValue" with "Label:Value"
+  normalized = normalized.replace(/([A-Za-z][A-Za-z ]+)\n([^\n]+)/g, (mm, lbl, val) => {
+    if (LABEL_RE.test(lbl.trim())) return `${lbl.trim()}:${val}`;
+    return mm;
+  });
+  // Now for form (a) — insert ":" between glued Label/Value pairs.
+  // Strategy: find every label and ensure a colon follows it.
+  // Build a list of labels (longest first to disambiguate).
+  const LABELS = [
+    'Account Opened Date','Account Closed Date','Last Bank Update','Last Payment Date',
+    'Pay Start Date','Pay End Date','Repayment Tenure','Loan Amount','Settlement Amount',
+    'Overdue Amount','EMI Amount','Interest Rate','Collateral Type','Suit Filed Status',
+    'Cash Limit','Payment Frequency','Credit Limit','Actual Last Payment','Maximum Utilization',
+    'Outstanding Balance','Collateral','Written-Off Principal Amount','Written-Off Total Amount'
+  ];
+  const labelAlt = LABELS.map(l => l.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|');
+  // Insert colon after each label if not already present
+  normalized = normalized.replace(new RegExp(`(${labelAlt})(?!\\s*:)`, 'g'), '$1:');
+  // Collapse "Field:" with empty value when followed by another label start — keep as empty string
+  // Now match all key:value (value can contain spaces, digits, commas, decimal, %, -, NA, /, letters)
+  const kvRe = new RegExp(`(${labelAlt})\\s*:\\s*([^:\\n]+?)(?=(?:${labelAlt})\\s*:|\\s*$)`, 'g');
+  let km;
+  while ((km = kvRe.exec(normalized)) !== null) {
+    const k = km[1].trim();
+    let v = (km[2] || '').trim().replace(/\s+/g, ' ');
+    if (v && !/^NA$/i.test(v)) out[k] = v;
+  }
+  return out;
+}
+
+function _cibilV3WalkAccounts(detailBlocks, summaryAccounts) {
+  // Merge each labelled-field block into the matching summary account (by account_no)
+  const byAcct = new Map();
+  for (const a of summaryAccounts) if (a.account_no) byAcct.set(a.account_no.toUpperCase(), a);
+  for (const db of detailBlocks) {
+    const acct = (db.account_no || '').toUpperCase();
+    if (!acct) continue;
+    const target = byAcct.get(acct);
+    if (!target) continue;
+    const fields = _cibilV3SplitFieldsBlock(db.body);
+    if (fields['Account Opened Date']) target.opened_date = parseDate(fields['Account Opened Date']) || target.opened_date;
+    if (fields['Account Closed Date'] && !/^NA$/i.test(fields['Account Closed Date'])) target.closed_date = parseDate(fields['Account Closed Date']);
+    if (fields['Last Bank Update']) target.last_update = parseDate(fields['Last Bank Update']) || target.last_update;
+    if (fields['Last Payment Date']) target.last_payment_date = parseDate(fields['Last Payment Date']) || target.last_payment_date;
+    if (fields['Loan Amount']) {
+      const n = _cibilV3Num(fields['Loan Amount']);
+      if (n !== undefined) target.sanctioned_amount = n;
+    }
+    if (fields['EMI Amount']) {
+      const n = _cibilV3Num(fields['EMI Amount']);
+      if (n !== undefined) target.emi = n;
+    }
+    if (fields['Overdue Amount']) {
+      const n = _cibilV3Num(fields['Overdue Amount']);
+      if (n !== undefined) target.overdue_amount = n;
+    }
+    if (fields['Credit Limit']) {
+      const n = _cibilV3Num(fields['Credit Limit']);
+      if (n !== undefined) target.credit_limit = n;
+    }
+    if (fields['Maximum Utilization']) {
+      const n = _cibilV3Num(fields['Maximum Utilization']);
+      if (n !== undefined) target.high_credit = n;
+    }
+    if (fields['Outstanding Balance']) {
+      const n = _cibilV3Num(fields['Outstanding Balance']);
+      if (n !== undefined) target.current_balance = n;
+    }
+    if (fields['Interest Rate']) {
+      const n = Number(String(fields['Interest Rate']).replace(/[^\d.]/g, ''));
+      if (Number.isFinite(n) && n > 0 && n < 100) target.interest_rate = n;
+    }
+    if (fields['Collateral']) target.collateral = fields['Collateral'];
+    if (fields['Collateral Type']) target.collateral_type = fields['Collateral Type'];
+    if (fields['Payment Frequency']) target.payment_frequency = fields['Payment Frequency'];
+    if (fields['Suit Filed Status'] && !/^NA$/i.test(fields['Suit Filed Status'])) {
+      target.adverse_flags = target.adverse_flags || [];
+      if (!/^NA$/i.test(fields['Suit Filed Status'])) target.adverse_flags.push('SUIT_FILED');
+    }
+    if (fields['Repayment Tenure']) target.repayment_tenure = fields['Repayment Tenure'];
+    if (fields['Actual Last Payment']) {
+      const n = _cibilV3Num(fields['Actual Last Payment']);
+      if (n !== undefined) target.actual_last_payment = n;
+    }
+    target.adverse_flags = Array.from(new Set(target.adverse_flags || []));
+  }
+}
+
+function parseCibilTextV3(text) {
+  const t = (text || '').toString();
+  const lines = t.split('\n').map(x => x.trim()).filter(Boolean);
+  const joinedFlat = lines.join(' ').replace(/\s+/g, ' ').trim();
+  const upper = joinedFlat.toUpperCase();
+
+  // ── Score ──
+  let score;
+  const scoreM = joinedFlat.match(/(?:CIBIL\s*SCORE|Credit\s*Score)\s*[:\-]?\s*(\d{3})/i)
+    || joinedFlat.match(/\b(\d{3})\b\s*\n?\s*(?:EXCELLENT|VERY\s*GOOD|GOOD|FAIR|POOR)/i);
+  if (scoreM) {
+    const n = Number(scoreM[1]);
+    if (Number.isFinite(n) && n >= 300 && n <= 900) score = n;
+  }
+
+  // ── Report date ──
+  let report_date;
+  const rdM = joinedFlat.match(/Report\s*Date\s*[:\-]?\s*(\d{2}[-\/]\d{2}[-\/]\d{4})/i)
+    || joinedFlat.match(/\bAs\s*On\s*[:\-]?\s*(\d{2}[-\/]\d{2}[-\/]\d{4})/i);
+  if (rdM) report_date = rdM[1];
+
+  // ── Summary section counters ──
+  // "N Active Loans" / "N Active Credit Cards"
+  const activeLoansMatch = joinedFlat.match(/(\d+)\s+Active\s+Loans/i);
+  const activeCardsMatch = joinedFlat.match(/(\d+)\s+Active\s+Credit\s+Cards/i);
+  const recentEnqMatch = joinedFlat.match(/(\d+)\s+Recent\s+Enquiries/i)
+                      || joinedFlat.match(/last\s*3\s*months[^\d]{0,10}(\d+)/i);
+  const totalEnqMatch = joinedFlat.match(/Total\s*Enquiries\s*[:\-]?\s*(\d+)/i);
+
+  // ── Personal info ──
+  const personal = {};
+  const helloM = t.match(/\b(?:Hello|Hey),?\s+([A-Z][a-zA-Z]{2,40})\b/);
+  if (helloM) personal.name = helloM[1].trim();
+  // PAN: "ONTHS1798V" style
+  const panM = joinedFlat.match(/\b([A-Z]{5}\d{4}[A-Z])\b/);
+  if (panM) personal.pan = panM[1].toUpperCase();
+  // Mobile: prefer labelled "Mobile Phone 9920117216"
+  const mobileM = joinedFlat.match(/Mobile\s*Phone\s+([6-9]\d{9})/i)
+              || joinedFlat.match(/(?:^|\s)([6-9]\d{9})(?:\s|$)/);
+  if (mobileM) personal.mobile = mobileM[1];
+  // Email
+  const emailM = joinedFlat.match(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/);
+  if (emailM) personal.email = emailM[1];
+  // DOB
+  const dobM = joinedFlat.match(/(?:Date\s*Of\s*Birth|DOB)\s*[:\-]?\s*(\d{2}[-\/]\d{2}[-\/]\d{4})/i);
+  if (dobM) personal.dob = parseDate(dobM[1]);
+  // Gender
+  const genderM = joinedFlat.match(/Gender\s*(Male|Female|Transgender|Other)/i);
+  if (genderM) personal.gender = genderM[1];
+
+  // ── Addresses: scan between "Address Details" and "Phone Number" ──
+  const addresses = [];
+  const addrStart = upper.indexOf('ADDRESS DETAILS');
+  if (addrStart >= 0) {
+    const addrEnd = upper.indexOf('PHONE NUMBER', addrStart);
+    const seg = joinedFlat.slice(addrStart, addrEnd > 0 ? addrEnd : addrStart + 8000);
+    // Rows end with a 6-digit PIN, state name, and a category
+    const addrRe = /([A-Z0-9:#,\-\/ .]{15,}?)\s*,\s*(\d{6})\s*,\s*([A-Z][A-Za-z]+)\s+(Residence\s+Address|Office\s+Address|Permanent\s+Address|Home\s+Address)\s+(\d{2}-\d{2}-\d{4})/gi;
+    let m;
+    while ((m = addrRe.exec(seg)) !== null) {
+      const a = `${m[1].replace(/\s+/g,' ').trim()}, ${m[2]}, ${m[3]}`;
+      if (a.length >= 15) addresses.push({ line: a, category: m[4].trim(), date_reported: parseDate(m[5]) });
+    }
+  }
+  if (addresses.length) {
+    const seen = new Set();
+    personal.addresses = addresses.filter(x => {
+      const k = x.line.toUpperCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
+
+  // ── Enquiry rows: scan from "CREDIT ENQUIRIES" to "SUMMARY:" or "ACCOUNT DETAILS" ──
+  const enquiries = {};
+  if (typeof totalEnqMatch?.[1] !== 'undefined') enquiries.total = _cibilV3Num(totalEnqMatch[1]);
+  if (typeof recentEnqMatch?.[1] !== 'undefined') enquiries.last_90d = _cibilV3Num(recentEnqMatch[1]);
+  const enqStart = upper.indexOf('CREDIT ENQUIRIES');
+  let enquiry_details = [];
+  if (enqStart >= 0) {
+    const after = joinedFlat.slice(enqStart);
+    const stop = after.toUpperCase().search(/\bSUMMARY:\b|\bACCOUNT\s+DETAILS\b/);
+    const seg = stop > 0 ? after.slice(0, stop) : after.slice(0, 30000);
+    enquiry_details = _cibilV3ExtractEnquiryRows(seg);
+  }
+  if (enquiry_details.length && enquiries.total === undefined) enquiries.total = enquiry_details.length;
+
+  // ── Summary account rows: scan from "SUMMARY: LOAN ACCOUNTS" + "SUMMARY: CREDIT CARDS" ──
+  const accounts = [];
+  const seenAcct = new Set();
+  for (const header of ['SUMMARY: LOAN ACCOUNTS', 'SUMMARY: CREDIT CARDS']) {
+    const idx = upper.indexOf(header);
+    if (idx < 0) continue;
+    const after = joinedFlat.slice(idx);
+    const stop = after.toUpperCase().search(/\bACCOUNT\s+DETAILS\b|\bCONTACT\s+INFORMATION\b/);
+    const seg = stop > 0 ? after.slice(0, stop) : after.slice(0, 50000);
+    // Split into atomic rows using line breaks. pdf-parse already gave us line-by-line text,
+    // so re-find the original lines for this segment.
+    const segLines = lines.filter(L => seg.includes(L.replace(/\s+/g,' ').slice(0,40)) || L.length > 30);
+    // Simpler: iterate over ALL lines that fall between the two markers
+    let inside = false;
+    for (const line of lines) {
+      if (!inside && line.toUpperCase().includes(header)) { inside = true; continue; }
+      if (inside && (line.toUpperCase().includes('ACCOUNT DETAILS') || line.toUpperCase().includes('CONTACT INFORMATION'))) break;
+      if (!inside) continue;
+      // Skip header lines like "Account type Account No Ownership Opened Date"
+      if (/Account\s*type/i.test(line) && /Account\s*No/i.test(line)) continue;
+      if (/Maximum\s*Utilization/i.test(line)) continue;
+      // Try parse
+      const m = line.match(/^([A-Z][A-Z0-9 &.'-]{2,60}?)(X{3,}-?\d{2,}[A-Z]?|X{3,}\d{2,}[A-Z]?)(Individual|Guarantor|Joint|Co-?Applicant|Co\s+Applicant|Authorized?\s*User|Primary|Supp\.?\s*Account)0?(\d{2}-\d{2}-\d{4})(Active\*?\*?|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|Special\s*Mention|SMA|Active|NA)0?(\d{2}-\d{2}-\d{4})([\d,]+\.?\d*)([\d,]+\.?\d*)\s*$/i);
+      if (!m) continue;
+      const parsed = _cibilV3SplitRowByAcct(line);
+      if (!parsed) continue;
+      parsed.account_status = _cibilV3NormalizeStatus(parsed.account_status);
+      parsed.account_type = _cibilV3NormalizeType(parsed.account_type);
+      const key = parsed.account_no.toUpperCase();
+      if (seenAcct.has(key)) continue;
+      seenAcct.add(key);
+      accounts.push(parsed);
+    }
+  }
+
+  // ── Walk Account Details blocks to fill missing fields ──
+  const detailBlocks = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^Account\s*Number\s*[:\-]?\s*(X{3,}-?\d{2,}[A-Z]?|X{3,}\d{2,}[A-Z]?)/i);
+    if (m) {
+      // Collect lines until the next "Account Number:" or "This section" or another lender header
+      const body = [];
+      for (let j = i + 1; j < Math.min(i + 60, lines.length); j++) {
+        if (/^Account\s*Number\s*[:\-]/i.test(lines[j])) break;
+        if (/^This\s+section/i.test(lines[j])) break;
+        if (/^(Report\s+Number|Report\s+Date|Table\s+of\s+Contents)/i.test(lines[j])) break;
+        body.push(lines[j]);
+      }
+      detailBlocks.push({ account_no: m[1], body: body.join('\n') });
+    }
+  }
+  _cibilV3WalkAccounts(detailBlocks, accounts);
+
+  // ── Recompute active counters (prefer summary text if found) ──
+  if (activeLoansMatch) enquiries.active_loans = _cibilV3Num(activeLoansMatch[1]);
+  if (activeCardsMatch) enquiries.active_credit_cards = _cibilV3Num(activeCardsMatch[1]);
+
+  // ── DPD/adverse ──
+  const dpd_max = undefined; // Not present in this PDF format (DPD values are visual, not text)
+  const adverse_flags = Array.from(new Set(accounts.flatMap(a => a.adverse_flags || []).filter(Boolean)));
+
+  return {
+    score,
+    report_date,
+    personal,
+    addresses: personal.addresses || [],
+    enquiries,
+    enquiry_details,
+    accounts,
+    dpd_max,
+    adverse_flags,
+    raw_char_count: t.length,
+  };
+}
+
 module.exports = {
+  analyzeTransactions, parseAmount, parseDate, fmt, parseCibilText, parseCibilTextV3, crossVerifyCibil, assessEligibility, assessUnderwriting,
   LOAN_TYPE_MAP, LENDER_PATTERNS, SALARY_KEYWORDS, NACH_PATTERNS, APP_LOAN_PATTERNS, SIP_PATTERNS, SALARY_SOURCE_MAP,
-  normalizeDesc, normUpper, anyMatch, parseDate, parseAmount, analyzeTransactions,
+  normalizeDesc, normUpper, anyMatch
 };
