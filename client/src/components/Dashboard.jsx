@@ -142,6 +142,22 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
     }, [a.salary, query, sort])
 
     const total = useMemo(() => rows.reduce((s, x) => s + (x.amount || 0), 0), [rows])
+    const avgMonthly = useMemo(() => {
+      const months = new Set(rows.map(r => (r.date || '').slice(0, 7)))
+      return months.size > 0 ? total / months.size : 0
+    }, [rows, total])
+    const byEmployer = useMemo(() => {
+      const map = {}
+      for (const r of rows) {
+        const e = r.employer || 'Unknown'
+        if (!map[e]) map[e] = { employer: e, count: 0, total: 0, amounts: [] }
+        map[e].count++
+        map[e].total += r.amount || 0
+        map[e].amounts.push(r.amount || 0)
+      }
+      return Object.values(map).sort((a, b) => b.total - a.total)
+    }, [rows])
+
     return (
       <div style={{padding:24}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
@@ -149,8 +165,32 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
             <div style={{fontSize:15,fontWeight:600,color:'var(--text-primary)'}}>Salary Credits</div>
             <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{rows.length} transactions</div>
           </div>
-          <div style={{fontSize:20,fontWeight:700,color:'var(--green)',fontFamily:'JetBrains Mono,monospace'}}>{f(total)}</div>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontSize:20,fontWeight:700,color:'var(--green)',fontFamily:'JetBrains Mono,monospace'}}>{f(total)}</div>
+            <div style={{fontSize:11,color:'var(--text-muted)'}}>total salary received</div>
+          </div>
         </div>
+
+        {byEmployer.length > 0 && (
+          <div style={{marginBottom:20,display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))',gap:10}}>
+            {byEmployer.map(e => (
+              <div key={e.employer} style={{background:'rgba(34,197,94,.06)',border:'1px solid rgba(34,197,94,.15)',borderRadius:10,padding:'14px 16px'}}>
+                <div style={{fontSize:13,fontWeight:600,color:'var(--text-primary)',marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{e.employer}</div>
+                <div style={{fontSize:20,fontWeight:700,color:'var(--green)',fontFamily:'JetBrains Mono,monospace'}}>{f(e.total)}</div>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>
+                  {e.count} credit{e.count !== 1 ? 's' : ''} · avg {f(e.total / e.count)}
+                </div>
+              </div>
+            ))}
+            {rows.length > 0 && (
+              <div style={{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:10,padding:'14px 16px'}}>
+                <div style={{fontSize:13,fontWeight:600,color:'var(--text-primary)',marginBottom:4}}>Monthly Average</div>
+                <div style={{fontSize:20,fontWeight:700,color:'var(--green)',fontFamily:'JetBrains Mono,monospace'}}>{f(avgMonthly)}</div>
+                <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>estimated per month</div>
+              </div>
+            )}
+          </div>
+        )}
         <Controls
           query={query}
           setQuery={setQuery}
@@ -204,6 +244,8 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
     }, [a.pf_credits, query, sort])
 
     const total = useMemo(() => rows.reduce((s, x) => s + (x.amount || 0), 0), [rows])
+    const avgPerCredit = rows.length > 0 ? total / rows.length : 0
+
     return (
       <div style={{padding:24}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
@@ -211,8 +253,26 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
             <div style={{fontSize:15,fontWeight:600,color:'var(--text-primary)'}}>PF / EPFO Credits</div>
             <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{rows.length} transactions</div>
           </div>
-          <div style={{fontSize:20,fontWeight:700,color:'var(--teal)',fontFamily:'JetBrains Mono,monospace'}}>{f(total)}</div>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontSize:20,fontWeight:700,color:'var(--teal)',fontFamily:'JetBrains Mono,monospace'}}>{f(total)}</div>
+            <div style={{fontSize:11,color:'var(--text-muted)'}}>total PF received</div>
+          </div>
         </div>
+
+        {rows.length > 0 && (
+          <div style={{marginBottom:20,display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:10}}>
+            <div style={{background:'rgba(20,184,166,.06)',border:'1px solid rgba(20,184,166,.15)',borderRadius:10,padding:'14px 16px'}}>
+              <div style={{fontSize:13,fontWeight:600,color:'var(--text-primary)',marginBottom:4}}>Total PF Credits</div>
+              <div style={{fontSize:20,fontWeight:700,color:'var(--teal)',fontFamily:'JetBrains Mono,monospace'}}>{f(total)}</div>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>{rows.length} credit{rows.length !== 1 ? 's' : ''}</div>
+            </div>
+            <div style={{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:10,padding:'14px 16px'}}>
+              <div style={{fontSize:13,fontWeight:600,color:'var(--text-primary)',marginBottom:4}}>Average Per Credit</div>
+              <div style={{fontSize:20,fontWeight:700,color:'var(--teal)',fontFamily:'JetBrains Mono,monospace'}}>{f(avgPerCredit)}</div>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:4}}>per transaction</div>
+            </div>
+          </div>
+        )}
         <Controls
           query={query}
           setQuery={setQuery}

@@ -1050,19 +1050,53 @@ function inferSalaryEmployer(desc) {
   const channelMatch = desc.match(/\b(NEFT|IMPS|RTGS)\b[:\s\-\/]+(.+)/i);
   if (channelMatch) {
     let s = (channelMatch[2] || '').toString();
-    s = s
+    // First, split on the first slash-delimited segment that looks like a bank reference
+    const parts = s.split('/');
+    if (parts.length >= 2) {
+      // Skip first part (usually reference/UTR), take the name part
+      let namePart = '';
+      for (let i = 1; i < parts.length; i++) {
+        const p = parts[i].trim();
+        if (!p) continue;
+        if (/^SALARY|PAYROLL|WAGES/i.test(p)) continue;
+        if (/^\d/.test(p)) continue;
+        if (/\bBANK\b|\bICICI\b|\bHDFC\b|\bAXIS\b|\bSBI\b|\bKOTAK\b|\bYES\b|\bINDUS/i.test(p) && !namePart) continue;
+        if (/\bBANK\b|\bICICI\b|\bHDFC\b|\bAXIS\b|\bSBI\b|\bKOTAK\b|\bYES\b|\bINDUS/i.test(p)) break;
+        namePart = (namePart ? namePart + ' ' : '') + p;
+      }
+      if (namePart) {
+        namePart = namePart
+          .replace(/\b(BANK|LIMITED|LTD|PVT|INDIA|FINANCE)\b/gi, ' ')
+          .replace(/\b(?:SALARY|PAYROLL|WAGES|STIPEND|BONUS|INCENTIVE)\b/gi, ' ')
+          .replace(/\s+\d[\d.,]+.*$/, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (namePart.length >= 3) return namePart.slice(0, 50);
+      }
+    }
+    // Fallback: strip codes and amounts from the raw channel text
+    let s2 = (channelMatch[2] || '').toString();
+    s2 = s2
       .replace(/\bUTR[:\s\-]*[A-Z0-9]{10,25}\b/gi, ' ')
       .replace(/\bRRN[:\s\-]*[0-9]{10,18}\b/gi, ' ')
-      .replace(/\b[A-Z]{4}0[A-Z0-9]{6}\b/g, ' ')
+      .replace(/\b[A-Z]{2,6}\d{6,}\b/g, ' ')
+      .replace(/\b\d[\d.,]+/g, ' ')
       .replace(/\b(?:CR|DR|CREDIT|DEBIT)\b/gi, ' ')
       .replace(/\b(?:SALARY|PAYROLL|WAGES|STIPEND|BONUS|INCENTIVE)\b/gi, ' ')
+      .replace(/\b(?:BANK|LIMITED|LTD|PVT|INDIA|FINANCE)\b/gi, ' ')
       .replace(/[\/\-]+/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-    if (s) return s.slice(0, 50);
+    if (s2) return s2.slice(0, 50);
   }
   const autoToken = inferAutoDebitLender(desc);
   if (autoToken) return autoToken;
+  // Try to extract employer from NEFT/IMPS structured format: /SENDER/BANK/
+  const structured = desc.match(/\/([A-Z][A-Z &.'-]{2,40})\/(?:[A-Z ]*BANK|ICICI|HDFC|AXIS|SBI|KOTAK)/i);
+  if (structured) {
+    let name = structured[1].replace(/\b(BANK|LIMITED|LTD|PVT|INDIA|FINANCE)\b/gi, '').replace(/\s+/g, ' ').trim();
+    if (name.length >= 3) return name.slice(0, 50);
+  }
   return 'Salary Credit';
 }
 
@@ -1150,21 +1184,33 @@ function detectNACH(desc) {
 
 function detectLoanEMI(desc, amount) {
   if (/\b(RETURN|INSUFFICIENT|SIGNATURE|ERRORS|DISCREPANCY|DAMAGE|OVERWRITING|CLOSED|FROZEN|BOUNCE|BOUNCED|FAILED|FAILURE|UNPAID|REJECT|REJECTED|CHARGE|CHARGES|PENALTY)\b/i.test(desc)) return null;
-  // Check known lenders first
-  for (const p of LENDER_PATTERNS) {
-    if (p.regex.test(desc) && detectNACH(desc)) {
-      const loanType = detectLoanType(desc);
-      return { bank: p.name, bank_category: p.category, loan_type: loanType };
+  // Check known lenders first (with NACH or EMI keyword)
+  const isAutoDebit = detectNACH(desc);
+  const hasEmiKeyword = /EMI|LOAN\s*INST|INSTALMENT|REPAY|PRE\s*EMI/i.test(desc);
+  if ((isAutoDebit || hasEmiKeyword) && amount >= 500) {
+    for (const p of LENDER_PATTERNS) {
+      if (p.regex.test(desc)) {
+        const loanType = detectLoanType(desc);
+        return { bank: p.name, bank_category: p.category, loan_type: loanType };
+      }
     }
   }
   // Generic NACH with EMI keyword or large amount
-  const isAutoDebit = detectNACH(desc);
-  if (!isAutoDebit && !/EMI|LOAN\s*INST|INSTALMENT|REPAY/i.test(desc)) return null;
+  if (!isAutoDebit && !hasEmiKeyword) return null;
   if (isAutoDebit && amount >= 500) {
     const lender = detectLender(desc);
     const loanType = detectLoanType(desc);
     return {
       bank: lender ? lender.name : (inferAutoDebitLender(desc) || 'Unknown Lender (NACH)'),
+      bank_category: lender ? lender.category : 'Unknown',
+      loan_type: loanType,
+    };
+  }
+  if (hasEmiKeyword && amount >= 500) {
+    const lender = detectLender(desc);
+    const loanType = detectLoanType(desc);
+    return {
+      bank: lender ? lender.name : 'Unknown Lender',
       bank_category: lender ? lender.category : 'Unknown',
       loan_type: loanType,
     };
@@ -1188,6 +1234,23 @@ function detectLoanDisbursement(desc, amount, isCredit) {
     }
   }
   return null;
+}
+
+function _extractSenderName(desc) {
+  const d = (desc || '').toUpperCase();
+  const m = d.match(/(?:NEFT|IMPS|RTGS|INF\/INFT|BIL\/NEFT)\/[A-Z0-9]+\/([^\/\n]{3,50})/i);
+  if (m) {
+    let name = m[1].replace(/\b(BANK|LIMITED|LTD|PVT|INDIA|FINANCE|SOLUTIONS?|SERVICES?|CORPORATION|CORP)\b/gi, '').replace(/\s+/g, ' ').trim();
+    name = name.replace(/\s+\d[\d.,]+.*$/, '').trim();
+    if (name.length >= 3) return name.slice(0, 50);
+  }
+  const m2 = d.match(/\/([A-Z][A-Z &.'-]{2,40})\//);
+  if (m2) {
+    let name = m2[1].replace(/\b(BANK|LIMITED|LTD|PVT|INDIA|FINANCE)\b/gi, '').replace(/\s+/g, ' ').trim();
+    name = name.replace(/\s+\d[\d.,]+.*$/, '').trim();
+    if (name.length >= 3) return name.slice(0, 50);
+  }
+  return '';
 }
 
 function detectPF(desc) {
@@ -1679,6 +1742,51 @@ function analyzeTransactions(transactions) {
     }
   }
 
+  // ── SALARY HEURISTIC: detect recurring large credits ──────────────
+  // If no salary detected by keyword, look for recurring credits (same
+  // sender + similar amount in 2+ months) that look like salary.
+  if (result.salary.length === 0) {
+    const creditsBySender = {};
+    for (const tx of transactions) {
+      const credit = parseAmount(tx.credit || tx.deposit || 0);
+      if (credit < 5000) continue;
+      const desc = (tx.description || '').toUpperCase();
+      if (/\b(LOAN|DISB|DISBURSE|SANCTION|OD\b|OVERDRAFT|CREDIT\s*LIMIT|BAJAJ|FINANCE|EMI|NACH|REPAY|TRANSFER|IMPS|NEFT\s*CR|REFUND|CASHBACK|INTEREST|DIVIDEND)\b/i.test(desc)) continue;
+      const sender = _extractSenderName(desc);
+      if (!sender || sender.length < 3) continue;
+      const month = (tx.date || '').slice(0, 7);
+      if (!creditsBySender[sender]) creditsBySender[sender] = {};
+      if (!creditsBySender[sender][month]) creditsBySender[sender][month] = [];
+      creditsBySender[sender][month].push({ date: tx.date, amount: credit, description: tx.description, ...tx });
+    }
+    for (const [sender, months] of Object.entries(creditsBySender)) {
+      const monthKeys = Object.keys(months).sort();
+      if (monthKeys.length < 2) continue;
+      const avgAmount = monthKeys.reduce((s, m) => s + months[m][0].amount, 0) / monthKeys.length;
+      if (avgAmount < 10000) continue;
+      const consistent = monthKeys.filter(m => {
+        const amt = months[m][0].amount;
+        return Math.abs(amt - avgAmount) / avgAmount < 0.25;
+      });
+      if (consistent.length < 2) continue;
+      for (const m of consistent) {
+        const tx = months[m][0];
+        const already = result.salary.some(s => s.date === tx.date && Math.abs(s.amount - tx.amount) < 1);
+        if (!already) {
+          result.salary.push({
+            date: tx.date,
+            description: (tx.description || '').slice(0, 120),
+            employer: sender,
+            amount: tx.amount,
+            mode: /NEFT/i.test(tx.description) ? 'NEFT' : /IMPS/i.test(tx.description) ? 'IMPS' : 'Other',
+            month: m,
+            detected_by: 'recurring_credit',
+          });
+        }
+      }
+    }
+  }
+
   // ── COMPUTE INSIGHTS ────────────────────────────────────────────
   const salaryMonths = result.salary.length > 0
     ? new Set(result.salary.map(s => monthKey(s.date))).size : 1;
@@ -1771,182 +1879,10 @@ function analyzeTransactions(transactions) {
   return result;
 }
 
-module.exports = { analyzeTransactions, parseAmount, parseDate, fmt, parseCibilText, crossVerifyCibil, assessEligibility, assessUnderwriting };
 
 
 
 
-// BANK STATEMENT ANALYZER - TRANSACTION CLASSIFICATION & INSIGHTS - GPT BRANCH
-// ===========================================================================
-
-
-
-
-
-
-function normalizeDesc(desc) {
-  return (desc || '').toString().trim().replace(/\s+/g, ' ');
-}
-
-function normUpper(desc) {
-  return normalizeDesc(desc).toUpperCase();
-}
-
-function anyMatch(text, patterns) {
-  return patterns.some(p => p instanceof RegExp ? p.test(text) : text.includes(p));
-}
-
-function parseDate(dateStr) {
-  if (!dateStr) return null;
-  const s = dateStr.toString().trim();
-  const parts = s.split(/[-\/\s.]/);
-  if (parts.length < 3) return null;
-  let d, m, y;
-  if (parts[0].length === 4) { y = parts[0]; m = parts[1]; d = parts[2]; }
-  else { d = parts[0]; m = parts[1]; y = parts[2]; }
-  if (y.length === 2) y = `20${y}`;
-  const monthMap = { 'JAN': '01', 'FEB': '02', 'MAR': '03', 'APR': '04', 'MAY': '05', 'JUN': '06', 'JUL': '07', 'AUG': '08', 'SEP': '09', 'OCT': '10', 'NOV': '11', 'DEC': '12' };
-  if (isNaN(m)) m = monthMap[m.toUpperCase().slice(0, 3)] || '01';
-  return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
-}
-
-function parseAmount(str) {
-  if (!str) return 0;
-  // Handle strings like "1,850.007,31,191.66" by splitting at the first valid amount boundary
-  // This is a safety measure if the parser didn't already split it
-  let clean = str.toString().replace(/₹/g, '').trim();
-  const joinedMatch = clean.match(/^(\d[0-9,]*\.\d{2})(\d[0-9,]*\.\d{2})$/);
-  if (joinedMatch) clean = joinedMatch[1];
-  
-  if (clean.startsWith('(') && clean.endsWith(')')) clean = `-${clean.slice(1, -1)}`;
-  clean = clean.replace(/[,\s]/g, '').replace(/(dr|cr)$/i, '');
-  return parseFloat(clean) || 0;
-}
-
-// const SALARY_SOURCE_MAP = { 'AI AIRPORT':'AI Airport Services Ltd', 'AIAIRPORT':'AI Airport Services Ltd', 'INFOSYS':'Infosys BPO Ltd', 'WIPRO':'Wipro Ltd', 'TCS':'Tata Consultancy Services', 'HCL':'HCL Technologies', 'COGNIZANT':'Cognizant Technology', 'ACCENTURE':'Accenture' };
-
-
-
-function analyzeTransactions(transactions) {
-  const txns = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
-  const analysis = { salary: [], pf_epfo: [], loans: [], emi_payments: [], loan_disbursements: [], apy_pension: [], rent: [], app_loans: [], credit_card_payments: [], stock_market: [], insurance: [], utilities: [], transfers_in: [], transfers_out: [], bounce_charges: [], account_summary: {}, monthly_summary: {}, insights: { avg_monthly_salary: 0, total_emi_monthly: 0, obligation_to_income_ratio: 0, savings_rate: 0, risk_flags: [], recommendations: [] }, loan_summary: {} };
-  if (!txns.length) return analysis;
-  let totalCredits = 0, totalDebits = 0;
-  const periodStart = txns[0].date, periodEnd = txns[txns.length - 1].date;
-  for (const t of txns) {
-    const desc = normUpper(t.description), amt = Number(t.amount || t.credit || t.debit) || 0, type = (t.type || (t.credit > 0 ? 'CREDIT' : 'DEBIT')).toUpperCase();
-    if (type === 'CREDIT') totalCredits += amt; else if (type === 'DEBIT') totalDebits += amt;
-    const salary = detectSalary(t); if (salary) analysis.salary.push(salary);
-    if (type === 'CREDIT' && (desc.includes('EPFO') || desc.includes('PFUND') || desc.includes('PROV FUND'))) analysis.pf_epfo.push(t);
-    const disb = detectLoanDisbursement(t); if (disb) analysis.loan_disbursements.push(disb);
-    const emi = detectLoanEMI(t); if (emi) { analysis.emi_payments.push(emi); analysis.loans.push(emi); }
-    if (type === 'DEBIT' && (desc.includes('APY') || desc.includes('ATAL PENSION'))) analysis.apy_pension.push(t);
-    const rent = detectRent(t); if (rent) analysis.rent.push(rent);
-    const appLoan = detectAppLoan(t); if (appLoan) analysis.app_loans.push(appLoan);
-    const cc = detectCreditCardPayment(t); if (cc) analysis.credit_card_payments.push(cc);
-    const stock = detectStockMarket(t); if (stock) analysis.stock_market.push(stock);
-    const ins = detectInsurance(t); if (ins) analysis.insurance.push(ins);
-    const util = detectUtilities(t); if (util) analysis.utilities.push(util);
-    const trans = detectTransfers(t); if (trans) { if (type === 'CREDIT') analysis.transfers_in.push(trans); else analysis.transfers_out.push(trans); }
-    const bounce = detectBounceCharges(t); if (bounce) analysis.bounce_charges.push(bounce);
-  }
-  analysis.account_summary = { period: `${periodStart} to ${periodEnd}`, transaction_count: txns.length, total_credits: totalCredits, total_debits: totalDebits, net_balance: totalCredits - totalDebits };
-  computeMonthlySummary(analysis, txns);
-  computeInsights(analysis);
-  computeLoanSummary(analysis);
-  analysis.pf_credits = analysis.pf_epfo || [];
-  analysis.sip_investments = analysis.sip_investments || [];
-  analysis.family_transfers = { in: analysis.transfers_in || [], out: analysis.transfers_out || [] };
-  return analysis;
-}
-
-function detectSalary(t) {
-  if (t.isSalary) return { ...t, amount: t.credit, employer: inferSalaryEmployer(t.description) };
-  if ((t.type !== 'CREDIT' && t.credit <= 0) || (t.amount < 5000 && t.credit < 5000)) return null;
-  const desc = normUpper(t.description);
-  if (anyMatch(desc, SALARY_KEYWORDS) || (desc.includes('NACH') && !anyMatch(desc, ['REJECT', 'RETURN', 'BOUNCE']))) return { ...t, amount: t.amount || t.credit, employer: inferSalaryEmployer(t.description) };
-  return null;
-}
-
-function inferSalaryEmployer(desc) {
-  const d = normUpper(desc);
-  for (const [key, name] of Object.entries(SALARY_SOURCE_MAP)) if (d.includes(key)) return name;
-  const nachMatch = desc.match(/NACH\/([^\/]+)/i); if (nachMatch) return nachMatch[1].trim();
-  const salMatch = desc.match(/SAL(?:ARY)?\s+(?:FOR\s+)?(?:[A-Z]{3,}\s+)?([A-Z0-9 &.-]{3,})/i); if (salMatch) return salMatch[1].trim();
-  return 'Unknown Employer';
-}
-
-function detectLoanEMI(t) {
-  if (t.isEMI) return { ...t, emi_amount: t.debit, bank: 'Unknown Lender', type: 'PL', loan_category: 'Personal Loan', ...extractTxnMeta(t.description) };
-  if ((t.type !== 'DEBIT' && t.debit <= 0) || (t.amount < 500 && t.debit < 500)) return null;
-  const desc = normUpper(t.description);
-  if (!anyMatch(desc, NACH_PATTERNS) && !desc.includes('EMI') && !desc.includes('LOAN') && !desc.includes('MANDATE')) return null;
-  const lender = LENDER_PATTERNS.find(p => p.regex.test(desc)), loanType = LOAN_TYPE_MAP.find(p => p.regex.test(desc));
-  return { ...t, emi_amount: t.amount || t.debit, bank: lender ? lender.name : 'Unknown Lender', type: loanType ? loanType.code : 'PL', loan_category: loanType ? loanType.label : 'Personal Loan', ...extractTxnMeta(t.description) };
-}
-
-function detectLoanDisbursement(t) {
-  if (t.type !== 'CREDIT' || t.amount < 5000) return null;
-  const desc = normUpper(t.description);
-  if (!anyMatch(desc, [/DISB/i, /LOAN/i, /FINANCE/i, /CREDIT/i]) || anyMatch(desc, SALARY_KEYWORDS)) return null;
-  const lender = LENDER_PATTERNS.find(p => p.regex.test(desc)), loanType = LOAN_TYPE_MAP.find(p => p.regex.test(desc));
-  return { ...t, bank: lender ? lender.name : 'Unknown Lender', loan_type: loanType ? loanType.code : 'PL', loan_category: loanType ? loanType.label : 'Personal Loan', ...extractTxnMeta(t.description) };
-}
-
-function detectAppLoan(t) {
-  const desc = normUpper(t.description), app = APP_LOAN_PATTERNS.find(p => p.regex.test(desc));
-  if (!app) return null;
-  return { ...t, app_name: app.name, type: t.type === 'CREDIT' ? 'Credit' : 'Repayment', ...extractTxnMeta(t.description) };
-}
-
-function detectRent(t) { if (t.type === 'DEBIT' && t.amount >= 2000 && (normUpper(t.description).includes('RENT'))) return { ...t, payee: 'Unknown' }; return null; }
-function detectStockMarket(t) {
-  const desc = normUpper(t.description), platforms = ['ZERODHA', 'KITE', 'UPSTOX', 'GROWW', 'ANGEL', 'FYERS', '5PAISA', 'ICICI DIRECT', 'HDFC SEC', 'NUVAMA', 'EDELWEISS'];
-  if (!platforms.some(p => desc.includes(p)) && !anyMatch(desc, [/NSE/i, /BSE/i, /DEMAT/i, /DP CHARGES/i])) return null;
-  return { ...t, direction: t.type === 'CREDIT' ? 'credit' : 'debit', platform: platforms.find(p => desc.includes(p)) || 'Stock Market', ...extractTxnMeta(t.description) };
-}
-function detectInsurance(t) { if (t.type === 'DEBIT' && anyMatch(normUpper(t.description), [/INSURANCE/i, /PREMIUM/i, /LIC /i, /HDFC LIFE/i, /ICICI PRU/i])) return { ...t, provider: 'Insurance' }; return null; }
-function detectUtilities(t) { if (t.type === 'DEBIT' && anyMatch(normUpper(t.description), [/ELECTRICITY/i, /WATER/i, /GAS/i, /MOBILE/i, /INTERNET/i, /RECHARGE/i])) return { ...t, category: 'Utility' }; return null; }
-function detectTransfers(t) { if (anyMatch(normUpper(t.description), [/TRANSFER/i, /OWN ACC/i, /SELF/i])) return { ...t }; return null; }
-function detectBounceCharges(t) { if (anyMatch(normUpper(t.description), [/RETURN/i, /BOUNCE/i, /REJECT/i, /PENALTY/i, /INSUFFICIENT/i, /FUNDS/i])) return { ...t }; return null; }
-function detectCreditCardPayment(t) { if (t.type === 'DEBIT' && anyMatch(normUpper(t.description), [/CREDIT CARD/i, /CC PAYMENT/i, /CARD BILL/i])) return { ...t, ...extractTxnMeta(t.description) }; return null; }
-function extractTxnMeta(desc) { const meta = {}, utrMatch = desc.match(/\b([A-Z0-9]{12,})\b/i), rrnMatch = desc.match(/\b(\d{12})\b/); if (utrMatch) meta.utr = utrMatch[1]; if (rrnMatch) meta.rrn = rrnMatch[1]; return meta; }
-
-function computeMonthlySummary(analysis, txns) {
-  const summary = {};
-  for (const t of txns) {
-    const month = t.date.slice(0, 7);
-    if (!summary[month]) summary[month] = { credits: 0, debits: 0, salary: 0, emi: 0, apy: 0, transfers_in: 0, transfers_out: 0, closing_balance: 0 };
-    if (t.type === 'CREDIT') summary[month].credits += t.amount; else summary[month].debits += t.amount;
-    summary[month].closing_balance = t.balance || 0;
-  }
-  for (const s of analysis.salary) if (summary[s.date.slice(0, 7)]) summary[s.date.slice(0, 7)].salary += s.amount;
-  for (const e of analysis.emi_payments) if (summary[e.date.slice(0, 7)]) summary[e.date.slice(0, 7)].emi += e.amount;
-  for (const a of analysis.apy_pension) if (summary[a.date.slice(0, 7)]) summary[a.date.slice(0, 7)].apy += a.amount;
-  for (const i of analysis.transfers_in) if (summary[i.date.slice(0, 7)]) summary[i.date.slice(0, 7)].transfers_in += i.amount;
-  for (const o of analysis.transfers_out) if (summary[o.date.slice(0, 7)]) summary[o.date.slice(0, 7)].transfers_out += o.amount;
-  analysis.monthly_summary = summary;
-}
-
-function computeInsights(analysis) {
-  const months = Object.keys(analysis.monthly_summary); if (!months.length) return;
-  analysis.insights.avg_monthly_salary = analysis.salary.reduce((s, x) => s + x.amount, 0) / months.length;
-  analysis.insights.total_emi_monthly = analysis.emi_payments.reduce((s, x) => s + x.amount, 0) / months.length;
-  if (analysis.insights.avg_monthly_salary > 0) analysis.insights.obligation_to_income_ratio = (analysis.insights.total_emi_monthly / analysis.insights.avg_monthly_salary) * 100;
-  if (analysis.account_summary.total_credits > 0) analysis.insights.savings_rate = ((analysis.account_summary.total_credits - analysis.account_summary.total_debits) / analysis.account_summary.total_credits) * 100;
-  if (analysis.insights.obligation_to_income_ratio > 50) { analysis.insights.risk_flags.push('High debt-to-income ratio'); analysis.insights.recommendations.push('Consider reducing non-essential expenses'); }
-  if (analysis.bounce_charges.length > 0) { analysis.insights.risk_flags.push('Bounces detected in statement'); analysis.insights.recommendations.push('Maintain sufficient balance for EMIs'); }
-}
-
-function computeLoanSummary(analysis) {
-  const summary = {};
-  for (const e of analysis.emi_payments) {
-    const bank = e.bank || 'Unknown';
-    if (!summary[bank]) summary[bank] = { count: 0, total_paid: 0, last_emi: null };
-    summary[bank].count++; summary[bank].total_paid += e.amount; summary[bank].last_emi = e.date;
-  }
-  analysis.loan_summary = summary;
-}
 
 // ════════════════════════════════════════════════════════════════
 // CIBIL PARSER v3 — handles CIBIL/Paisabazaar PDFs whose tables

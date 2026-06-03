@@ -14,7 +14,7 @@ const MONEY_RE = /(?:\d{1,3}(?:,\s?\d{2,3})+|\d+)\.\d{2}/g;
 const PDF_TEXT_ITEM_THRESHOLD = 5;
 
 const salaryKeywords = [/\bSALARY\b/i, /\bPAYROLL\b/i, /VARAHE/i, /SIPL/i, /INFOSYS/i, /WIPRO/i, /TATA\s+CONSULTANCY/i, /HCL\s+TECH/i];
-const emiKeywords = [/EMI/i, /LOAN/i, /NACH/i, /ACH/i, /MANDATE/i];
+const emiKeywords = [/EMI/i, /LOAN/i, /NACH/i, /\bACH\b/i, /MANDATE/i];
 
 // Helper to categorize transaction during parsing
 const categorizeTx = (tx) => {
@@ -502,7 +502,7 @@ function parseText(text) {
 
   // Try structured row extraction
   const dateRegex =
-    /\b(\d{4}-\d{2}-\d{2}|\d{2}[-\/]\d{2}[-\/]\d{2,4}|\d{2}[-\/][A-Za-z]{3}[-\/]\d{2,4}|\d{2}\s+[A-Za-z]{3}\s+\d{2,4}|\d{2}[A-Za-z]{3}\d{2,4})\b/;
+    /\b(\d{4}-\d{2}-\d{2}|\d{2}[-\/.]\d{2}[-\/.]\d{2,4}|\d{2}[-\/][A-Za-z]{3}[-\/]\d{2,4}|\d{2}\s+[A-Za-z]{3}\s+\d{2,4}|\d{2}[A-Za-z]{3}\d{2,4})\b/;
 
   let currentTx = null;
 

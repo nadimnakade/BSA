@@ -16,8 +16,8 @@ export default function SummaryCards({ a }) {
 
   const accountSummary = safeA.account_summary || {}
   const cards = [
-    {label:'Total Credits',value:f(accountSummary.total_credits),sub:`Salary: ${f(salaryTotal)}`,color:'var(--green)'},
-    {label:'Total Debits',value:f(accountSummary.total_debits),sub:`EMIs: ${f(loanTotal)}`,color:'var(--red)'},
+    {label:'Total Credits',value:f(accountSummary.total_credits),sub:`Salary: ${f(salaryTotal)} · PF: ${f(pfTotal)}`,color:'var(--green)'},
+    {label:'Total Debits',value:f(accountSummary.total_debits),sub:`EMIs: ${f(loanTotal)} · Apps: ${f(appTotal)}`,color:'var(--red)'},
     {label:'Net Position',value:f(Math.abs(accountSummary.net_balance||0)),sub:(accountSummary.net_balance||0)>=0?'Surplus':'Deficit',color:(accountSummary.net_balance||0)>=0?'var(--green)':'var(--red)'},
     {label:'Avg Monthly Salary',value:f(ins.avg_monthly_salary),sub:`${(safeA.salary||[]).length} salary credits`,color:'var(--green)'},
     {label:'Total EMI/Month',value:f(ins.total_emi_monthly),sub:`${(safeA.loans||[]).length} active loans`,color:'var(--red)'},
@@ -31,7 +31,7 @@ export default function SummaryCards({ a }) {
   ]
 
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'repeat(4,minmax(0,1fr))', gap:10, marginBottom:4 }}>
+    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:10, marginBottom:4 }}>
       {cards.map(c => (
         <div key={c.label} className="card" style={{ padding:'14px 16px' }}>
           <div style={{ fontSize:11, color:'var(--text-muted)', fontWeight:500, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:6 }}>{c.label}</div>
