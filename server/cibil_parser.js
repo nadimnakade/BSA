@@ -38,80 +38,57 @@ function parseDate(dateStr) {
 
 // ── LENDER REGISTRY (Standardized Names) ──────────────────────────
 const LENDER_PATTERNS = [
-  // Public Sector Banks
-  {
-    regex: /\bSBIN\b|STATE.*BANK.*INDIA|\bSBI\b/i,
-    name: "State Bank of India (SBI)",
-    category: "PSB",
-  },
-  {
-    regex: /\bUBIN\b|UNION.*BANK/i,
-    name: "Union Bank of India",
-    category: "PSB",
-  },
-  {
-    regex: /\bPUNB\b|PUNJAB.*NATIONAL|\bPNB\b/i,
-    name: "Punjab National Bank (PNB)",
-    category: "PSB",
-  },
-  {
-    regex: /\bBARB\b|BANK.*BARODA|\bBOB\b/i,
-    name: "Bank of Baroda (BOB)",
-    category: "PSB",
-  },
+  // Public Sector Banks (PSBs)
+  { regex: /\bSBIN\b|STATE.*BANK.*INDIA|\bSBI\b/i, name: "State Bank of India (SBI)", category: "PSB" },
+  { regex: /\bUBIN\b|UNION.*BANK/i, name: "Union Bank of India", category: "PSB" },
+  { regex: /\bPUNB\b|PUNJAB.*NATIONAL|\bPNB\b/i, name: "Punjab National Bank (PNB)", category: "PSB" },
+  { regex: /\bBARB\b|BANK.*BARODA|\bBOB\b/i, name: "Bank of Baroda (BOB)", category: "PSB" },
   { regex: /\bCNRB\b|CANARA.*BANK/i, name: "Canara Bank", category: "PSB" },
-  {
-    regex: /\bIOBA\b|INDIAN.*OVERSEAS/i,
-    name: "Indian Overseas Bank (IOB)",
-    category: "PSB",
-  },
-  {
-    regex: /\bBKID\b|BANK.*INDIA\b/i,
-    name: "Bank of India (BOI)",
-    category: "PSB",
-  },
-  {
-    regex: /\bMAHB\b|BANK.*MAHARASHTRA/i,
-    name: "Bank of Maharashtra",
-    category: "PSB",
-  },
-  {
-    regex: /CENTRAL.*BANK.*INDIA|\bCBIN\b/i,
-    name: "Central Bank of India",
-    category: "PSB",
-  },
+  { regex: /\bIOBA\b|INDIAN.*OVERSEAS/i, name: "Indian Overseas Bank (IOB)", category: "PSB" },
+  { regex: /\bBKID\b|BANK.*INDIA\b/i, name: "Bank of India (BOI)", category: "PSB" },
+  { regex: /\bMAHB\b|BANK.*MAHARASHTRA/i, name: "Bank of Maharashtra", category: "PSB" },
+  { regex: /CENTRAL.*BANK.*INDIA|\bCBIN\b/i, name: "Central Bank of India", category: "PSB" },
   { regex: /\bUCO\b|UCO.*BANK/i, name: "UCO Bank", category: "PSB" },
-  // Private Sector Banks
+  
+  // Private Sector Banks (Pvt)
   { regex: /\bHDFC\b|HDFCBANK/i, name: "HDFC Bank", category: "Pvt" },
   { regex: /ICICI|ICICIBANK/i, name: "ICICI Bank", category: "Pvt" },
-  {
-    regex: /\bUTIB\b|AXIS.*BANK|AXISBANK/i,
-    name: "Axis Bank",
-    category: "Pvt",
-  },
+  { regex: /\bUTIB\b|AXIS.*BANK|AXISBANK/i, name: "Axis Bank", category: "Pvt" },
   { regex: /\bKKBK\b|KOTAK/i, name: "Kotak Mahindra Bank", category: "Pvt" },
   { regex: /\bYESB\b|YES.*BANK|YESBANK/i, name: "Yes Bank", category: "Pvt" },
-  {
-    regex: /\bINDB\b|INDUSIND|INDUS.*IND/i,
-    name: "IndusInd Bank",
-    category: "Pvt",
-  },
+  { regex: /\bINDB\b|INDUSIND|INDUS.*IND/i, name: "IndusInd Bank", category: "Pvt" },
   { regex: /\bFDRL\b|FEDERAL.*BANK/i, name: "Federal Bank", category: "Pvt" },
   { regex: /\bIDFB\b|IDFC/i, name: "IDFC First Bank", category: "Pvt" },
   { regex: /\bIBKL\b|\bIDBI\b/i, name: "IDBI Bank", category: "Pvt" },
   { regex: /\bIDIB\b|INDIAN.*BANK/i, name: "Indian Bank", category: "PSB" },
   { regex: /\bRBLB\b|\bRBL\b/i, name: "RBL Bank", category: "Pvt" },
   { regex: /\bBAND\b|BANDHAN/i, name: "Bandhan Bank", category: "Pvt" },
-  {
-    regex: /\bAUBK\b|AU.*SMALL|AU.*FINANCE/i,
-    name: "AU Small Finance Bank",
-    category: "SFB",
-  },
+
+  // Small Finance Banks (SFBs)
+  { regex: /\bAUBK\b|AU.*SMALL|AU.*FINANCE/i, name: "AU Small Finance Bank", category: "SFB" },
+  { regex: /\bEQUITAS\b|EQUITAS\b/i, name: "Equitas Small Finance Bank", category: "SFB" },
+  { regex: /\bESFB\b|UJJIVAN\b|UJJIVAN\s+SMALL/i, name: "Ujjivan Small Finance Bank", category: "SFB" },
+
+  // NBFCs & Fintech (for reference, though less common in CIBIL)
+  { regex: /SMFG|SMFGINDIACR|SMFG.*INDIA/i, name: "SMFG India Credit (Fullerton)", category: "NBFC" },
+  { regex: /\bBAJAJ\b|BAJAJ.*FIN/i, name: "Bajaj Finance Ltd", category: "NBFC" },
+  { regex: /\bTATA\s*CAPITAL\b|TATA.*FIN/i, name: "Tata Capital", category: "NBFC" },
+  { regex: /L&T.*FIN|LNTFIN/i, name: "L&T Finance", category: "NBFC" },
+  { regex: /MUTHOOT.*FIN|MUTHOOT/i, name: "Muthoot Finance", category: "NBFC" },
+  { regex: /MANAPPURAM.*FIN|MANAPPURAM/i, name: "Manappuram Finance", category: "NBFC" },
+  { regex: /\bSHRIRAM\b|SHRIRAM.*FIN/i, name: "Shriram Finance", category: "NBFC" },
+  { regex: /\bMAHINDRA\b|MMFSL|MAHFIN/i, name: "Mahindra Finance", category: "NBFC" },
+  { regex: /\bCHOLA\b|CHOLAMANDALAM/i, name: "Cholamandalam Finance", category: "NBFC" },
+  { regex: /\bPIRAMAL\b|PIRAMAL.*FIN/i, name: "Piramal Finance", category: "NBFC" },
+  { regex: /\bHOME\s*CREDIT\b|HOMECREDIT/i, name: "Home Credit", category: "NBFC" },
 ];
 
 function normalizeLenderName(rawName) {
   if (!rawName) return rawName;
-  const d = rawName.toUpperCase().replace(/\s+/g, "");
+  const clean = rawName.toString().trim();
+  if (clean.length < 2) return rawName;
+  
+  const d = clean.toUpperCase().replace(/\s+/g, "");
 
   // High priority exact matches - very explicit to prevent misidentification
   if (d.includes("INDUSIND")) return "IndusInd Bank";
@@ -121,23 +98,76 @@ function normalizeLenderName(rawName) {
   if (d.includes("AXIS")) return "Axis Bank";
   if (d.includes("KOTAK")) return "Kotak Mahindra Bank";
   if (d.includes("YESBANK")) return "Yes Bank";
-  if (d.includes("SBIN") || d.includes("STATEBANK"))
-    return "State Bank of India (SBI)";
+  if (d.includes("SBIN") || d.includes("STATEBANK")) return "State Bank of India (SBI)";
   if (d.includes("CITI")) return "CITIBANK";
-  if (d.includes("SCB") || d.includes("STANDARDCHARTERED")) return "SCB";
-  if (d.includes("AMEX") || d.includes("AMERICANEXPRESS")) return "AMEX";
+  if (d.includes("SCB") || d.includes("STANDARDCHARTERED")) return "Standard Chartered Bank";
+  if (d.includes("AMEX") || d.includes("AMERICANEXPRESS")) return "American Express";
+  if (d.includes("UNION") && d.includes("BANK")) return "Union Bank of India";
+  if (d.includes("PUNJAB") && d.includes("NATIONAL")) return "Punjab National Bank (PNB)";
+  if (d.includes("BARODA")) return "Bank of Baroda (BOB)";
+  if (d.includes("CANARA")) return "Canara Bank";
 
+  // CIBIL member ID codes
+  if (d === "KANGRACBL") return "Kotak Mahindra Bank";
+  if (d === "ADBIRLACAP") return "Aditya Birla Capital";
+  if (d === "BHANIXFIN") return "Bhanix Finance";
+  if (d === "MANBA") return "Manba Finance";
+  if (d === "SMICC") return "SMFG India Credit (Fullerton)";
+  if (d === "DMIFINANCE") return "DMI Finance";
+  if (d === "AXISFIN") return "Axis Finance";
+  if (d === "TCFSL") return "Tata Capital Financial Services";
+  if (d === "EPIMONEY") return "EpiPay Money";
+  if (d === "INCREDFINANCE") return "Incred Finance";
+  if (d === "CHOLAINVSTFIN") return "Cholamandalam Investment & Finance";
+
+  // Pattern matching
   for (const p of LENDER_PATTERNS) {
-    if (p.regex.test(d) || p.regex.test(rawName)) return p.name;
+    if (p.regex.test(d) || p.regex.test(clean)) return p.name;
   }
+  
+  // Fallback: return cleaned version if it looks like a bank name
+  if (clean.length >= 3 && /[A-Z]/.test(clean)) {
+    return clean;
+  }
+  
   return rawName;
 }
 
 /**
+ * Detect which bureau / source the CIBIL report came from.
+ * Returns: 'transunion' | 'equifax' | 'crif' | 'paisabazaar' | 'cibil_tucici' | 'unknown'
+ */
+function detectCibilSource(text) {
+  const t = (text || "").toString().toLowerCase();
+  // 1) Direct TransUnion / CIBIL branding always wins (most common in India).
+  //    "Report to CIBIL", "Hey <Name>", "Credit Score" with CIBIL/TransUnion logos,
+  //    "Powered by TransUnion", etc.
+  if (/report\s*to\s*cibil|powered\s*by\s*transunion|transunion\s*cibil/i.test(t)) {
+    return "transunion";
+  }
+  // 2) CIBIL brand terms without TransUnion are also classified as TransUnion
+  //    (CIBIL is a TransUnion company in India).
+  if (/\bcibil\b|cibil\s*score|credit\s*information\s*bureau/i.test(t)) {
+    return "transunion";
+  }
+  // 3) CRIF (uses "CreditVision" or CRIF markers)
+  if (/crif\s*high\s*mark|credit\s*vision\s*report|\bcrif\b/i.test(t)) return "crif";
+  // 4) Equifax (often used via "Credit Report" by Experian/Equifax; also "Equifax Score")
+  if (/equifax\s*score|equifax\s*credit\s*report|\bequifax\b/i.test(t)) return "equifax";
+  // 5) Paisabazaar-generated CIBIL report (delivered as CIBIL PDF but with PB branding)
+  if (/paisabazaar|on\.paisabazaar|paisa\s*bazaar/i.test(t)) return "paisabazaar";
+  return "unknown";
+}
+
+/**
  * Pre-process CIBIL text from dense single-line-per-page format or squished format.
+ * Handles TransUnion CIBIL, Equifax, CRIF, and Paisabazaar reports.
  */
 function preprocessCibilText(rawText) {
   let text = (rawText || "").toString();
+
+  // Normalize windows line endings
+  text = text.replace(/\r\n?/g, "\n");
 
   // 1) Handle squished labels (e.g. from Xavier PDF: "Account Number:XXXX9705Account type:")
   const squishedLabels = [
@@ -157,117 +187,195 @@ function preprocessCibilText(rawText) {
     "Actual Last Payment",
     "Interest Rate",
     "Collateral Type",
-    "Collateral",
     "Suit Filed Status",
     "Cash Limit",
     "Payment Frequency",
     "Maximum Utilization",
+    "High Credit",
     "Account Number",
     "Account type",
     "Account Status",
+    "Account No",
     "Ownership",
+    "Opened Date",
     "Account Details",
-    "Payment History",
-    "Written-O[\\x00\\uFFFD]?\\s*Principal\\s*Amount",
-    "Written-O[\\x00\\uFFFD]?\\s*Total\\s*Amount",
+    "Enquired on",
+    "Enquiry Purpose",
+    "Financial Institution",
+    "Last Bank",
   ];
 
   for (const label of squishedLabels) {
-    // Add newline before label if squished
-    text = text.replace(new RegExp(`(?<=[a-z0-9])(${label})`, "gi"), "\n$1");
-    // Add space after colon if squished
+    const safe = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Add newline before label if squished against alphanumeric
     text = text.replace(
-      new RegExp(`(${label})\\s*:?\\s*(?=\\S)`, "gi"),
+      new RegExp(`(?<=[a-zA-Z0-9])(${safe})`, "g"),
+      "\n$1",
+    );
+    // Add newline+colon+space after label if followed by value
+    text = text.replace(
+      new RegExp(`(${safe})\\s*:?\\s*(?=\\S)`, "g"),
       "\n$1: ",
+    );
+    // Also break header column row like "Account typeAccount NoOwnership..."
+    text = text.replace(
+      new RegExp(`\\b(${safe})\\b(?=[A-Z][a-z])`, "g"),
+      "\n$1 ",
+    );
+    text = text.replace(
+      new RegExp(`\\b(${safe})\\b(?!\\s*[:\\n])(?=[A-Z])`, "g"),
+      "\n$1 ",
     );
   }
 
-  const rawLines = text
-    .split("\n")
-    .map((x) => x.trim())
-    .filter(Boolean);
-  const totalChars = text.length;
-  const avgLineLen = rawLines.length > 0 ? totalChars / rawLines.length : 0;
+  // Strip "Report to CIBILTable of Contents" glue
+  text = text.replace(/Report\s+to\s+CIBIL\s*Table\s+of\s+Contents/gi, "\n");
+  text = text.replace(/Powered\s+by[^\n]*/gi, "");
 
-  if (rawLines.length > 150 && avgLineLen < 200) {
-    // It's already mostly multi-line, just return it (Xavier's PDF falls here)
-    return text.trim();
+  // Insert line breaks before known headers
+  const headerBreaks = [
+    "Account Details",
+    "Credit Enquiries",
+    "Credit Enquiry",
+    "Summary: Loan Accounts",
+    "Summary: Credit Cards",
+    "Summary: Credit Accounts",
+    "Contact Information",
+    "Personal Information",
+    "Personal Details",
+    "Address Details",
+    "Phone Number",
+    "Email ID",
+    "Mobile Phone",
+    "Home Phone",
+    "Office Phone",
+    "Report Summary",
+    "Report Date",
+    "Report Number",
+    "Sr. No.",
+    "Table Of Contents",
+    "Table of Contents",
+    "Support & Legend",
+  ];
+  for (const h of headerBreaks) {
+    const safe = h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    text = text.replace(
+      new RegExp(`(?<=\\S)(${safe})`, "g"),
+      "\n$1",
+    );
   }
 
-  // 2) Handle dense single-line-per-page format (Harvinder PDF)
-  let cleaned = text.replace(
-    /Report Number \(ECN\)\s*:\s*\d+\s*Report Date\s*:\s*\d{2}-\d{2}-\d{4}\s*Report to CIBIL\s*Table of Contents/gi,
-    "\n",
+  // 2) Score line normalization.
+  //    The score is typically a 3-digit number (300-900) on its own line, followed by
+  //    a rating word (e.g. "VERY GOOD", "GOOD", "EXCELLENT", "FAIR", "POOR").
+  //    The line BEFORE the score number often contains "1" (recent enquiries count).
+  text = text.replace(
+    /^([3-9]\d{2})\s*\n\s*(EXCELLENT|GOOD|FAIR|POOR|VERY\s*GOOD|VERY\s*POOR|LOW|HIGH|NA)\b/gim,
+    "\nSCORE: $1\nRATING: $2\n",
   );
-  cleaned = cleaned.replace(
-    /This section (?:has information|shows|displays)[^.]*\./gi,
-    "\n",
+  text = text.replace(
+    /\b(EXCELLENT|GOOD|FAIR|POOR|VERY\s*GOOD|VERY\s*POOR|LOW|HIGH|NA)\s*\n\s*([3-9]\d{2})\b/gim,
+    "\nSCORE: $2\nRATING: $1\n",
   );
-  cleaned = cleaned.replace(
-    /Paid on time\s+1-89 days late\s+90\+ days late\s+Not Reported/gi,
-    "\n",
+  // CIBIL Score: 798 pattern
+  text = text.replace(
+    /\bCIBIL\s*SCORE\b\s*[:\-]?\s*([3-9]\d{2})/gi,
+    "\nCIBIL SCORE: $1",
   );
-  cleaned = cleaned.replace(/Powered by/gi, "");
+  // Equifax / Experian / CRIF score labels
+  text = text.replace(
+    /\b(Equifax|Experian|CRIF|CIBIL|TransUnion)\s*Score\b\s*[:\-]?\s*([3-9]\d{2})/gi,
+    "\nCIBIL SCORE: $2",
+  );
 
-  cleaned = cleaned.replace(
-    /(?=(?:^|\s{2,})([A-Z][A-Z0-9 &.'\-]{2,40})\s{2,}(Active\*{0,2}|Closed)\s{2,}Account Number\s*:\s*)/gi,
-    "\n---ACCOUNT_BREAK---\n",
-  );
+  // 3) Section / summary label newlines
+  text = text.replace(/(\d+)\s+(Active\s+(?:Loans?|Credit\s+Cards?))/gi, "\n$1 $2");
+  text = text.replace(/(Total\s+(?:loan|limit))/gi, "\n$1");
+  text = text.replace(/(Current\s+Outstanding)/gi, "\n$1");
+  text = text.replace(/(Overdue\s+Payments)/gi, "\n$1");
+  text = text.replace(/(Age\s+of\s+Accounts)/gi, "\n$1");
+  text = text.replace(/(Recent\s+Enquiries)/gi, "\n$1");
+  text = text.replace(/(Hey\s+[A-Za-z]+,)/gi, "\n$1\n");
+  // Be careful: only match short "This section..." footer sentences.
+  // The previous greedy `[^.]*\.` could swallow thousands of characters when
+  // a sentence runs across multiple "pages" without a period. Cap to ~300 chars.
+  text = text.replace(/This section[^.\n]{0,300}\./gi, "\n");
 
+  // 4) Break squished account-number rows in the summary table
+  //    The squished format looks like: "YES BANKPersonal LoanXXXX9705Individual01-09-2025Active30-04-20262,00,0001,83,383"
+  //    Insert a newline between the bank name and the account type (e.g. "BANK" + "Personal Loan").
   const loanTypePattern =
-    "(?:Personal Loan|Education Loan|Home Loan|Housing Loan|Vehicle Loan|Two Wheeler Loan|Used Car Loan|Gold Loan|Business Loan(?: General)?|Consumer Loan|Loan Against Property|Property Loan|Overdraft|Credit Card|Loan on Credit Card|Other)";
+    "(?:Personal\\s+Loan|Education\\s+Loan|Home\\s+Loan|Housing\\s+Loan|Vehicle\\s+Loan|Two[\\s-]?Wheeler\\s+Loan|Used\\s+Car\\s+Loan|Gold\\s+Loan|Business\\s+Loan(?:\\s*[–-]\\s*General|\\s+General)?|Consumer\\s+Loan|Loan\\s+Against\\s+Property|Property\\s+Loan|Overdraft|Credit\\s+Card|Loan\\s+on\\s+Credit\\s+Card|Other)";
+  text = text.replace(
+    new RegExp(`([A-Z][A-Z0-9 &.'\\-]{2,60})(${loanTypePattern})`, "g"),
+    "$1\n$2",
+  );
+  // Insert newline before masked account number token (XXXX1234)
+  text = text.replace(
+    /(?<=[A-Za-z])(XXXX[A-Z0-9]{3,})/g,
+    "\n$1",
+  );
+  // Insert newline between account number and ownership/status keywords
+  text = text.replace(
+    /([A-Z0-9]{3,}(?:XXXX)?[A-Z0-9]{0,4})(Individual|Joint|Guarantor|Co-Applicant|Co Applicant|Authorised User|Authorized User|Primary)/g,
+    "$1\n$2",
+  );
+  text = text.replace(
+    /(Individual|Joint|Guarantor)(\d{2}[-\/]\d{2}[-\/]\d{4})/g,
+    "$1\n$2",
+  );
+  text = text.replace(
+    /(\d{2}[-\/]\d{2}[-\/]\d{4})(Active|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|SMA|Special\s*Mention)/g,
+    "$1\n$2",
+  );
+  text = text.replace(
+    /(Active|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|SMA|Special\s*Mention)(\d{2}[-\/]\d{2}[-\/]\d{4})/g,
+    "$1\n$2",
+  );
+  text = text.replace(
+    /(\d{2}[-\/]\d{2}[-\/]\d{4})([\d,]{4,})/g,
+    "$1\n$2",
+  );
+  // Split squished money amounts in the summary table
+  // Example: "2,00,0001,83,383" should become "2,00,000\n1,83,383"
+  // Pattern: an Indian-style number followed directly by another Indian-style number
+  // (with at least 4 digits after the comma boundary to disambiguate from a single big number).
+  text = text.replace(
+    /(\d{1,2},\d{2},\d{3})(\d{1,2},\d{2},\d{3})/g,
+    "$1\n$2",
+  );
+  text = text.replace(
+    /(\d{1,2},\d{2},\d{3})(-?\d{1,3})(?=\s|$|\n)/g,
+    "$1\n$2",
+  );
+  // Split masked-account-number followed by date: "XXXX970501-09-2025"
+  text = text.replace(
+    /(XXXX[A-Z0-9]{3,7})(\d{2}-\d{2}-\d{4})/g,
+    "$1\n$2",
+  );
 
-  cleaned = cleaned.replace(
-    new RegExp(
-      `(?=\\s{2,}(\\d{1,3})\\s{2,}(${loanTypePattern}|Credit Card|Other)\\s{2,}([A-Z][A-Z0-9 &.'\-]{2,60})\\s{2,}(\\d{2}-\\d{2}-\\d{4}))`,
-      "gi",
-    ),
-    "\n",
-  );
-  cleaned = cleaned.replace(
-    new RegExp(
-      `(?=\\s{2,}([A-Z][A-Z0-9 &.'\-]{2,40})\\s{2,}(${loanTypePattern})\\s{2,}(XXXX[A-Z0-9\\-]{2,10}|[A-Z0-9X*]{4,}))`,
-      "gi",
-    ),
-    "\n",
-  );
-
-  // Split "Credit Enquiries" section header
-  cleaned = cleaned.replace(/(?=Credit Enquiries)/gi, "\n");
-  cleaned = cleaned.replace(/(?=Sr\.\s*No\.\s*Enquiry Purpose)/gi, "\n");
-  cleaned = cleaned.replace(
-    /(?=Summary:\s*(?:Loan Accounts|Credit Cards))/gi,
-    "\n",
-  );
-  cleaned = cleaned.replace(/(?=Account Details\s)/gi, "\n");
-  cleaned = cleaned.replace(/(?=Contact Information)/gi, "\n");
-
-  cleaned = cleaned.replace(
-    /(\d{3})\s+(EXCELLENT|GOOD|FAIR|POOR|VERY\s*POOR|LOW|HIGH|NA)/gi,
-    "\nSCORE: $1\n$2\n",
-  );
-  cleaned = cleaned.replace(/(Hey\s+[A-Za-z]+,)/gi, "\n$1\n");
-  cleaned = cleaned.replace(/(?=Report Summary)/gi, "\n");
-  cleaned = cleaned.replace(
-    /(\d+)\s+(Active\s+(?:Loans?|Credit\s+Cards?))/gi,
+  // 5) Break squished enquiry rows: "1Housing LoanSBI22-04-2026"
+  text = text.replace(
+    /(?<=\b)(\d{1,3})(Housing\s+Loan|Personal\s+Loan|Credit\s+Card|Business\s+Loan(?:[ –-]General)?|Other|Education\s+Loan|Vehicle\s+Loan|Two[ -]?wheeler\s+Loan|Loan\s+on\s+Credit\s+Card|Gold\s+Loan|Property\s+Loan|Overdraft)/gi,
     "\n$1 $2",
   );
-  cleaned = cleaned.replace(/(Total\s+(?:loan|limit))/gi, "\n$1");
-  cleaned = cleaned.replace(/(Current\s+Outstanding)/gi, "\n$1");
-  cleaned = cleaned.replace(/(Overdue\s+Payments)/gi, "\n$1");
-  cleaned = cleaned.replace(/(Age\s+of\s+Accounts)/gi, "\n$1");
-  cleaned = cleaned.replace(/(Recent\s+Enquiries)/gi, "\n$1");
-  cleaned = cleaned.replace(/(?=Address Details)/gi, "\n");
-  cleaned = cleaned.replace(/(?=Phone Number)/gi, "\n");
-  cleaned = cleaned.replace(/(?=Email ID)/gi, "\n");
-  cleaned = cleaned.replace(/(?=Mobile Phone)/gi, "\n");
-  cleaned = cleaned.replace(/(?=Home Phone)/gi, "\n");
-  cleaned = cleaned.replace(/(?=Office Phone)/gi, "\n");
+  text = text.replace(
+    new RegExp(`(${loanTypePattern})([A-Z][A-Z0-9 &.'\\-]{2,60}?)(\\d{2}-\\d{2}-\\d{4})`, "g"),
+    "$1\n$2\n$3",
+  );
 
-  cleaned = cleaned.replace(/---ACCOUNT_BREAK---/g, "\n");
-  cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
+  // 6) Break account-details header block
+  //    Format: "YES BANK\nActive\nAccount Number:XXXX9705Account type:Personal Loan..."
+  //    Add newline between status word and "Account Number:"
+  text = text.replace(
+    /\b(Active|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|SMA)\s+(Account\s*Number\s*:?)/gi,
+    "$1\n$2",
+  );
 
-  return cleaned.trim();
+  // Collapse runs of blank lines
+  text = text.replace(/\n{3,}/g, "\n\n");
+
+  return text.trim();
 }
 
 function parseNum(value) {
@@ -283,27 +391,82 @@ function parseNum(value) {
   return Number.isNaN(num) ? undefined : num;
 }
 
+function isJunkLenderName(s) {
+  if (!s) return true;
+  const t = s.trim();
+  if (t.length < 2 || t.length > 80) return true;
+  if (/^(Account|Date|Type|Status|Number|Ownership|Opened|Closed|Update|Amount|Balance|Limit|Loan|Institution|Financial|Outstanding|Sanctioned|Report|Summary|ENQUIRY|ENQUIRED|Sr\.|Section|Table|Contents|Page|Hello|Hey|Email|Phone|Mobile|Active|Closed)$/i.test(t))
+    return true;
+  if (/\b(?:Account|Date|Status|Type|Ownership|Opened|Closed|Update|Amount|Balance|Limit)\b/i.test(t))
+    return true;
+  return false;
+}
+
 function parsePaisabazaarSummary(text) {
 
   const rows = [];
 
-  const regex =
-    /([A-Z][A-Z\s&.-]{2,40}?)(Personal Loan|Housing Loan|Consumer Loan|Gold Loan|Credit Card|Two-wheeler Loan|Business Loan\s*–\s*General)(XXXX[A-Z0-9]+)(Individual|Joint|Guarantor)(\d{2}-\d{2}-\d{4})(Active|Closed)(\d{2}-\d{2}-\d{4})([\d,NA-]+)([\d,NA-]+)/g;
+  // Two-pass strategy:
+  //  (a) Try to find rows with reasonable whitespace between fields
+  //      (standard Paisabazaar / TransUnion CIBIL summary).
+  //  (b) Fall back to a strict squished row regex for reports that
+  //      have no whitespace between fields (e.g. certain CIBIL PDF
+  //      exports and Equifax reports).
+  //
+  // The squished variant uses a smart amount matcher: a properly
+  // comma-grouped Indian number (1,00,000 / 14,75,665 / 6,48,322)
+  // OR a negative integer (-17) OR the literal NA.
+
+  const accountNo = "(XXXX[A-Z0-9]{3,7}|[A-Z0-9X*]{6,})";
+  const owner =
+    "(?:Individual|Joint|Guarantor|Co-Applicant|Co Applicant|Authorised User|Authorized User|Primary|Secondary|Sole)";
+  const status =
+    "(?:Active\\*?\\*?|Closed|Settled|Written\\s*Off|Wilful\\s*Default|Suit\\*?\\s*Filed|Loss|SMA|Special\\s*Mention)";
+  const dateRe = "(\\d{2}-\\d{2}-\\d{4})";
+  // Indian comma-grouped number: like 1,00,000 / 14,75,665 / 6,48,322 / -17 / -1 / NA
+  // The first format must be either XX,XX,XXX (Indian) or X,XXX (Western) or just digits.
+  const amount =
+    "((?:-?\\d{1,2},\\d{2},\\d{3})|(?:-?\\d{1,3},\\d{3})|(?:-?\\d+)|(?:NA))";
+
+  const squishedRowRe = new RegExp(
+    [
+      "([A-Z][A-Z\\s&.\\-'\\u2013\\u2014]{2,60}?)", // 1: Lender
+      "[\\s\\n]*(Personal Loan|Housing Loan|Education Loan|Home Loan|Vehicle Loan|Two-wheeler Loan|Used Car Loan|Gold Loan|Business Loan(?:\\s*[–-]\\s*General)?|Consumer Loan|Loan Against Property|Property Loan|Overdraft|Credit Card|Loan on Credit Card|Other)",
+      `[\\s\\n]*(${accountNo})`,
+      `[\\s\\n]*(${owner})`,
+      `[\\s\\n]*${dateRe}`,
+      `[\\s\\n]*(${status})`,
+      `[\\s\\n]*${dateRe}`,
+      `[\\s\\n]*${amount}`,
+      `[\\s\\n]*${amount}`,
+    ].join(""),
+    "g",
+  );
 
   let m;
-
-  while ((m = regex.exec(text)) !== null) {
-
+  const seen = new Set();
+  while ((m = squishedRowRe.exec(text)) !== null) {
+    const lender = (m[1] || "").replace(/\s+/g, " ").trim();
+    if (
+      isJunkLenderName(lender) ||
+      /\b(?:Account|Date|Status|Type|Ownership|Opened|Closed|Number)\b/i.test(lender)
+    ) {
+      continue;
+    }
+    const account_no = (m[3] || "").trim();
+    const key = `${account_no}|${lender.toUpperCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
     rows.push({
-      lender: m[1].replace(/\s+/g, ' ').trim(),
-      account_type: m[2].trim(),
-      account_no: m[3],
-      ownership: m[4],
+      lender: normalizeLenderName(lender) || lender,
+      account_type: (m[2] || "").trim(),
+      account_no,
+      ownership: (m[4] || "").trim(),
       opened_date: parseDate(m[5]),
-      account_status: m[6],
+      account_status: (m[6] || "").replace(/\s+/g, " ").trim(),
       last_update: parseDate(m[7]),
       sanctioned_amount: parseNum(m[8]),
-      current_balance: parseNum(m[9])
+      current_balance: parseNum(m[9]),
     });
   }
 
@@ -327,17 +490,41 @@ function parseCibilText(text) {
     "(?:Personal\\s+Loan|Education\\s+Loan|Home\\s+Loan|Housing\\s+Loan|Vehicle\\s+Loan|Two\\s+Wheeler\\s+Loan|Used\\s+Car\\s+Loan|Gold\\s+Loan|Business\\s+Loan(?:\\s+General)?|Consumer\\s+Loan|Loan\\s+Against\\s+Property|Property\\s+Loan|Overdraft|Credit\\s+Card|Loan\\s+on\\s+Credit\\s+Card|Other)";
 
   const pickScore = () => {
-    const m =
-      joined.match(/CIBIL\s*SCORE[^0-9]{0,60}([3-9]\d{2})\b/i) ||
-      joined.match(/\bSCORE[^0-9]{0,60}([3-9]\d{2})\b/i) ||
-      joined.match(/\b([3-9]\d{2})\b\s*\n\s*Your\s+CIBIL\s+Score/i) ||
-      joined.match(/Equifax\s+Score[^0-9]{0,60}([3-9]\d{2})\b/i) ||
-      joined.match(/Experian\s+Score[^0-9]{0,60}([3-9]\d{2})\b/i) ||
-      joined.match(/CRIF\s+Score[^0-9]{0,60}([3-9]\d{2})\b/i);
-    if (!m) return undefined;
-    const n = Number(m[1] || m[0].match(/\d{3}/)[0]);
-    if (!Number.isFinite(n) || n < 300 || n > 900) return undefined;
-    return n;
+    // 1) Look for explicit labels (CIBIL SCORE, Equifax Score, etc.)
+    const labeled =
+      joined.match(/\bCIBIL\s*SCORE\b[^0-9]{0,30}([3-9]\d{2})\b/i) ||
+      joined.match(/\bEquifax\s*Score\b[^0-9]{0,30}([3-9]\d{2})\b/i) ||
+      joined.match(/\bExperian\s*Score\b[^0-9]{0,30}([3-9]\d{2})\b/i) ||
+      joined.match(/\bCRIF\s*Score\b[^0-9]{0,30}([3-9]\d{2})\b/i) ||
+      joined.match(/\bTransUnion\s*Score\b[^0-9]{0,30}([3-9]\d{2})\b/i) ||
+      joined.match(/\bSCORE\s*[:\-]?\s*([3-9]\d{2})\b/i);
+    if (labeled) {
+      const n = Number(labeled[1]);
+      if (Number.isFinite(n) && n >= 300 && n <= 900) return n;
+    }
+    // 2) Look for score near rating keywords (handles Xavier/TransUnion layout)
+    const withRating =
+      joined.match(/\b([3-9]\d{2})\b[^a-zA-Z0-9]{0,40}\b(EXCELLENT|GOOD|FAIR|POOR|VERY\s*GOOD|VERY\s*POOR|LOW|HIGH)\b/i) ||
+      joined.match(/\b(EXCELLENT|GOOD|FAIR|POOR|VERY\s*GOOD|VERY\s*POOR|LOW|HIGH)\b[^a-zA-Z0-9]{0,40}\b([3-9]\d{2})\b/i);
+    if (withRating) {
+      const n = Number(withRating[1] || withRating[2]);
+      if (Number.isFinite(n) && n >= 300 && n <= 900) return n;
+    }
+    // 3) Look for a 3-digit number 300-900 near "Your CIBIL Score" / "Your credit score"
+    const contextual =
+      joined.match(/\b([3-9]\d{2})\b[^a-zA-Z0-9]{0,40}\b(?:Your\s+)?(?:CIBIL|credit)\s*Score\b/i) ||
+      joined.match(/\b(?:Your\s+)?(?:CIBIL|credit)\s*Score\b[^a-zA-Z0-9]{0,40}\b([3-9]\d{2})\b/i);
+    if (contextual) {
+      const n = Number(contextual[1]);
+      if (Number.isFinite(n) && n >= 300 && n <= 900) return n;
+    }
+    // 4) Fallback: any 3-digit number 300-900 that isn't surrounded by other digits/commas
+    const allNums = joined.match(/\b([3-9]\d{2})\b/g) || [];
+    for (const c of allNums) {
+      const n = Number(c);
+      if (n >= 300 && n <= 900) return n;
+    }
+    return undefined;
   };
 
   const pickDate = () => {
@@ -512,38 +699,119 @@ function parseCibilText(text) {
 
   const extractPan = (text) => {
     if (!text) return undefined;
-    const labelMatch = text.match(/PAN\s*[:\-]?\s*([A-Z0-9\s\-]{10,20})/i);
+
+    // 1) Look for explicit label like "PAN", "PAN Number", "Permanent Account Number"
+    //    The PAN value MUST immediately follow the label (no other text in between),
+    //    and cannot be a month name like "MONTHS", "YEARS", "RATING", "SCORE", "NA".
+    const labelMatch = text.match(
+      /\b(?:PAN|Permanent\s+Account\s+Number|ID\s+Number|ITIN\s*\/?\s*PAN)\s*[:\-]?\s*([A-Z]{5}\s*\d{4}\s*[A-Z])\b/i,
+    );
     if (labelMatch) {
       const candidate = (labelMatch[1] || "")
         .toUpperCase()
         .replace(/[^A-Z0-9]/g, "");
-      if (/^[A-Z]{5}\d{4}[A-Z]$/.test(candidate)) return candidate;
+      if (/^[A-Z]{5}\d{4}[A-Z]$/.test(candidate)) {
+        if (!isLikelyPanNoise(candidate)) return candidate;
+      }
     }
-    const rawMatch = text.match(/\b([A-Z]{5}\s*\d{4}\s*[A-Z])\b/i);
-    if (rawMatch) {
-      const candidate = (rawMatch[1] || "")
+
+    // 2) Look for PAN near keywords like "Income Tax", "PAN Card", "PAN:" in the
+    //    same sentence (within ~40 chars).
+    const contextual = text.match(
+      /(?:PAN\s*Card|PAN\s*Number|PAN\s*[:\-]|Income\s*Tax\s*PAN|IT\s*PAN|holder'?s?\s+PAN)\s*[:\-]?\s*([A-Z]{5}\s*\d{4}\s*[A-Z])/i,
+    );
+    if (contextual) {
+      const candidate = (contextual[1] || "")
         .toUpperCase()
         .replace(/[^A-Z0-9]/g, "");
-      if (/^[A-Z]{5}\d{4}[A-Z]$/.test(candidate)) return candidate;
+      if (/^[A-Z]{5}\d{4}[A-Z]$/.test(candidate) && !isLikelyPanNoise(candidate)) {
+        return candidate;
+      }
     }
+
+    // 3) Fallback: look for any "[A-Z]{5}\d{4}[A-Z]" pattern in the text, but
+    //    reject common false positives derived from "X years Y months" or
+    //    "RATING / SCORE" sections.
     const fallback = text
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, "")
-      .match(/([A-Z]{5}\d{4}[A-Z])/);
-    return fallback ? fallback[1] : undefined;
+      .match(/[A-Z]{5}\d{4}[A-Z]/g);
+    if (fallback) {
+      for (const c of fallback) {
+        if (!isLikelyPanNoise(c)) return c;
+      }
+    }
+    return undefined;
   };
+
+  function isLikelyPanNoise(candidate) {
+    if (!candidate) return true;
+    const upper = candidate.toUpperCase();
+    // A real PAN has these structural rules:
+    //   1) Exactly 5 alphabetic chars at positions 1-5
+    //   2) Exactly 4 digits at positions 6-9
+    //   3) Exactly 1 alphabetic char at position 10
+    //   4) The 4th character is one of P, C, A, F, T, B, L, H, J (status code)
+    if (!/^[A-Z]{5}\d{4}[A-Z]$/.test(upper)) return true;
+    const c4 = upper.charAt(3);
+    if (!"PCAFTBLHJ".includes(c4)) return true;
+    // Reject obvious junk prefixes that arise from squished text:
+    if (/^(XXXX|NXXX|MXXX|KXXX|0XXX|OXXX|SXXX|PXXX|AXXX|BXXX|CXXX|DXXX|EXXX|FXXX|GXXX|HXXX|IXXX|JXXX|LXXX|QXXX|RXXX|TXXX|UXXX|VXXX|WXXX|YXXX|ZXXX)/.test(upper))
+      return true;
+    // Reject common false positives from "INTEREST RATE X.XX%", "BALANCE XXXX",
+    // "MONTHS XXXX", "YEARS XXXX", etc. that the regex can pick up
+    // when consecutive words are joined by squished text.
+    // We check BOTH the prefix and any 3+ char substring of the prefix.
+    const PAN_FALSE_PREFIXES = [
+      "MON", "YEA", "DAY", "RAT", "SCO", "STA", "CLO", "ACT", "OPE", "PAY",
+      "HIS", "WRI", "INT", "BAL", "OVE", "OUT", "SAN", "HIG", "CRE", "LIM",
+      "OWN", "DAT", "NUM", "PHO", "EMA", "AMO", "AMX", "MAT", "COL", "NOT",
+      "TOT", "LOA", "INC", "EXP", "PRI", "VAL", "ANN", "TEN", "PER", "LAN",
+      "PRO", "AMT", "MON", "PRO", "PAN", "FRO", "TO ", "RO", "TO",
+      "INST", "LEND", "BAN", "ACC", "CRE", "LIM", "EXP", "DUE", "FEE",
+      "PEN", "AMT", "AHO", "MOB", "EML", "ADD", "CTI", "CTY", "CTRY",
+      "TRA", "NSU", "NION", "IND", "STA", "GEN", "GEN", "DER", "DUE", "DUE",
+    ];
+    const prefix5 = upper.slice(0, 5);
+    for (const p of PAN_FALSE_PREFIXES) {
+      if (p.length >= 3 && prefix5.includes(p)) return true;
+    }
+    // A real PAN rarely has the same letter repeated 3+ times in the 5-char prefix
+    if (/^([A-Z])\1{2,}/.test(upper)) return true;
+    return false;
+  }
+
+  function isEnquiryNoise(purpose, member) {
+    if (!purpose || !member) return true;
+    if (/Report|Number|ECN|Table|Contents|Sr\.?\s*No|Date|Page|Score|Rating|^Hey|^Hello/i.test(member)) return true;
+    if (/Report|Number|ECN|Date|^Sr\.?\s*No|Table|Contents/i.test(purpose)) return true;
+    if (member.length < 2 || purpose.length < 2) return true;
+    return false;
+  }
 
   const extractMobile = (text) => {
     if (!text) return undefined;
-    const labelMatch = text.match(
-      /\b(?:Mobile\s*Phone|Mobile(?:\s*No(?:\.)?)?|Mobile\s*Number|Phone(?:\s*Number)?|Telephone(?:\s*Number)?)\s*[:\-]?\s*([6-9][0-9\-\s]{9,14})\b/i,
-    );
-    if (labelMatch) {
-      const digits = (labelMatch[1] || "").replace(/[^0-9]/g, "");
-      if (digits.length >= 10) return digits.slice(-10);
+    // 1) Look for a labelled value like "Mobile Phone: 9920117216" or "Phone Number: ..."
+    //    The label can be followed by ":" or directly by digits (squished text).
+    const labelPatterns = [
+      /(?:Mobile\s*Phone|Mobile\s*Number|Mobile\s*No\.?|Phone\s*Number|Phone\s*No\.?|Telephone|Contact\s*Number|Primary\s*Phone|Secondary\s*Phone)\s*[:\-]?\s*([6-9]\d{9})/i,
+      /(?:Mobile\s*Phone|Mobile\s*Number|Mobile\s*No\.?|Phone\s*Number|Phone\s*No\.?|Telephone|Contact\s*Number|Primary\s*Phone|Secondary\s*Phone)\s*[:\-]?\s*((?:91)?[6-9]\d{9})/i,
+    ];
+    for (const re of labelPatterns) {
+      const m = text.match(re);
+      if (m) {
+        const digits = (m[1] || "").replace(/[^0-9]/g, "").slice(-10);
+        if (digits.length === 10) return digits;
+      }
     }
-    const fallback = text.match(/\b([6-9]\d{9})\b/);
-    return fallback ? fallback[1] : undefined;
+    // 2) Fallback: any 10-digit number starting with 6-9. In squished text
+    //    the number might be preceded by a letter (e.g. "ed9920117216"),
+    //    so we strip non-digits from a wider window and look for the pattern.
+    const cleaned = text.replace(/[^0-9]/g, "");
+    // Try the cleaned text for 10-digit mobile numbers (Indian: starts 6-9)
+    const m = cleaned.match(/[6-9]\d{9}/);
+    if (m) return m[0];
+    return undefined;
   };
 
   // Pass 0: Robust name and identification extraction
@@ -706,6 +974,7 @@ function parseCibilText(text) {
   // Extract enquiries using logical lines for better table row detection
   let enqSectionIdx = upper.indexOf("ENQUIRY PURPOSE");
   if (enqSectionIdx < 0) enqSectionIdx = upper.indexOf("CREDIT ENQUIRIES");
+  if (enqSectionIdx < 0) enqSectionIdx = upper.indexOf("CREDIT ENQUIRY");
 
   if (enqSectionIdx >= 0) {
     let enqText = joined.slice(enqSectionIdx);
@@ -714,27 +983,40 @@ function parseCibilText(text) {
       .search(/\bSUMMARY:|\bACCOUNT DETAILS\b|\bCONTACT INFORMATION\b/i);
     if (endIdx > 0) enqText = enqText.slice(0, endIdx + 50);
 
-    // Pattern: [SrNo] [Purpose] [Lender] [Date]
-    // Use a very flexible regex to capture rows, requiring at least 2 spaces between columns
-    const enqRowRe =
-      /(\d{1,3})\s{2,}([A-Z][a-zA-Z\s]{2,40}?)\s{2,}([A-Z][A-Z0-9 &.'-]{2,60}?)\s{2,}(\d{2}[-\/]\d{2}[-\/]\d{4})/gi;
+    // =====================================================
+    // ENQUIRY ROW EXTRACTION (handles TransUnion/Equifax/CRIF/Paisabazaar)
+    // =====================================================
+
+    // 1) Whitespace-separated rows (e.g. "1   Personal Loan   KOTAK BANK   27-12-2025")
+    //    Works for TransUnion/Equifax/CRIF and any report that uses whitespace
+    //    between columns. The pattern is flexible enough to handle single or
+    //    multiple whitespace characters (including newlines).
+    const enqRowRe = /(\d{1,3})\s+([A-Z][a-zA-Z][a-zA-Z\s\-–]{1,40}?)\s+([A-Z][A-Z0-9 &.'\-]{2,60}?)\s+(\d{2}[-\/]\d{2}[-\/]\d{4})/g;
     let m;
     while ((m = enqRowRe.exec(enqText)) !== null) {
       const purpose = m[2].trim();
       const member = m[3].trim();
       const date = parseDate(m[4]);
-
-      if (
-        purpose &&
-        member &&
-        date &&
-        !/Report|Number|ECN|Table|Contents|Sr\. No|Date|Page/i.test(member) &&
-        !/Report|Number|ECN|Date/i.test(purpose)
-      ) {
+      if (purpose && member && date && !isEnquiryNoise(purpose, member)) {
         enquiry_details.push({ date, member, purpose });
       }
     }
 
+    // 2) Squished rows (e.g. "1Housing LoanSBI22-04-2026")
+    if (enquiry_details.length === 0) {
+      const enqSquishedRe =
+        /(\d{1,3})(Housing\s+Loan|Personal\s+Loan|Credit\s+Card|Business\s+Loan(?:\s*[–-]\s*General)?|Other|Education\s+Loan|Vehicle\s+Loan|Two[\s-]?wheeler\s+Loan|Loan\s+on\s+Credit\s+Card|Gold\s+Loan|Property\s+Loan|Overdraft|Consumer\s+Loan)([A-Z][A-Z0-9 &.'\-]{2,60}?)(\d{2}[-\/]\d{2}[-\/]\d{4})/gi;
+      while ((m = enqSquishedRe.exec(enqText)) !== null) {
+        const purpose = m[2].trim().replace(/\s+/g, " ");
+        const member = m[3].trim().replace(/\s+/g, " ");
+        const date = parseDate(m[4]);
+        if (purpose && member && date && !isEnquiryNoise(purpose, member)) {
+          enquiry_details.push({ date, member, purpose });
+        }
+      }
+    }
+
+    // 3) Line-by-line key:value pairs (some Equifax/CRIF formats)
     if (enquiry_details.length === 0) {
       const enqLines = enqText
         .split(/\r?\n/)
@@ -743,12 +1025,12 @@ function parseCibilText(text) {
       let current = {};
       for (let i = 0; i < enqLines.length; i++) {
         const line = enqLines[i];
-        const memberMatch = line.match(/^(?:Member\s+Name)\s*[:\-]?\s*(.+)$/i);
+        const memberMatch = line.match(/^(?:Member\s+Name|Financial\s+Institution|Lender|Bank)\s*[:\-]?\s*(.+)$/i);
         const dateMatch = line.match(
-          /^(?:Date\s+Of\s+Enquiry)\s*[:\-]?\s*(.+)$/i,
+          /^(?:Date\s+Of\s+Enquiry|Enquired\s*on|Enquiry\s*Date)\s*[:\-]?\s*(.+)$/i,
         );
         const purposeMatch = line.match(
-          /^(?:Enquiry\s+Purpose)\s*[:\-]?\s*(.+)$/i,
+          /^(?:Enquiry\s*Purpose|Purpose)\s*[:\-]?\s*(.+)$/i,
         );
 
         if (memberMatch) {
@@ -773,15 +1055,15 @@ function parseCibilText(text) {
 
         // Support cases where the field label is on one line and value on the next line
         const labelOnlyMatch = line.match(
-          /^(Member\s+Name|Date\s+Of\s+Enquiry|Enquiry\s+Purpose)\s*[:\-]?$/i,
+          /^(Member\s+Name|Financial\s+Institution|Lender|Bank|Date\s+Of\s+Enquiry|Enquired\s*on|Enquiry\s*Date|Enquiry\s*Purpose|Purpose)\s*[:\-]?$/i,
         );
         if (labelOnlyMatch && i + 1 < enqLines.length) {
           const nextValue = enqLines[i + 1].trim();
-          if (/^Member\s+Name$/i.test(labelOnlyMatch[1])) {
+          if (/^(Member\s+Name|Financial\s+Institution|Lender|Bank)$/i.test(labelOnlyMatch[1])) {
             current.member = nextValue;
-          } else if (/^Date\s+Of\s+Enquiry$/i.test(labelOnlyMatch[1])) {
+          } else if (/^(Date\s+Of\s+Enquiry|Enquired\s*on|Enquiry\s*Date)$/i.test(labelOnlyMatch[1])) {
             current.date = parseDate(nextValue) || undefined;
-          } else if (/^Enquiry\s+Purpose$/i.test(labelOnlyMatch[1])) {
+          } else if (/^(Enquiry\s*Purpose|Purpose)$/i.test(labelOnlyMatch[1])) {
             current.purpose = nextValue;
           }
           i += 1;
@@ -846,6 +1128,123 @@ function parseCibilText(text) {
 
   const paisabazaarAccounts = parsePaisabazaarSummary(joined);
 
+  /**
+   * Parse summary table rows from squished CIBIL format like:
+   *   "YES BANK\nPersonal Loan\nXXXX9705\nIndividual\n01-09-2025\nActive\n30-04-2026\n2,00,000\n1,83,383"
+   * This handles TransUnion CIBIL / Equifax / CRIF / Paisabazaar reports that
+   * have no whitespace between fields.
+   */
+  const parseSquishedSummaryRows = (sectionText) => {
+    const rows = [];
+    const lines = sectionText
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    // Join the lines back together in a flexible way: many "rows" may actually
+    // be split across multiple lines because pdf-parse inserts linebreaks in
+    // arbitrary places. So we work on a flat normalized version, then also
+    // consider line-by-line.
+    const flat = lines
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    // Build a robust row pattern:
+    //   LENDER (bank name, e.g. "YES BANK", "BAJAJ FIN LTD")
+    //   TYPE (Personal Loan, Housing Loan, Credit Card, ...)
+    //   ACCT_NO (XXXX1234, with optional trailing letter like XXXX317L)
+    //   OWNERSHIP (Individual, Joint, Guarantor, ...)
+    //   OPENED_DATE (dd-mm-yyyy)
+    //   STATUS (Active, Closed, Settled, ...)
+    //   LAST_UPDATE (dd-mm-yyyy)
+    //   AMOUNT_1 (sanctioned for loan, high_credit for credit card)
+    //   AMOUNT_2 (outstanding balance)
+    const accountNoToken = "XXXX[A-Z0-9]{3,7}|[A-Z0-9X*]{6,}";
+    const ownerRe =
+      "(?:Individual|Joint|Guarantor|Co-Applicant|Co Applicant|Authorised User|Authorized User|Primary|Secondary|Sole)";
+    const statusRe =
+      "(?:Active\\*?\\*?|Closed|Settled|Written\\s*Off|Wilful\\s*Default|Suit\\s*Filed|Loss|SMA|Special\\s*Mention)";
+    const dateRe = "\\d{2}[-\\/]\\d{2}[-\\/]\\d{4}";
+    const moneyRe = "[\\d,]+(?:\\.\\d{1,2})?|NA|\\-[\\d,]+|\\-";
+
+    const rowRe = new RegExp(
+      [
+        "([A-Z][A-Z0-9 &.'\\-]{1,60}?)",        // 1: Lender
+        `(?:\\s+|^)(${loanTypePatternExpanded()})`, // 2: Type
+        `[\\s\\n]*(${accountNoToken})`,             // 3: Account number
+        `[\\s\\n]*(${ownerRe})`,                    // 4: Ownership
+        `[\\s\\n]*(${dateRe})`,                     // 5: Opened date
+        `[\\s\\n]*(${statusRe})`,                   // 6: Status
+        `[\\s\\n]*(${dateRe})`,                     // 7: Last update
+        `[\\s\\n]*(${moneyRe})`,                    // 8: Amount 1 (sanctioned/high_credit)
+        `[\\s\\n]*(${moneyRe})`,                    // 9: Amount 2 (outstanding)
+      ].join(""),
+      "g",
+    );
+
+    let m;
+    const seen = new Set();
+    while ((m = rowRe.exec(flat)) !== null) {
+      const lenderRaw = (m[1] || "").trim();
+      // Reject if lender is obviously a header/label, not a real bank name
+      if (isJunkLenderName(lenderRaw)) continue;
+      const lender = normalizeLenderName(lenderRaw);
+      const rec = {
+        lender: lender || lenderRaw,
+        account_type: (m[2] || "").trim(),
+        account_no: (m[3] || "").trim(),
+        ownership: (m[4] || "").trim(),
+        opened_date: parseDate(m[5]),
+        account_status: (m[6] || "").replace(/\s+/g, " ").trim(),
+        last_update: parseDate(m[7]),
+        sanctioned_amount: parseNum(m[8]),
+        current_balance: parseNum(m[9]),
+      };
+      if (!rec.account_no) continue;
+      if (isCreditCardType(rec.account_type)) {
+        rec.high_credit = rec.sanctioned_amount;
+        rec.sanctioned_amount = undefined;
+      }
+      const key = `${normalizeAccountNo(rec.account_no)}|${rec.lender.toUpperCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push(rec);
+    }
+    return rows;
+  };
+
+
+
+  function isCreditCardType(t) {
+    return /credit\s*card/i.test(t || "");
+  }
+
+  function normalizeAccountNo(n) {
+    return (n || "").toString().replace(/[^A-Z0-9]/gi, "").toUpperCase();
+  }
+
+  function loanTypePatternExpanded() {
+    return [
+      "Personal\\s+Loan",
+      "Education\\s+Loan",
+      "Home\\s+Loan",
+      "Housing\\s+Loan",
+      "Vehicle\\s+Loan",
+      "Two[\\s-]?wheeler\\s+Loan",
+      "Used\\s+Car\\s+Loan",
+      "Gold\\s+Loan",
+      "Business\\s+Loan(?:\\s*[–-]\\s*General|\\s+General)?",
+      "Consumer\\s+Loan",
+      "Loan\\s+Against\\s+Property",
+      "Property\\s+Loan",
+      "Overdraft",
+      "Credit\\s+Card",
+      "Loan\\s+on\\s+Credit\\s+Card",
+      "Other",
+    ].join("|");
+  }
+
   // if (paisabazaarAccounts.length > 0) {
   //   accounts.push(...paisabazaarAccounts);
   // }
@@ -858,17 +1257,72 @@ function parseCibilText(text) {
     );
     if (accountNoLine) {
       if (!cur) {
-        const prev = (lines[lineIdx - 1] || "").trim();
+        // Look back to find a bank name line. TransUnion CIBIL format has the
+        // bank name 1-2 lines before "Account Number:", e.g.:
+        //   YES BANK
+        //   Active
+        //   Account Number:XXXX9705Account type:Personal Loan...
+        const prev1 = (lines[lineIdx - 1] || "").trim();
+        const prev2 = (lines[lineIdx - 2] || "").trim();
+        const prev3 = (lines[lineIdx - 3] || "").trim();
+        const isBankish = (raw) => {
+          if (!raw) return false;
+          let s = raw
+            .replace(/^(?:Account\s+Details|Member\s+Name|Lender|Bank\s*Name|Financier|Institution)\s*[:\-]?\s*/i, "")
+            .replace(/\s+(Active|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|SMA|Individual|Joint|Guarantor)$/i, "")
+            .trim();
+          if (!s) return false;
+          return /^[A-Z][A-Z0-9 &.'\-]{2,80}$/i.test(s) &&
+            !/\b(?:ACCOUNT|DATE|STATUS|TYPE|OWNERSHIP|OPENED|CLOSED|NUMBER|NO|INSTITUTION|LENDER|BANK\s*NAME|FINANCIER)\b/i.test(s) &&
+            !/^(Active|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|SMA)$/i.test(s) &&
+            isJunkLenderName(s) === false;
+        };
+        const stripLender = (raw) => {
+          return raw
+            .replace(/^(?:Account\s+Details|Member\s+Name|Lender|Bank\s*Name|Financier|Institution)\s*[:\-]?\s*/i, "")
+            .replace(/\s+(Active|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|SMA|Individual|Joint|Guarantor)$/i, "")
+            .trim();
+        };
+        let lenderGuess = undefined;
+        if (isBankish(prev1)) {
+          lenderGuess = normalizeLenderName(stripLender(prev1)) || stripLender(prev1);
+        } else if (isBankish(prev2)) {
+          lenderGuess = normalizeLenderName(stripLender(prev2)) || stripLender(prev2);
+        } else if (isBankish(prev3)) {
+          lenderGuess = normalizeLenderName(stripLender(prev3)) || stripLender(prev3);
+        }
         cur = {
           account_no: accountNoLine[1].trim(),
-          lender:
-            /^[A-Z][A-Z0-9 &.'-]{2,80}$/.test(prev) &&
-              !/\b(?:ACCOUNT|DATE|STATUS|TYPE|OWNERSHIP)\b/i.test(prev)
-              ? prev
-              : undefined,
+          lender: lenderGuess,
         };
       } else if (!cur.account_no) {
         cur.account_no = accountNoLine[1].trim();
+        if (!cur.lender) {
+          const prev1 = (lines[lineIdx - 1] || "").trim();
+          const prev2 = (lines[lineIdx - 2] || "").trim();
+          const prev3 = (lines[lineIdx - 3] || "").trim();
+          const isBankish2 = (raw) => {
+            if (!raw) return false;
+            let s = raw
+              .replace(/^(?:Account\s+Details|Member\s+Name|Lender|Bank\s*Name|Financier|Institution)\s*[:\-]?\s*/i, "")
+              .replace(/\s+(Active|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|SMA|Individual|Joint|Guarantor)$/i, "")
+              .trim();
+            if (!s) return false;
+            return /^[A-Z][A-Z0-9 &.'\-]{2,80}$/i.test(s) &&
+              !/\b(?:ACCOUNT|DATE|STATUS|TYPE|OWNERSHIP|OPENED|CLOSED|NUMBER|NO|INSTITUTION|LENDER|BANK\s*NAME|FINANCIER)\b/i.test(s) &&
+              !/^(Active|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|SMA)$/i.test(s) &&
+              isJunkLenderName(s) === false;
+          };
+          const stripLender2 = (raw) => {
+            return raw
+              .replace(/^(?:Account\s+Details|Member\s+Name|Lender|Bank\s*Name|Financier|Institution)\s*[:\-]?\s*/i, "")
+              .replace(/\s+(Active|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|SMA|Individual|Joint|Guarantor)$/i, "")
+              .trim();
+          };
+          if (isBankish2(prev1)) cur.lender = normalizeLenderName(stripLender2(prev1)) || stripLender2(prev1);
+          else if (isBankish2(prev2)) cur.lender = normalizeLenderName(stripLender2(prev2)) || stripLender2(prev2);
+          else if (isBankish2(prev3)) cur.lender = normalizeLenderName(stripLender2(prev3)) || stripLender2(prev3);
+        }
       }
       continue;
     }
@@ -1020,7 +1474,7 @@ function parseCibilText(text) {
       .map((l) => l.trim())
       .filter((l) => l);
 
-    // Combine lines that look like they belong together (e.g. bank name split from rest of row)
+    // Combine lines that look like they belong together (e.g bank name split from rest of row)
     const lines = [];
     for (let i = 0; i < rawLines.length; i++) {
       let current = rawLines[i];
@@ -1036,43 +1490,76 @@ function parseCibilText(text) {
       lines.push(current);
     }
 
-    //const rowRegex = new RegExp(`([A-Z][A-Z0-9 &.'-]{2,40})\\s+(${typeRe})\\s+([A-Z0-9X*]{4,})\\s+(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|CoApplicant|Authorized User|Authorised User)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+(Active\\*?\\*?|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|Special\\s*Mention|SMA)\\s+(\\d{2}-\\d{2}-\\d{4})\\s+([\\d,NA-]+)\\s+([\\d,NA-]+)(?:\\s+([\\d,NA-]+))?(?:\\s+([\\d,NA-]+))?`, 'i');
-    // Match lender + account type + account number
+    // Whitespace-separated row pattern (lender first - TransUnion/Paisabazaar)
     const rowRegex = new RegExp(
-      `([A-Z][A-Z0-9 &.'-]{2,50})\\s+` +
-      `(${typeRe})\\s+` +
-      `(XXXX[A-Z0-9]+|[A-Z0-9X*]{4,})\\s+` +
-      `(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|Authorized User|Authorised User)\\s+` +
-      `(\\d{2}-\\d{2}-\\d{4})\\s+` +
-      `(Active|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|SMA)`,
+      `([A-Z][A-Z0-9 &.'\\-]{2,50})\\s+` +  // Lender
+      `(${typeRe})\\s+` +  // Account type
+      `(XXXX[A-Z0-9]+|[A-Z0-9X*]{4,})\\s+` +  // Account number
+      `(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|Authorized User|Authorised User)\\s+` +  // Ownership
+      `(\\d{2}-\\d{2}-\\d{4})\\s+` +  // Opened date
+      `(Active|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|SMA)`,  // Status
+      "i",
+    );
+
+    // Reversed pattern: type first, lender last (Harvinder/Equifax format)
+    const rowRegexReversed = new RegExp(
+      `(${typeRe})\\s+` +  // Account type
+      `(XXXX[A-Z0-9]+|[A-Z0-9X*]{4,})\\s+` +  // Account number
+      `(Individual|Guarantor|Joint|Co-Applicant|Co Applicant|Authorized User|Authorised User)\\s+` +  // Ownership
+      `(\\d{2}-\\d{2}-\\d{4})\\s+` +  // Opened date
+      `(Active|Closed|Settled|Written\\s*Off|Suit\\s*Filed|Wilful\\s*Default|Loss|SMA)\\s+` +  // Status
+      `(\\d{2}-\\d{2}-\\d{4})\\s+` +  // Last update
+      `([\\d,]+|NA)\\s+` +  // Amount 1
+      `([\\d,]+|NA)\\s+` +  // Amount 2
+      `([A-Z][A-Z0-9 &.'\\-]{2,50})`,  // Lender at end
       "i",
     );
 
     for (const line of lines) {
-      const m = line.match(rowRegex);
+      const mFwd = line.match(rowRegex);
+      const mRev = line.match(rowRegexReversed);
+      let m, isReversed;
+      if (mFwd && mRev) {
+        // Both match — prefer reversed (has more fields, handles lender-at-end format)
+        m = mRev;
+        isReversed = true;
+      } else if (mRev) {
+        m = mRev;
+        isReversed = true;
+      } else if (mFwd) {
+        m = mFwd;
+        isReversed = false;
+      } else {
+        continue;
+      }
       if (m) {
-        const lenderRaw = m[1].trim();
-        if (
-          /\bDATE\b|\bACCOUNT\b|\bSTATUS\b|\bUPDATE\b|\bTYPE\b/i.test(lenderRaw)
-        )
-          continue;
+        const lenderRaw = isReversed ? (m[9] || "").trim() : (m[1] || "").trim();
+        const account_type = isReversed ? m[1].trim() : m[2].trim();
+        const account_no = isReversed ? m[2].trim() : m[3].trim();
+        const ownership = isReversed ? m[3].trim() : m[4].trim();
+        const opened_date = isReversed ? m[4] : m[5];
+        const account_status = isReversed ? (m[5] || "").replace(/\s+/g, " ").trim() : (m[6] || "").replace(/\s+/g, " ").trim();
+        const last_update = isReversed ? m[6] : m[7];
+        const n1 = isReversed ? parseNum(m[7]) : parseNum(m[8]);
+        const n2 = isReversed ? (m[8] === "NA" ? undefined : parseNum(m[8])) : parseNum(m[9]);
+
+        if (/\b(?:DATE|ACCOUNT|STATUS|UPDATE|TYPE|OPENED|CLOSED|NUMBER|NO)\b/i.test(lenderRaw)) continue;
+        if (lenderRaw.length < 3) continue;
+        if (isJunkLenderName(lenderRaw)) continue;
 
         const lender = normalizeLenderName(lenderRaw);
-        const account_type = m[2].trim();
-        const n1 = parseNum(m[8]) || undefined;
-        const n2 = parseNum(m[9]) || undefined;
 
         const rec = {
-          lender,
+          lender: lender || lenderRaw,
           account_type,
-          account_no: m[3].trim(),
-          ownership: m[4].trim(),
-          opened_date: parseDate(m[5]),
-          account_status: m[6].replace(/\s+/g, " ").trim(),
-          last_update: parseDate(m[7]),
+          account_no,
+          ownership,
+          opened_date: parseDate(opened_date),
+          account_status,
+          last_update: parseDate(last_update),
           current_balance: n2,
-          overdue_amount: parseNum(m[10]) || undefined,
-          emi: parseNum(m[11]) || undefined,
+          overdue_amount: undefined,
+          emi: undefined,
         };
 
         if (isCC || /credit\s*card/i.test(account_type)) {
@@ -1083,6 +1570,74 @@ function parseCibilText(text) {
         rows.push(rec);
       }
     }
+
+    // Also try the squished-row parser for tables without whitespace between fields
+    // (TransUnion CIBIL / Equifax / CRIF / Paisabazaar).
+    const squishedRows = parseSquishedSummaryRows(sectionText);
+    for (const r of squishedRows) {
+      // Skip duplicates by account_no + lender
+      const exists = rows.find(
+        (x) => x.account_no === r.account_no && x.lender === r.lender,
+      );
+      if (!exists) rows.push(r);
+    }
+
+    // Multi-line row parser: Paisabazaar format where each field is on its own line
+    // Pattern: Lender, Type, AccountNo, Ownership, OpenedDate, Status, LastUpdate, Amount, Balance
+    const dateRe = /^\d{2}-\d{2}-\d{4}$/;
+    const statusRe = /^(?:Active|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|SMA|Special\s*Mention)$/i;
+    const acctNoRe = /^(?:XXXX[A-Z0-9]+|[A-Z0-9X*]{4,})$/;
+    const ownerRe = /^(?:Individual|Joint|Guarantor|Co-Applicant|Co Applicant|Authorized User|Authorised User)$/i;
+    const typeReLocal = new RegExp(`^${typeRe}$`, "i");
+    const moneyRe = /^[\d,]+(?:\.\d{1,2})?$/;
+
+    for (let i = 0; i < rawLines.length - 8; i++) {
+      const lenderRaw = rawLines[i];
+      const acctType = rawLines[i + 1];
+      const acctNo = rawLines[i + 2];
+      const ownership = rawLines[i + 3];
+      const openedDate = rawLines[i + 4];
+      const status = rawLines[i + 5];
+      const lastUpdate = rawLines[i + 6];
+      const amt1 = rawLines[i + 7];
+      const amt2 = rawLines[i + 8];
+
+      if (
+        lenderRaw.length >= 3 &&
+        typeReLocal.test(acctType) &&
+        acctNoRe.test(acctNo) &&
+        ownerRe.test(ownership) &&
+        dateRe.test(openedDate) &&
+        statusRe.test(status) &&
+        dateRe.test(lastUpdate) &&
+        (moneyRe.test(amt1) || amt1 === "NA") &&
+        (moneyRe.test(amt2) || amt2 === "NA")
+      ) {
+        if (isJunkLenderName(lenderRaw)) continue;
+        const lender = normalizeLenderName(lenderRaw);
+        const n1 = parseNum(amt1) || undefined;
+        const n2 = (amt2 === "NA" ? undefined : parseNum(amt2)) || undefined;
+        const rec = {
+          lender: lender || lenderRaw,
+          account_type: acctType,
+          account_no: acctNo,
+          ownership,
+          opened_date: parseDate(openedDate),
+          account_status: status,
+          last_update: parseDate(lastUpdate),
+          current_balance: n2,
+        };
+        if (isCC || /credit\s*card/i.test(acctType)) {
+          rec.high_credit = n1;
+        } else {
+          rec.sanctioned_amount = n1;
+        }
+        const exists = rows.find((x) => x.account_no === rec.account_no);
+        if (!exists) rows.push(rec);
+        i += 8; // skip the 9 lines we just consumed
+      }
+    }
+
     return rows;
   };
 
@@ -1189,11 +1744,49 @@ function parseCibilText(text) {
     }
   }
 
+  // Dedup summaryAccounts by account_no only (keep first = correct reversed-regex match)
+  {
+    const beforeCount = summaryAccounts.length;
+    const seenAccountNos = new Set();
+    for (let i = 0; i < summaryAccounts.length; i++) {
+      const s = summaryAccounts[i];
+      if (s.account_no && seenAccountNos.has(s.account_no)) {
+        summaryAccounts.splice(i, 1);
+        i--;
+      } else if (s.account_no) {
+        seenAccountNos.add(s.account_no);
+      }
+    }
+    if (summaryAccounts.length !== beforeCount) {
+      console.log(`DEDUP: ${beforeCount} -> ${summaryAccounts.length} summary accounts`);
+      // Show what XXXX7037 looks like after dedup
+      const x7037 = summaryAccounts.find(s => s.account_no === 'XXXX7037');
+      if (x7037) console.log(`  XXXX7037: lender=${x7037.lender} type=${x7037.account_type}`);
+    }
+  }
+
   for (const summary of summaryAccounts) {
-    const key = accountKey(summary);
-    const existing = accounts.find((a) => accountKey(a) === key);
+    if (!summary.account_no) continue;
+    const existing = accounts.find(
+      (a) => a.account_no && summary.account_no && a.account_no === summary.account_no,
+    );
     if (existing) {
-      mergeAccountFields(existing, summary);
+      // Preserve DPD/adverse data from the main loop but use summary data for everything else
+      const dpdData = {
+        adverse_flags: existing.adverse_flags,
+        dpd_history: existing.dpd_history,
+        dpd_max: existing.dpd_max,
+        dpd_delay_count: existing.dpd_delay_count,
+        dpd_history_formatted: existing.dpd_history_formatted,
+        _dpd_text: existing._dpd_text,
+      };
+      Object.assign(existing, summary);
+      if (dpdData.adverse_flags && dpdData.adverse_flags.length) existing.adverse_flags = dpdData.adverse_flags;
+      if (dpdData.dpd_history) existing.dpd_history = dpdData.dpd_history;
+      if (dpdData.dpd_max) existing.dpd_max = dpdData.dpd_max;
+      if (dpdData.dpd_delay_count) existing.dpd_delay_count = dpdData.dpd_delay_count;
+      if (dpdData.dpd_history_formatted) existing.dpd_history_formatted = dpdData.dpd_history_formatted;
+      if (dpdData._dpd_text) existing._dpd_text = dpdData._dpd_text;
     } else {
       accounts.push(summary);
     }
@@ -1306,23 +1899,63 @@ function parseCibilText(text) {
       ) || [])[1] ||
       "";
 
-    const segmentLenderRaw =
-      // Paisabazaar format
-      (segment.match(
-        /Account\s+Details[\s\S]{0,100}?\n\s*([A-Z][A-Z0-9 &.'-]{2,80})\s*\n/i,
-      ) || [])[1] ||
-      // Account Details YES BANK Active
-      (segment.match(
-        /Account\s+Details\s+([A-Z][A-Z0-9 &.'-]{2,80})\s+(?:Active|Closed|Settled)/i,
-      ) || [])[1] ||
-      // TransUnion
-      (segment.match(
-        /\b(?:MEMBER\s*NAME|LENDER|BANK\s*NAME|FINANCIER|INSTITUTION)\s*[:\-]?\s*\n?\s*(.+?)(?:\n|$)/i,
-      ) || [])[1] ||
-      "";
+    const extractLenderFromSegment = (seg) => {
+      const isJunkLender = (s) =>
+        !s ||
+        isJunkLenderName(s) ||
+        /\b(?:Account|Date|Type|Status|Number|Ownership|Amount|Balance|Opened|Closed)\b/i.test(s);
 
+      // Pattern 1: TransUnion CIBIL "Account Details\n[BANK NAME]\n[Status]\n..."
+      //   In this format, the bank name appears AFTER "Account Details" header on its own line
+      //   OR appears at the START of the segment followed by status.
+      let m = seg.match(
+        /(?:^|\n)\s*([A-Z][A-Z0-9 &.'\-]{2,80})\s*\n\s*(?:Active|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|SMA)\s*(?:\n|$|Account)/i,
+      );
+      if (m && m[1] && !isJunkLender(m[1])) return m[1];
+
+      // Pattern 2: "Account Details\n[BANK NAME]" — bank name immediately after
+      m = seg.match(/Account\s+Details\s*\n\s*([A-Z][A-Z0-9 &.'\-]{2,80})/i);
+      if (m && m[1] && !isJunkLender(m[1])) return m[1];
+
+      // Pattern 3: "[BANK NAME] Active/Closed Account Number:..." all on consecutive lines
+      m = seg.match(
+        /([A-Z][A-Z0-9 &.'\-]{2,80})\s+(?:Active|Closed|Settled|Written\s*Off|Suit\s*Filed|Wilful\s*Default|Loss|SMA)\s+Account\s*Number\s*:/i,
+      );
+      if (m && m[1] && !isJunkLender(m[1])) return m[1];
+
+      // Pattern 4: TransUnion/Equifax/CRIF explicit labels
+      m = seg.match(
+        /\b(?:MEMBER\s*NAME|LENDER|BANK\s*NAME|FINANCIAL\s*INSTITUTION|FINANCIER|INSTITUTION)\s*[:\-]?\s*\n?\s*(.+?)(?:\n|$)/i,
+      );
+      if (
+        m && m[1] && m[1].length > 2 &&
+        !/\b(?:Account|Date|Type|Status|Number|Ownership|Amount|Balance|Opened|Closed|N\/A|NA|—|-)\b/i.test(m[1])
+      )
+        return m[1];
+
+      // Pattern 5: Bank name at start of segment followed by account type
+      m = seg.match(
+        /^\s*([A-Z][A-Z0-9 &.'\-]{2,80})\s+(?:Personal\s+Loan|Housing\s+Loan|Credit\s+Card|Home\s+Loan|Vehicle\s+Loan|Education\s+Loan|Business\s+Loan|Overdraft|Gold\s+Loan|Property\s+Loan)/i,
+      );
+      if (m && m[1] && !isJunkLender(m[1])) return m[1];
+
+      // Pattern 6: Generic text before account number on same line
+      const accountNoMatch = seg.match(
+        /([A-Z][A-Z0-9 &.'\-]{2,80})\s+(?:XXXX[A-Z0-9]+|[A-Z0-9X*]{4,})\s+(?:Individual|Joint|Guarantor)/i,
+      );
+      if (accountNoMatch && accountNoMatch[1] && !isJunkLender(accountNoMatch[1]))
+        return accountNoMatch[1];
+
+      return "";
+    };
+
+    const segmentLenderRaw = extractLenderFromSegment(segment);
     const segmentLender = normalizeLenderName(segmentLenderRaw);
 
+    // Debug logging for lender extraction
+    if (segmentAccountNo && !segmentLender) {
+      console.log(`[CIBIL] Empty lender for account ${segmentAccountNo}. Raw: "${segmentLenderRaw}", Segment preview: ${segment.slice(0, 200)}`);
+    }
 
     const account_type =
       (segment.match(
@@ -1334,9 +1967,16 @@ function parseCibilText(text) {
         /\b(?:ACCOUNT\s*STATUS|STATUS|CREDIT\s+FACILITY\s+STATUS)\s*[:\-]?\s*\n?\s*([A-Z][A-Z\s-]{2,30})(?:\n|\s{2,}|$)/i,
       ) || [])[1] || "";
 
+    // Ensure lender is populated - use raw name if normalized is empty
+    const finalLender = segmentLender && segmentLender.trim() 
+      ? segmentLender.trim() 
+      : (segmentLenderRaw && segmentLenderRaw.trim() 
+        ? segmentLenderRaw.trim() 
+        : "Unknown Lender");
+
     const detailAccount = {
       account_no: segmentAccountNo,
-      lender: segmentLender.trim(),
+      lender: finalLender,
       account_type: account_type.trim() || undefined,
       account_status: account_status.trim() || undefined,
 
@@ -1736,4 +2376,6 @@ module.exports = {
   normalizeLenderName,
   preprocessCibilText,
   parsePaisabazaarSummary,
+  detectCibilSource,
+  isJunkLenderName,
 };
