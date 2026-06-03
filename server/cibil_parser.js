@@ -39,6 +39,7 @@ function parseDate(dateStr) {
 // ── LENDER REGISTRY (Standardized Names) ──────────────────────────
 const LENDER_PATTERNS = [
   // Public Sector Banks (PSBs)
+  { regex: /\bSBI\s*CARD\b/i, name: "SBI Card", category: "Card" },
   { regex: /\bSBIN\b|STATE.*BANK.*INDIA|\bSBI\b/i, name: "State Bank of India (SBI)", category: "PSB" },
   { regex: /\bUBIN\b|UNION.*BANK/i, name: "Union Bank of India", category: "PSB" },
   { regex: /\bPUNB\b|PUNJAB.*NATIONAL|\bPNB\b/i, name: "Punjab National Bank (PNB)", category: "PSB" },
@@ -98,6 +99,7 @@ function normalizeLenderName(rawName) {
   if (d.includes("AXIS")) return "Axis Bank";
   if (d.includes("KOTAK")) return "Kotak Mahindra Bank";
   if (d.includes("YESBANK")) return "Yes Bank";
+  if (d.includes("SBICARD")) return "SBI Card";
   if (d.includes("SBIN") || d.includes("STATEBANK")) return "State Bank of India (SBI)";
   if (d.includes("CITI")) return "CITIBANK";
   if (d.includes("SCB") || d.includes("STANDARDCHARTERED")) return "Standard Chartered Bank";
@@ -461,12 +463,12 @@ function parsePaisabazaarSummary(text) {
       lender: normalizeLenderName(lender) || lender,
       account_type: (m[2] || "").trim(),
       account_no,
-      ownership: (m[4] || "").trim(),
-      opened_date: parseDate(m[5]),
-      account_status: (m[6] || "").replace(/\s+/g, " ").trim(),
-      last_update: parseDate(m[7]),
-      sanctioned_amount: parseNum(m[8]),
-      current_balance: parseNum(m[9]),
+      ownership: (m[5] || "").trim(),
+      opened_date: parseDate(m[6]),
+      account_status: (m[7] || "").replace(/\s+/g, " ").trim(),
+      last_update: parseDate(m[8]),
+      sanctioned_amount: parseNum(m[9]),
+      current_balance: parseNum(m[10]),
     });
   }
 
@@ -1166,7 +1168,7 @@ function parseCibilText(text) {
     const statusRe =
       "(?:Active\\*?\\*?|Closed|Settled|Written\\s*Off|Wilful\\s*Default|Suit\\s*Filed|Loss|SMA|Special\\s*Mention)";
     const dateRe = "\\d{2}[-\\/]\\d{2}[-\\/]\\d{4}";
-    const moneyRe = "[\\d,]+(?:\\.\\d{1,2})?|NA|\\-[\\d,]+|\\-";
+    const moneyRe = "(?:-?\\d{1,2},\\d{2},\\d{3})|(?:-?\\d{1,3},\\d{3})|(?:-?\\d+)|(?:NA)";
 
     const rowRe = new RegExp(
       [
@@ -2227,6 +2229,14 @@ function parseCibilText(text) {
           existing.dpd_max = Math.max(...history.map(x => x.days));
           existing.dpd_delay_count =
             history.filter(x => x.days > 0).length;
+        }
+
+        // Fix credit card field handling
+        if (/credit\s*card/i.test(existing.account_type)) {
+          if (existing.high_credit) existing.sanctioned_amount = undefined;
+          // Clear closed_date if account is Active (detail segments can pick up
+          // dates from neighboring accounts in flat Xavier/Paisabazaar format)
+          if (/active/i.test(existing.account_status)) existing.closed_date = undefined;
         }
       }
     }

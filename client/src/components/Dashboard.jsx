@@ -627,7 +627,8 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
           const loanAmt = r.sanctioned_amount || r.high_credit || r.credit_limit || 0
           const dpd = Array.isArray(r.dpd_history) ? r.dpd_history.map(x => `${x.month} ${x.days}`).join(' ') : ''
           const hay = `${r.lender || ''} ${r.account_type || ''} ${r.account_status || ''} ${r.opened_date || ''} ${r.closed_date || ''} ${r.last_payment_date || ''} ${r.account_no || ''} ${r.ownership || ''} ${r.last_update || ''} ${r.emi || ''} ${loanAmt || ''} ${r.current_balance || ''} ${r.overdue_amount || ''} ${r.dpd_max ?? ''} ${dpd}`.toLowerCase()
-          return hay.includes(q)
+          const words = q.split(/\s+/)
+          return words.every(w => hay.includes(w))
         })
         .slice()
         .sort(sorters[sort] || sorters.opened_desc)
@@ -713,7 +714,9 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
         .filter(r => {
           if (!q) return true
           const dpd = Array.isArray(r.dpd_history) ? r.dpd_history.map(x => `${x.month} ${x.days}`).join(' ') : ''
-          return `${r.lender || ''} ${r.account_type || ''} ${r.account_status || ''} ${r.opened_date || ''} ${r.closed_date || ''} ${r.account_no || ''} ${r.emi || ''} ${r.overdue_amount || ''} ${dpd}`.toLowerCase().includes(q)
+          const hay = `${r.lender || ''} ${r.account_type || ''} ${r.account_status || ''} ${r.opened_date || ''} ${r.closed_date || ''} ${r.account_no || ''} ${r.emi || ''} ${r.overdue_amount || ''} ${dpd}`.toLowerCase()
+          const words = q.split(/\s+/)
+          return words.every(w => hay.includes(w))
         })
         .slice()
         .sort(sorters[sort] || sorters.closed_desc)
