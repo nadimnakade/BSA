@@ -119,15 +119,16 @@ export default function InsightsTab({ a, onTx }) {
             <button className="ctrl-btn" onClick={()=>{ setDisbQuery(''); setDisbSort('date_desc'); setDisbType('ALL') }}>Reset</button>
           </div>
           <table>
-            <thead><tr><th>Date</th><th>Lender</th><th>Loan Type</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+            <thead><tr><th></th><th>Lender</th><th>Loan Type</th><th>Description</th><th>Date</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {disbRows.map((x,i)=>(
                 <tr key={i} onClick={()=>onTx && onTx(x)} style={{cursor:onTx?'pointer':'default'}}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:14}}>{x.date}</td>
-                  <td style={{color:'var(--text-primary)',fontWeight:500}}>{x.lender}</td>
+                  <td className="col-icon"><div className="icon-circle blue">🏦</div></td>
+                  <td className="col-name">{x.lender}<div className="cell-sub">Loan Disbursement</div></td>
                   <td>{badge(x.loan_type||'—', x.loan_type==='HL'?'blue':x.loan_type==='PL'?'red':x.loan_type==='BL'?'purple':x.loan_type==='GL'?'amber':x.loan_type==='AL'?'amber':x.loan_type==='EL'?'teal':'gray')}</td>
-                  <td style={{fontSize:11,color:'var(--text-muted)'}}>{x.description?.slice(0,80)}</td>
-                  <td style={{textAlign:'right'}}><span className="amount-credit">{f(x.amount)}</span></td>
+                  <td className="col-desc">{x.description?.slice(0,80)}</td>
+                  <td className="col-date">{x.date}</td>
+                  <td className="col-right"><span className="amount-credit">{f(x.amount)}</span></td>
                 </tr>
               ))}
             </tbody>

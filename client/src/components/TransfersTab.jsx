@@ -84,13 +84,14 @@ export default function TransfersTab({ a, onTx }) {
             <button className="ctrl-btn" onClick={()=>{ setOutQuery(''); setOutSort('date_desc') }}>Reset</button>
           </div>
           <table>
-            <thead><tr><th>Date</th><th>To</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+            <thead><tr><th></th><th>To</th><th>Date</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {out.map((x,i)=>(
                 <tr key={i} onClick={()=>onTx && onTx(x)} style={{cursor:onTx?'pointer':'default'}}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:11}}>{x.date}</td>
-                  <td style={{fontSize:14,color:'var(--text-secondary)',maxWidth:160}}>{x.description?.slice(0,50)||x.to}</td>
-                  <td style={{textAlign:'right'}}><span className="amount-debit">{f(x.amount)}</span></td>
+                  <td className="col-icon"><div className="icon-circle red">↗</div></td>
+                  <td className="col-name">{x.description?.slice(0,50)||x.to}<div className="cell-sub">Outgoing Transfer</div></td>
+                  <td className="col-date">{x.date}</td>
+                  <td className="col-right"><span className="amount-debit">{f(x.amount)}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -111,13 +112,14 @@ export default function TransfersTab({ a, onTx }) {
             <button className="ctrl-btn" onClick={()=>{ setInQuery(''); setInSort('date_desc') }}>Reset</button>
           </div>
           <table>
-            <thead><tr><th>Date</th><th>From</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+            <thead><tr><th></th><th>From</th><th>Date</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {inn.map((x,i)=>(
                 <tr key={i} onClick={()=>onTx && onTx(x)} style={{cursor:onTx?'pointer':'default'}}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:11}}>{x.date}</td>
-                  <td style={{fontSize:14,color:'var(--text-secondary)',maxWidth:160}}>{x.description?.slice(0,50)||x.from}</td>
-                  <td style={{textAlign:'right'}}><span className="amount-credit">{f(x.amount)}</span></td>
+                  <td className="col-icon"><div className="icon-circle green">↙</div></td>
+                  <td className="col-name">{x.description?.slice(0,50)||x.from}<div className="cell-sub">Incoming Transfer</div></td>
+                  <td className="col-date">{x.date}</td>
+                  <td className="col-right"><span className="amount-credit">{f(x.amount)}</span></td>
                 </tr>
               ))}
             </tbody>

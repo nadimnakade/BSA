@@ -95,24 +95,26 @@ export default function LoansTab({ a }) {
         <button className="ctrl-btn" onClick={()=>{ setQuery(''); setSort('date_desc'); setTypeFilter('ALL') }}>Reset</button>
       </div>
       <table>
-        <thead><tr><th>Date</th><th>Lender</th><th>Type</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+        <thead><tr><th></th><th>Lender</th><th>Type</th><th>Description</th><th>Date</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
         <tbody>
           {loans.map((l,i)=>(
             <tr key={i}>
-              <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:14}}>{l.date}</td>
-              <td style={{color:'var(--text-primary)',fontWeight:500}}>{l.bank}</td>
+              <td className="col-icon"><div className="icon-circle blue">🏦</div></td>
+              <td className="col-name">{l.bank}<div className="cell-sub">{l.type || 'EMI'}</div></td>
               <td><span className={`badge badge-${TYPE_COLOR[l.type]||'blue'}`}>{l.type}</span></td>
-              <td style={{fontSize:11,color:'var(--text-muted)',maxWidth:200}}>{(l.description||'').slice(0,60)}</td>
-              <td style={{textAlign:'right'}}><span className="amount-debit">{f(l.emi_amount)}</span></td>
+              <td className="col-desc">{(l.description||'').slice(0,60)}</td>
+              <td className="col-date">{l.date}</td>
+              <td className="col-right"><span className="amount-debit">{f(l.emi_amount)}</span></td>
             </tr>
           ))}
           {apy.map((x,i)=>(
             <tr key={`apy-${i}`}>
-              <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:14}}>{x.date}</td>
-              <td style={{color:'var(--text-primary)',fontWeight:500}}>Atal Pension Yojana</td>
+              <td className="col-icon"><div className="icon-circle amber">💰</div></td>
+              <td className="col-name">Atal Pension Yojana<div className="cell-sub">Pension</div></td>
               <td><span className="badge badge-amber">pension</span></td>
-              <td style={{fontSize:11,color:'var(--text-muted)'}}>{(x.description||'').slice(0,60)}</td>
-              <td style={{textAlign:'right'}}><span className="amount-invest">{f(x.amount)}</span></td>
+              <td className="col-desc">{(x.description||'').slice(0,60)}</td>
+              <td className="col-date">{x.date}</td>
+              <td className="col-right"><span className="amount-invest">{f(x.amount)}</span></td>
             </tr>
           ))}
         </tbody>
@@ -122,13 +124,14 @@ export default function LoansTab({ a }) {
         <>
           <div style={{fontSize:14,fontWeight:500,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'.07em',margin:'20px 0 8px'}}>Credit Card Payments</div>
           <table>
-            <thead><tr><th>Date</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+            <thead><tr><th></th><th>Description</th><th>Date</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {cc.map((x,i)=>(
                 <tr key={i}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:14}}>{x.date}</td>
-                  <td style={{fontSize:14,color:'var(--text-secondary)'}}>{x.description.slice(0,80)}</td>
-                  <td style={{textAlign:'right'}}><span className="amount-debit">{f(x.amount)}</span></td>
+                  <td className="col-icon"><div className="icon-circle red">💳</div></td>
+                  <td className="col-name">{x.description.slice(0,80)}<div className="cell-sub">Credit Card Payment</div></td>
+                  <td className="col-date">{x.date}</td>
+                  <td className="col-right"><span className="amount-debit">{f(x.amount)}</span></td>
                 </tr>
               ))}
             </tbody>

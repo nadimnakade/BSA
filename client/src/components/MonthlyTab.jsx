@@ -82,7 +82,7 @@ export default function MonthlyTab({ a }) {
       <table>
         <thead>
           <tr>
-            <th>Month</th><th>Salary</th><th>Total Credits</th><th>Total Debits</th>
+            <th></th><th>Month</th><th>Salary</th><th>Total Credits</th><th>Total Debits</th>
             <th>EMIs</th><th>Transfers Out</th><th>Closing Bal</th><th>Surplus</th>
           </tr>
         </thead>
@@ -91,14 +91,15 @@ export default function MonthlyTab({ a }) {
             const surplus = r.surplus || 0
             return (
               <tr key={r.month}>
-                <td style={{fontWeight:500,color:'var(--text-primary)'}}>{r.month}</td>
+                <td className="col-icon"><div className="icon-circle blue">📅</div></td>
+                <td className="col-name">{r.month}<div className="cell-sub">Monthly Summary</div></td>
                 <td><span className="amount-credit">{fp(r.salary)}</span></td>
                 <td><span className="amount-credit">{fp(r.credits)}</span></td>
                 <td><span className="amount-debit">{fp(r.debits)}</span></td>
                 <td><span className="amount-debit">{fp(r.emi)}</span></td>
-                <td><span style={{color:'var(--purple)',fontFamily:'JetBrains Mono,monospace',fontSize:13}}>{fp(r.transfers_out)}</span></td>
-                <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:13,color:'var(--text-secondary)'}}>{fp(r.closing_balance)}</td>
-                <td><span style={{fontFamily:'JetBrains Mono,monospace',fontSize:13,color:surplus>=0?'var(--green)':'var(--red)',fontWeight:500}}>{surplus>=0?'+':''}{fp(surplus)}</span></td>
+                <td className="col-right"><span style={{color:'var(--purple)',fontFamily:'JetBrains Mono,monospace',fontSize:13}}>{fp(r.transfers_out)}</span></td>
+                <td className="col-right" style={{fontFamily:'JetBrains Mono,monospace',fontSize:13,color:'var(--text-secondary)'}}>{fp(r.closing_balance)}</td>
+                <td className="col-right"><span style={{fontFamily:'JetBrains Mono,monospace',fontSize:13,color:surplus>=0?'var(--green)':'var(--red)',fontWeight:500}}>{surplus>=0?'+':''}{fp(surplus)}</span></td>
               </tr>
             )
           })}

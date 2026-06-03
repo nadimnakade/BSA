@@ -64,17 +64,18 @@ export default function CreditsTab({ a }) {
       </div>
       {rows.length>0 ? (
         <table>
-          <thead><tr><th>Date</th><th>Description / Employer</th><th>Category</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+          <thead><tr><th></th><th>Description / Employer</th><th>Category</th><th>Date</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
           <tbody>
             {rows.map((x,i)=>(
               <tr key={i}>
-                <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.date}</td>
-                <td style={{color:'var(--text-primary)',maxWidth:320}}>
-                  <div style={{fontWeight:500}}>{x.employer||x.description||x.lender||'—'}</div>
-                  {x.description&&x.employer&&<div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>{x.description.slice(0,80)}</div>}
+                <td className="col-icon"><div className="icon-circle green">💰</div></td>
+                <td className="col-name" style={{maxWidth:320}}>
+                  <div>{x.employer||x.description||x.lender||'—'}</div>
+                  {x.description&&x.employer&&<div className="cell-sub">{x.description.slice(0,80)}</div>}
                 </td>
                 <td>{badge(x.category,x.color)}</td>
-                <td style={{textAlign:'right'}}><span className="amount-credit">{f(x.amount)}</span></td>
+                <td className="col-date">{x.date}</td>
+                <td className="col-right"><span className="amount-credit">{f(x.amount)}</span></td>
               </tr>
             ))}
           </tbody>

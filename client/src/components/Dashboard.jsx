@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useCallback, useEffect } from 'react'
 import SummaryCards from './SummaryCards'
 import OverviewTab from './OverviewTab'
 import InvestmentsTab from './InvestmentsTab'
@@ -48,6 +48,26 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
 
   const openTx = (tx) => { setSelectedTx(tx); setTxOpen(true) }
   const tabs = isCibil ? CIBIL_TABS : STATEMENT_TABS
+
+  const tabBarRef = useRef(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  const checkScroll = useCallback(() => {
+    const el = tabBarRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 4)
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4)
+  }, [])
+
+  useEffect(() => { checkScroll() }, [checkScroll, tabs])
+
+  const scrollTabs = (dir) => {
+    const el = tabBarRef.current
+    if (!el) return
+    el.scrollBy({ left: dir * 200, behavior: 'smooth' })
+    setTimeout(checkScroll, 350)
+  }
 
   const exportSummary = async (format) => {
     setExporting(true)
@@ -207,14 +227,15 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
         />
         {rows.length ? (
           <table>
-            <thead><tr><th>Date</th><th>Employer</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+            <thead><tr><th></th><th>Employer</th><th>Description</th><th>Date</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {rows.map((x, i) => (
                 <tr key={i} onClick={()=>openTx(x)} style={{cursor:'pointer'}}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.date}</td>
-                  <td style={{color:'var(--text-primary)',fontWeight:600}}>{x.employer || '—'}</td>
-                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{(x.description || '').slice(0, 90)}</td>
-                  <td style={{textAlign:'right'}}><span className="amount-credit">{f(x.amount)}</span></td>
+                  <td className="col-icon"><div className="icon-circle green">💼</div></td>
+                  <td className="col-name">{x.employer || '—'}<div className="cell-sub">Salary Credit</div></td>
+                  <td className="col-desc">{(x.description || '').slice(0, 90)}</td>
+                  <td className="col-date">{x.date}</td>
+                  <td className="col-right"><span className="amount-credit">{f(x.amount)}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -288,13 +309,14 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
         />
         {rows.length ? (
           <table>
-            <thead><tr><th>Date</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+            <thead><tr><th></th><th>Description</th><th>Date</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {rows.map((x, i) => (
                 <tr key={i} onClick={()=>openTx(x)} style={{cursor:'pointer'}}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.date}</td>
-                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{(x.description || '').slice(0, 110)}</td>
-                  <td style={{textAlign:'right'}}><span className="amount-credit">{f(x.amount)}</span></td>
+                  <td className="col-icon"><div className="icon-circle teal">🧾</div></td>
+                  <td className="col-name">{(x.description || '').slice(0, 110)}<div className="cell-sub">PF / EPFO Credit</div></td>
+                  <td className="col-date">{x.date}</td>
+                  <td className="col-right"><span className="amount-credit">{f(x.amount)}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -362,15 +384,16 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
         />
         {rows.length ? (
           <table>
-            <thead><tr><th>Date</th><th>Lender</th><th>Type</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+            <thead><tr><th></th><th>Lender</th><th>Type</th><th>Description</th><th>Date</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {rows.map((x, i) => (
                 <tr key={i} onClick={()=>openTx(x)} style={{cursor:'pointer'}}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.date}</td>
-                  <td style={{color:'var(--text-primary)',fontWeight:600}}>{x.lender || '—'}</td>
+                  <td className="col-icon"><div className="icon-circle blue">🏦</div></td>
+                  <td className="col-name">{x.lender || '—'}<div className="cell-sub">Loan Disbursement</div></td>
                   <td>{badge(x.loan_type || '—', typeColor(x.loan_type))}</td>
-                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{(x.description || '').slice(0, 80)}</td>
-                  <td style={{textAlign:'right'}}><span className="amount-credit">{f(x.amount)}</span></td>
+                  <td className="col-desc">{(x.description || '').slice(0, 80)}</td>
+                  <td className="col-date">{x.date}</td>
+                  <td className="col-right"><span className="amount-credit">{f(x.amount)}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -428,16 +451,17 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
         />
         {rows.length ? (
           <table>
-            <thead><tr><th>Date</th><th>Platform</th><th>Issuer</th><th>Payee/VPA</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+            <thead><tr><th></th><th>Platform</th><th>Issuer</th><th>Payee/VPA</th><th>Description</th><th>Date</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {rows.map((x, i) => (
                 <tr key={i} onClick={()=>openTx(x)} style={{cursor:'pointer'}}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.date}</td>
-                  <td>{badge(x.cc_platform || '—', x.cc_platform==='CRED'?'amber':x.cc_platform==='BillDesk'?'purple':'gray')}</td>
-                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{(x.cc_issuer_bank || '—').slice(0, 22)}</td>
-                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{(x.cc_payee || '—').slice(0, 22)}</td>
-                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{(x.cc_display || x.description || '').slice(0, 70)}</td>
-                  <td style={{textAlign:'right'}}><span className="amount-debit">{f(x.amount)}</span></td>
+                  <td className="col-icon"><div className="icon-circle red">💳</div></td>
+                  <td className="col-name">{x.cc_platform || '—'}<div className="cell-sub">Credit Card Payment</div></td>
+                  <td className="col-desc" style={{maxWidth:160}}>{(x.cc_issuer_bank || '—').slice(0, 22)}</td>
+                  <td className="col-desc" style={{maxWidth:160}}>{(x.cc_payee || '—').slice(0, 22)}</td>
+                  <td className="col-desc">{(x.cc_display || x.description || '').slice(0, 70)}</td>
+                  <td className="col-date">{x.date}</td>
+                  <td className="col-right"><span className="amount-debit">{f(x.amount)}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -507,15 +531,16 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
 
         {rows.length ? (
           <table>
-            <thead><tr><th>Date</th><th>Category</th><th>Channel</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+            <thead><tr><th></th><th>Category</th><th>Channel</th><th>Description</th><th>Date</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {rows.map((x, i) => (
                 <tr key={i} onClick={()=>openTx(x)} style={{cursor:'pointer'}}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.date}</td>
-                  <td>{badge(x.category || 'Charges/Returns', 'amber')}</td>
-                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{x.channel || '—'}</td>
-                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{(x.description || '').slice(0, 110)}</td>
-                  <td style={{textAlign:'right'}}><span className="amount-debit">{f(x.amount)}</span></td>
+                  <td className="col-icon"><div className="icon-circle amber">⚠️</div></td>
+                  <td className="col-name">{x.category || 'Charges/Returns'}<div className="cell-sub">Bounce / Charge</div></td>
+                  <td className="col-desc" style={{maxWidth:120}}>{x.channel || '—'}</td>
+                  <td className="col-desc">{(x.description || '').slice(0, 110)}</td>
+                  <td className="col-date">{x.date}</td>
+                  <td className="col-right"><span className="amount-debit">{f(x.amount)}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -727,18 +752,19 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
 
         {rows.length ? (
           <table>
-            <thead><tr><th>Lender</th><th>Type</th><th>Opened</th><th>Last Payment</th><th style={{textAlign:'right'}}>EMI</th><th style={{textAlign:'right'}}>Loan Amt</th><th style={{textAlign:'right'}}>Balance</th><th style={{textAlign:'right'}}>Overdue</th><th>DPD History</th></tr></thead>
+            <thead><tr><th></th><th>Lender</th><th>Type</th><th>Opened</th><th>Last Payment</th><th style={{textAlign:'right'}}>EMI</th><th style={{textAlign:'right'}}>Loan Amt</th><th style={{textAlign:'right'}}>Balance</th><th style={{textAlign:'right'}}>Overdue</th><th>DPD History</th></tr></thead>
             <tbody>
               {rows.map((x, i) => (
                 <tr key={i}>
-                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{x.lender || '—'}</td>
-                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{x.account_type || '—'}</td>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.opened_date || '—'}</td>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.last_payment_date || '—'}</td>
-                  <td style={{textAlign:'right'}}>{x.emi ? f(x.emi) : '—'}</td>
-                  <td style={{textAlign:'right'}}>{x.sanctioned_amount ? f(x.sanctioned_amount) : (x.high_credit ? f(x.high_credit) : (x.credit_limit ? f(x.credit_limit) : '—'))}</td>
-                  <td style={{textAlign:'right'}}>{x.current_balance ? f(x.current_balance) : '—'}</td>
-                  <td style={{textAlign:'right'}}>{x.overdue_amount ? f(x.overdue_amount) : '—'}</td>
+                  <td className="col-icon"><div className="icon-circle blue">🏦</div></td>
+                  <td className="col-name">{x.lender || '—'}<div className="cell-sub">{x.account_type || ''}</div></td>
+                  <td className="col-desc" style={{maxWidth:80}}>{x.account_type || '—'}</td>
+                  <td className="col-date">{x.opened_date || '—'}</td>
+                  <td className="col-date">{x.last_payment_date || '—'}</td>
+                  <td className="col-right">{x.emi ? f(x.emi) : '—'}</td>
+                  <td className="col-right">{x.sanctioned_amount ? f(x.sanctioned_amount) : (x.high_credit ? f(x.high_credit) : (x.credit_limit ? f(x.credit_limit) : '—'))}</td>
+                  <td className="col-right">{x.current_balance ? f(x.current_balance) : '—'}</td>
+                  <td className="col-right">{x.overdue_amount ? <span className="amount-debit">{f(x.overdue_amount)}</span> : '—'}</td>
                   <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:11,maxWidth:220,whiteSpace:'normal'}}>{formatDpdHistory(x)}</td>
                 </tr>
               ))}
@@ -811,17 +837,18 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
 
         {rows.length ? (
           <table>
-            <thead><tr><th>Lender</th><th>Type</th><th>Status</th><th>Opened</th><th>Closed</th><th style={{textAlign:'right'}}>EMI</th><th style={{textAlign:'right'}}>Overdue</th><th>DPD History</th></tr></thead>
+            <thead><tr><th></th><th>Lender</th><th>Type</th><th>Status</th><th>Opened</th><th>Closed</th><th style={{textAlign:'right'}}>EMI</th><th style={{textAlign:'right'}}>Overdue</th><th>DPD History</th></tr></thead>
             <tbody>
               {rows.map((x, i) => (
                 <tr key={i}>
-                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{x.lender || '—'}</td>
-                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{x.account_type || '—'}</td>
-                  <td>{badge(x.account_status || 'Closed', 'green')}</td>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.opened_date || '—'}</td>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.closed_date || x.last_update || '—'}</td>
-                  <td style={{textAlign:'right'}}>{x.emi ? f(x.emi) : '—'}</td>
-                  <td style={{textAlign:'right'}}>{x.overdue_amount ? f(x.overdue_amount) : '—'}</td>
+                  <td className="col-icon"><div className="icon-circle green">✓</div></td>
+                  <td className="col-name">{x.lender || '—'}<div className="cell-sub">{x.account_type || ''}</div></td>
+                  <td className="col-desc" style={{maxWidth:80}}>{x.account_type || '—'}</td>
+                  <td><span className="status-dot green">{x.account_status || 'Closed'}</span></td>
+                  <td className="col-date">{x.opened_date || '—'}</td>
+                  <td className="col-date">{x.closed_date || x.last_update || '—'}</td>
+                  <td className="col-right">{x.emi ? f(x.emi) : '—'}</td>
+                  <td className="col-right">{x.overdue_amount ? <span className="amount-debit">{f(x.overdue_amount)}</span> : '—'}</td>
                   <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:11,maxWidth:220,whiteSpace:'normal'}}>{formatDpdHistory(x)}</td>
                 </tr>
               ))}
@@ -906,14 +933,15 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
         {rows.length ? (
           <div style={{marginTop:12}}>
             <table>
-              <thead><tr><th>Date</th><th>Member</th><th>Purpose</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+              <thead><tr><th></th><th>Member</th><th>Purpose</th><th>Date</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
               <tbody>
                 {rows.slice(0, 200).map((x, i) => (
                   <tr key={i}>
-                    <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.date || '—'}</td>
-                    <td style={{fontSize:12,color:'var(--text-secondary)'}}>{x.member || '—'}</td>
-                    <td style={{fontSize:12,color:'var(--text-secondary)'}}>{x.purpose || '—'}</td>
-                    <td style={{textAlign:'right'}}>{x.amount ? f(x.amount) : '—'}</td>
+                    <td className="col-icon"><div className="icon-circle purple">🔎</div></td>
+                    <td className="col-name">{x.member || '—'}<div className="cell-sub">Credit Inquiry</div></td>
+                    <td className="col-desc">{x.purpose || '—'}</td>
+                    <td className="col-date">{x.date || '—'}</td>
+                    <td className="col-right">{x.amount ? f(x.amount) : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1003,15 +1031,16 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
 
         {rows.length ? (
           <table>
-            <thead><tr><th>Date</th><th>Direction</th><th>Platform</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+            <thead><tr><th></th><th>Platform</th><th>Direction</th><th>Description</th><th>Date</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {rows.map((x,i)=>(
                 <tr key={i} onClick={()=>openTx(x)} style={{cursor:'pointer'}}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.date}</td>
-                  <td>{badge(x.direction || '—', x.direction==='credit' ? 'green' : x.direction==='debit' ? 'red' : 'gray')}</td>
-                  <td style={{color:'var(--text-primary)',fontWeight:600}}>{x.platform || 'Stock Market'}</td>
-                  <td style={{fontSize:12,color:'var(--text-secondary)'}}>{(x.description || '').slice(0, 110)}</td>
-                  <td style={{textAlign:'right'}}><span className={x.direction==='credit'?'amount-credit':'amount-debit'}>{f(x.amount)}</span></td>
+                  <td className="col-icon"><div className="icon-circle amber">📈</div></td>
+                  <td className="col-name">{x.platform || 'Stock Market'}<div className="cell-sub">{x.direction==='credit' ? 'Credit Received' : 'Debit Sent'}</div></td>
+                  <td><span className={`status-dot ${x.direction==='credit' ? 'green' : x.direction==='debit' ? 'red' : 'gray'}`}>{x.direction || '—'}</span></td>
+                  <td className="col-desc">{(x.description || '').slice(0, 110)}</td>
+                  <td className="col-date">{x.date}</td>
+                  <td className="col-right"><span className={x.direction==='credit'?'amount-credit':'amount-debit'}>{f(x.amount)}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -1117,24 +1146,26 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
         <div style={{fontSize:12,fontWeight:500,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:8}}>All EMI Transactions</div>
         {rows.length ? (
           <table>
-            <thead><tr><th>Date</th><th>Lender</th><th>Type</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+            <thead><tr><th></th><th>Lender</th><th>Type</th><th>Description</th><th>Date</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {rows.map((l,i)=>(
                 <tr key={i} onClick={()=>openTx(l)} style={{cursor:'pointer'}}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{l.date}</td>
-                  <td style={{color:'var(--text-primary)',fontWeight:500}}>{l.bank}</td>
+                  <td className="col-icon"><div className="icon-circle red">🏦</div></td>
+                  <td className="col-name">{l.bank}<div className="cell-sub">{l.type || 'EMI'}</div></td>
                   <td>{badge(l.type || 'OTHER', typeColor(l.type))}</td>
-                  <td style={{fontSize:11,color:'var(--text-muted)',maxWidth:280}}>{(l.description||'').slice(0,80)}</td>
-                  <td style={{textAlign:'right'}}><span className="amount-debit">{f(l.emi_amount)}</span></td>
+                  <td className="col-desc">{(l.description||'').slice(0,80)}</td>
+                  <td className="col-date">{l.date}</td>
+                  <td className="col-right"><span className="amount-debit">{f(l.emi_amount)}</span></td>
                 </tr>
               ))}
               {apy.map((x,i)=>(
                 <tr key={`apy-${i}`} onClick={()=>openTx(x)} style={{cursor:'pointer'}}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:12,whiteSpace:'nowrap'}}>{x.date}</td>
-                  <td style={{color:'var(--text-primary)',fontWeight:500}}>Atal Pension Yojana</td>
+                  <td className="col-icon"><div className="icon-circle amber">💰</div></td>
+                  <td className="col-name">Atal Pension Yojana<div className="cell-sub">Pension</div></td>
                   <td><span className="badge badge-amber">APY</span></td>
-                  <td style={{fontSize:11,color:'var(--text-muted)'}}>{(x.description||'').slice(0,80)}</td>
-                  <td style={{textAlign:'right'}}><span className="amount-invest">{f(x.amount)}</span></td>
+                  <td className="col-desc">{(x.description||'').slice(0,80)}</td>
+                  <td className="col-date">{x.date}</td>
+                  <td className="col-right"><span className="amount-invest">{f(x.amount)}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -1196,10 +1227,16 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
 
       {!isCibil && <SummaryCards a={a} />}
 
-      <div style={{ display:'flex', gap:4, margin:'20px 0 16px', flexWrap:'wrap' }}>
-        {tabs.map(t => (
-          <button key={t.id} className={`tab-btn ${tab===t.id?'active':''}`} onClick={()=>setTab(t.id)}>{t.label}</button>
-        ))}
+      <div className="tab-wrapper">
+        {!canScrollLeft && <div className="tab-arrow left hidden">‹</div>}
+        {canScrollLeft && <div className="tab-arrow left" onClick={()=>scrollTabs(-1)}>‹</div>}
+        <div className="tab-bar" ref={tabBarRef} onScroll={checkScroll}>
+          {tabs.map(t => (
+            <button key={t.id} className={`tab-btn ${tab===t.id?'active':''}`} onClick={()=>setTab(t.id)}>{t.label}</button>
+          ))}
+        </div>
+        {!canScrollRight && <div className="tab-arrow right hidden">›</div>}
+        {canScrollRight && <div className="tab-arrow right" onClick={()=>scrollTabs(1)}>›</div>}
       </div>
 
       <div className="card" style={{ padding:0, overflow:'hidden' }}>

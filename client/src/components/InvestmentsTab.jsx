@@ -85,14 +85,15 @@ export default function InvestmentsTab({ a, onTx }) {
             <button className="ctrl-btn" onClick={()=>{ setSipQuery(''); setSipSort('date_desc'); setSipPlatform('ALL') }}>Reset</button>
           </div>
           <table style={{marginBottom:24}}>
-            <thead><tr><th>Date</th><th>Fund / Platform</th><th>Platform</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+            <thead><tr><th></th><th>Fund / Platform</th><th>Platform</th><th>Date</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {sips.map((x,i)=>(
                 <tr key={i} onClick={()=>onTx && onTx(x)} style={{cursor:onTx?'pointer':'default'}}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:14}}>{x.date}</td>
-                  <td style={{color:'var(--text-primary)',fontWeight:500}}>{x.fund_name?.slice(0,50)||'—'}</td>
+                  <td className="col-icon"><div className="icon-circle amber">📈</div></td>
+                  <td className="col-name">{x.fund_name?.slice(0,50)||'—'}<div className="cell-sub">SIP / Mutual Fund</div></td>
                   <td><span className="badge badge-amber">{x.platform||'MF'}</span></td>
-                  <td style={{textAlign:'right'}}><span className="amount-invest">{f(x.amount)}</span></td>
+                  <td className="col-date">{x.date}</td>
+                  <td className="col-right"><span className="amount-invest">{f(x.amount)}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -126,14 +127,15 @@ export default function InvestmentsTab({ a, onTx }) {
             <button className="ctrl-btn" onClick={()=>{ setInsQuery(''); setInsSort('date_desc'); setInsType('ALL') }}>Reset</button>
           </div>
           <table>
-            <thead><tr><th>Date</th><th>Provider</th><th>Policy Type</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+            <thead><tr><th></th><th>Provider</th><th>Policy Type</th><th>Date</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {ins.map((x,i)=>(
                 <tr key={i} onClick={()=>onTx && onTx(x)} style={{cursor:onTx?'pointer':'default'}}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:14}}>{x.date}</td>
-                  <td style={{color:'var(--text-primary)',fontWeight:500}}>{x.provider}</td>
+                  <td className="col-icon"><div className="icon-circle teal">🛡️</div></td>
+                  <td className="col-name">{x.provider}<div className="cell-sub">Insurance Premium</div></td>
                   <td><span className="badge badge-teal">{x.policy_type}</span></td>
-                  <td style={{textAlign:'right'}}><span className="amount-invest">{f(x.amount)}</span></td>
+                  <td className="col-date">{x.date}</td>
+                  <td className="col-right"><span className="amount-invest">{f(x.amount)}</span></td>
                 </tr>
               ))}
             </tbody>

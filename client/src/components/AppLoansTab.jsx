@@ -72,15 +72,16 @@ export default function AppLoansTab({ a, onTx }) {
             <button className="ctrl-btn" onClick={()=>{ setQuery(''); setSort('date_desc'); setTypeFilter('ALL'); setAppFilter('ALL') }}>Reset</button>
           </div>
           <table>
-            <thead><tr><th>Date</th><th>App / Lender</th><th>Type</th><th>Description</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
+            <thead><tr><th></th><th>App / Lender</th><th>Type</th><th>Description</th><th>Date</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
             <tbody>
               {loans.map((x,i)=>(
                 <tr key={i} onClick={()=>onTx && onTx(x)} style={{cursor:onTx?'pointer':'default'}}>
-                  <td style={{fontFamily:'JetBrains Mono,monospace',fontSize:14}}>{x.date}</td>
-                  <td style={{color:'var(--purple)',fontWeight:500}}>{x.app_name}</td>
+                  <td className="col-icon"><div className="icon-circle purple">📱</div></td>
+                  <td className="col-name" style={{color:'var(--purple)'}}>{x.app_name}<div className="cell-sub">App Loan</div></td>
                   <td><span className={`badge badge-${x.type==='credit'?'green':'red'}`}>{x.type}</span></td>
-                  <td style={{fontSize:11,color:'var(--text-muted)',maxWidth:200}}>{(x.description||'').slice(0,60)}</td>
-                  <td style={{textAlign:'right'}}><span className={x.type==='credit'?'amount-credit':'amount-debit'}>{f(x.amount)}</span></td>
+                  <td className="col-desc">{(x.description||'').slice(0,60)}</td>
+                  <td className="col-date">{x.date}</td>
+                  <td className="col-right"><span className={x.type==='credit'?'amount-credit':'amount-debit'}>{f(x.amount)}</span></td>
                 </tr>
               ))}
             </tbody>
