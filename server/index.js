@@ -654,7 +654,7 @@ app.post('/api/debug-pdf-text', upload.single('statement'), async (req, res) => 
   }
 });
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT,"0.0.0.0", () => {
   console.log(`   http://localhost:${PORT}`);
   console.log(`   Supports: PDF · CSV · XLSX · TXT\n`);
 });

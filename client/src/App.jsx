@@ -11,7 +11,7 @@ export default function App() {
   const [error, setError] = useState(null)
   const [uploadedStatementFile, setUploadedStatementFile] = useState(null)
   const [uploadedCibilFile, setUploadedCibilFile] = useState(null)
-
+  const apiUrl = 'http://localhost:5000/api/';
   async function handleAnalyzeStatement(file) {
     setUploadedStatementFile(file)
     setUploadedCibilFile(null)
@@ -19,7 +19,7 @@ export default function App() {
     const formData = new FormData()
     if (file) formData.append('statement', file)
     try {
-      const res = await fetch('http://localhost:5000/api/analyze', { method: 'POST', body: formData })
+      const res = await fetch(apiUrl + 'analyze', { method: 'POST', body: formData })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Analysis failed')
       setResult(data)
@@ -35,7 +35,7 @@ export default function App() {
     if (cibilFile) formData.append('cibil', cibilFile)
     if (cibilPassword) formData.append('cibil_password', cibilPassword)
     try {
-      const res = await fetch('http://localhost:5000/api/analyze-cibil', { method: 'POST', body: formData })
+      const res = await fetch(apiUrl + 'analyze-cibil', { method: 'POST', body: formData })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Analysis failed')
       setResult(data)
@@ -48,7 +48,7 @@ export default function App() {
     setUploadedCibilFile(null)
     setLoading(true); setError(null); setResult(null)
     try {
-      const res = await fetch('http://localhost:5000/api/analyze-text', {
+      const res = await fetch(apiUrl + 'analyze-text', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text })
       })
