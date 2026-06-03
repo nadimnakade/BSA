@@ -816,7 +816,7 @@ function parseCibilText(text) {
 
   // Pass 0: Robust name and identification extraction
   const helloMatch = joined.match(
-    /\b(?:Hello|Hey),?\s+([A-Z][a-zA-Z ]{2,60})/i,
+    /\b(?:Hello|Hey),?\s+([A-Z][a-zA-Z0-9 /.]{2,80})/i,
   );
   if (helloMatch) personal.name = helloMatch[1].trim();
 
@@ -1805,6 +1805,160 @@ function parseCibilText(text) {
     }
   }
 
+  // =====================================================
+  // TRANSUNION DIRECT FORMAT: Member Name / Account Type / Account Number blocks
+  // (e.g. Reshmi-style CIBIL reports with multi-line labeled blocks)
+  // =====================================================
+  {
+    const rawLines = t.split("\n");
+    const memberIndices = [];
+    for (let i = 0; i < rawLines.length; i++) {
+      if (rawLines[i].trim() === "Member Name") memberIndices.push(i);
+    }
+    // Also detect "Member NameXXX" squished format for enquiries
+    if (memberIndices.length >= 2) {
+      const squishedMemberRe = /^Member Name\s*([A-Z][A-Z0-9 &.'\-]{2,80})$/i;
+      for (let i = 0; i < rawLines.length; i++) {
+        const smMatch = rawLines[i].match(squishedMemberRe);
+        if (smMatch && !memberIndices.includes(i)) {
+          // This is a squished Member Name line (for enquiries), skip
+        }
+      }
+
+      for (const mi of memberIndices) {
+        const lender = (rawLines[mi + 1] || "").trim();
+        const acctTypeLabel = (rawLines[mi + 2] || "").trim();
+        const acctType = (rawLines[mi + 3] || "").trim();
+
+        // Account number may be on same line as label ("Account Number: PLTLBORI...") or separate line
+        let acctNo = "";
+        let ownership = "";
+        for (let k = mi + 4; k < Math.min(mi + 10, rawLines.length); k++) {
+          const ll = rawLines[k].trim();
+          const acctMatch = ll.match(/Account\s*Number\s*:?\s*(.+)/i);
+          if (acctMatch && !acctNo) { acctNo = acctMatch[1].trim(); continue; }
+          const ownMatch = ll.match(/Ownership\s*:?\s*(.+)/i);
+          if (ownMatch) { ownership = ownMatch[1].trim(); break; }
+          if (/^(?:ACCOUNT\s*DETAILS|Date\s*Reported)/i.test(ll)) break;
+        }
+
+        if (
+          !acctNo || acctNo.length < 4 ||
+          !lender || lender.length < 2 ||
+          /\b(?:Account|Number|Type|Ownership|Status)\b/i.test(lender)
+        ) continue;
+        if (/\b(?:ACCOUNT|NUMBER|NO|TYPE|OWNERSHIP|STATUS|DATE|AMOUNT|BALANCE)\b/i.test(acctNo)) continue;
+
+        const isCC = /credit\s*card/i.test(acctType);
+
+        // Search backward for squished label-value lines (Sanctioned Amount₹X, Current Balance₹X)
+        let sanctioned, balance, overdue, status, opened;
+        for (let j = mi - 1; j >= Math.max(0, mi - 40); j--) {
+          const l = rawLines[j];
+          if (/^Sanctioned Amount/i.test(l)) sanctioned = parseNum(l.replace(/^Sanctioned Amount/i, ""));
+          if (/^Current Balance/i.test(l)) balance = parseNum(l.replace(/^Current Balance/i, ""));
+          if (/^Amount Overdue/i.test(l)) overdue = parseNum(l.replace(/^Amount Overdue/i, ""));
+          if (/^Credit Facility Status/i.test(l)) {
+            const s = l.replace(/^Credit Facility Status/i, "").trim();
+            if (s && s !== "-") status = s;
+          }
+          if (/^Date Opened \/ Disbursed/i.test(l)) opened = l.replace(/^Date Opened \/ Disbursed/i, "").trim();
+          if (/^Credit Limit/i.test(l) && isCC) {
+            const v = parseNum(l.replace(/^Credit Limit/i, ""));
+            if (v) sanctioned = v;
+          }
+        }
+
+        // Search forward for more details (Date Opened, EMI, etc.)
+        for (let j = mi + 8; j < Math.min(rawLines.length, mi + 50); j++) {
+          const l = rawLines[j];
+          if (/^Date Opened \/ Disbursed/i.test(l) && !opened) opened = l.replace(/^Date Opened \/ Disbursed/i, "").trim();
+          if (/^Sanctioned Amount/i.test(l) && sanctioned === undefined) sanctioned = parseNum(l.replace(/^Sanctioned Amount/i, ""));
+          if (/^Current Balance/i.test(l) && balance === undefined) balance = parseNum(l.replace(/^Current Balance/i, ""));
+          if (/^Amount Overdue/i.test(l) && overdue === undefined) overdue = parseNum(l.replace(/^Amount Overdue/i, ""));
+          if (/^Credit Facility Status/i.test(l) && !status) {
+            const s = l.replace(/^Credit Facility Status/i, "").trim();
+            if (s && s !== "-") status = s;
+          }
+          if (/^Credit Limit/i.test(l) && isCC && sanctioned === undefined) {
+            const v = parseNum(l.replace(/^Credit Limit/i, ""));
+            if (v) sanctioned = v;
+          }
+          if (/^EMI Amount/i.test(l)) {
+            const v = parseNum(l.replace(/^EMI Amount/i, ""));
+            if (v) {} // just skip
+          }
+          if (/^(?:Closed Account|OPEN ACCOUNTS|CLOSED ACCOUNTS|ENQUIR)/i.test(l)) break;
+        }
+
+        const normLender = normalizeLenderName(lender);
+        const rec = {
+          lender: normLender || lender,
+          account_type: acctType || undefined,
+          account_no: acctNo,
+          ownership: ownership || undefined,
+          opened_date: parseDate(opened),
+          account_status: status || undefined,
+          current_balance: balance,
+          sanctioned_amount: sanctioned,
+          overdue_amount: overdue,
+        };
+        const exists = accounts.find(a => a.account_no && rec.account_no && a.account_no === rec.account_no);
+        if (exists) {
+          if (rec.lender && (!exists.lender || /\b(?:Personal|Business|Housing)\b/i.test(exists.lender))) exists.lender = rec.lender;
+          if (rec.account_type) exists.account_type = rec.account_type;
+          if (rec.ownership) exists.ownership = rec.ownership;
+          if (rec.opened_date) exists.opened_date = rec.opened_date;
+          if (rec.account_status) exists.account_status = rec.account_status;
+          if (rec.current_balance !== undefined) exists.current_balance = rec.current_balance;
+          if (rec.sanctioned_amount !== undefined) exists.sanctioned_amount = rec.sanctioned_amount;
+          if (rec.overdue_amount !== undefined) exists.overdue_amount = rec.overdue_amount;
+        } else {
+          accounts.push(rec);
+        }
+      }
+
+      // Parse TransUnion enquiries: "Member NameXXX\nDate Of EnquiryDD/MM/YYYY\nEnquiry PurposeXXX"
+      const enqSectionIdx = upper.indexOf("ENQUIRY DETAILS");
+      if (enqSectionIdx >= 0) {
+        const enqText = t.slice(enqSectionIdx);
+        const enqLines = enqText.split("\n");
+        for (let i = 0; i < enqLines.length - 2; i++) {
+          const squishedMatch = enqLines[i].match(/^Member Name\s*([A-Z][A-Z0-9 &.'\-]{2,80})$/i);
+          const normalMatch = enqLines[i].trim() === "Member Name";
+          let member = "";
+          if (squishedMatch) member = squishedMatch[1].trim();
+          else if (normalMatch) member = (enqLines[i + 1] || "").trim();
+
+          if (member && member.length > 1) {
+            // Find Date Of Enquiry in next lines
+            for (let j = i + 1; j < Math.min(i + 5, enqLines.length); j++) {
+              const dateMatch = enqLines[j].match(/(?:Date Of Enquiry|Date\s*Of\s*Enquiry)\s*(\d{2}\/\d{2}\/\d{4})/i)
+                || enqLines[j].match(/^(\d{2}\/\d{2}\/\d{4})$/);
+              if (dateMatch) {
+                const purposeMatch = enqLines.slice(j, j + 3).find(l => /Enquiry Purpose/i.test(l));
+                const purpose = purposeMatch ? purposeMatch.replace(/.*Enquiry Purpose\s*/i, "").trim() : "";
+                if (!/\b(?:Report|Number|ECN|Table|Date)\b/i.test(member)) {
+                  const existingEnq = enquiry_details.find(
+                    e => e.member === normalizeLenderName(member) && e.date === dateMatch[1]
+                  );
+                  if (!existingEnq) {
+                    enquiry_details.push({
+                      date: parseDate(dateMatch[1]) || dateMatch[1],
+                      member: normalizeLenderName(member),
+                      purpose,
+                    });
+                  }
+                }
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   // const detailSegments = joined.split(/(?=\b(?:MEMBER\s*NAME|LENDER|BANK\s*NAME|FINANCIER|INSTITUTION)\b|Account\s+Details\s+[A-Z][A-Z0-9 &.'-]{2,60}\s+(?:Active|Closed|Settled|Written|Suit|Wilful|Loss|SMA))/i);
   // for (let i = 0; i < detailSegments.length; i++) {
   //   const segment = detailSegments[i];
@@ -2104,6 +2258,29 @@ function parseCibilText(text) {
     ),
   );
 
+  // Deduplicate enquiry_details by member+date
+  const seenEnq = new Set();
+  const dedupedEnq = [];
+  for (const e of enquiry_details) {
+    const normMember = normalizeLenderName(e.member || "")
+      .replace(/[^A-Z0-9]/gi, "")
+      .toUpperCase()
+      .replace(/FINANCE|BANK|LTD|LIMITED|FINANCECORP/gi, "");
+    let normDate = "";
+    if (e.date) {
+      const parsed = parseDate(e.date);
+      if (parsed) normDate = parsed.replace(/-/g, "");
+      else normDate = (e.date || "").replace(/[^0-9]/g, "");
+    }
+    const key = `${normMember}|${normDate}`;
+    if (!seenEnq.has(key)) {
+      seenEnq.add(key);
+      dedupedEnq.push(e);
+    }
+  }
+  enquiry_details.length = 0;
+  enquiry_details.push(...dedupedEnq);
+
   return {
     score: pickScore(),
     report_date: pickDate(),
@@ -2334,7 +2511,8 @@ function assessUnderwriting(bankAnalysis, cibil) {
     const okScore = score === undefined ? false : score >= minScore;
     const okDpd = allowDpd ? dpdMax < 60 : dpdMax < 30;
     const okDerog = !hasSevere;
-    return {
+
+  return {
       code,
       label,
       eligible: Boolean(okScore && okDpd && okDerog),

@@ -1,0 +1,2090 @@
+
+
+Control Number : 10,65,10,64,892
+Date : 07/03/2026
+CIBIL Score is a 3 digit numeric summary of your credit history & ranges from 300 to 900.
+This section reflects your CIBIL Score, which is widely used by loan providers to evaluate loan
+applications. Your score ranges between 300 and 900, and is calculated based on the information
+available in the "Accounts" and "Enquiry" section of your CIBIL Report. The closer your score is to
+900, the more confidence the lender will have in your ability to repay the loan. Higher your score, the
+better chances of your application getting approved.
+Please note in some cases you might be displayed a CIBIL Score of "NH" which indicates one of the
+following 3 things:
+1. You have a credit card or loan account, but no credit activity in the last three years.
+2. Lenders may have made enquiries, but you do not have any credit activity.
+3. You only have add-on credit cards, and no credit exposure.
+CIBIL Score & Report
+300900
+762
+Your CIBIL Score is 762 as of Date : 07/03/2026
+Hello, RESHMI SUMESH NAIR S/O RAJENDRAN
+PILLAI
+PERSONAL DETAILS
+Name
+RESHMI SUMESH NAIR S/O RAJENDRAN PILLAI
+Date Of Birth16/09/1993
+GenderFemale
+IDENTIFICATION DETAILS
+Identification TypeIncome Tax ID Number (PAN)
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true1/79
+
+ID NumberCYVPP7652N
+Issue Date-
+Expiry Date-
+Identification TypeCKYC
+ID Number10040613445148
+Issue Date-
+Expiry Date-
+ADDRESS DETAILS
+Address
+FLAT NO 2507 25TH FLOOR B WINGMARATHON N EXWORLD AURA VILLAGE
+BETAWADEMANPADA BUS STOP Maharashtra 421204
+CategoryNot Categorized
+Residence Code-
+Date Reported15/04/2025
+Address
+5TH FLOOR BUILDING NUMBER 10MINDSPACE OP P AIROLI RAILWAY STATION
+Maharashtra 421204
+CategoryOffice Address
+Residence Code-
+Date Reported15/04/2025
+Address
+D 603 REGALIA LAKESHORE GREENS PALAVA KHONI DOMBIVALI EASTAMBERNATH
+BADLAPUR PIPELINE ROAD ROADTHANE Maharashtra 421204
+CategoryResidence Address
+Residence Code-
+Date Reported31/03/2024
+Address
+REGALIA LAKE SHORE GREENS D 603 PALAVA KHONI KHONI B.O
+THANE,MAHARASHTRA Maharashtra 421204
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true2/79
+
+CategoryResidence Address
+Residence Code-
+Date Reported29/02/2024
+CONTACT DETAILS
+Telephone Number TypeNot Classified
+Telephone Number8390758285
+Telephone Extension-
+Telephone Number TypeOffice Phone(e)
+Telephone Number8390758285
+Telephone Extension-
+Telephone Number TypeMobile Phone
+Telephone Number8390758285
+Telephone Extension-
+Telephone Number TypeOffice Phone
+Telephone Number66825000
+Telephone Extension-
+EMAIL DETAILS
+Email ID
+RESHMI.NAIR@GMAIL.COM
+RESHMI.SUMESH.NAIR@ACCENTURE.COM
+RESHMIPILLAI163@GMAIL.COM
+RESHMINAIR163@YAHOO.COM
+EMPLOYMENT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true3/79
+
+ALL ACCOUNTS
+OPEN ACCOUNTS
+Account TypePersonal Loan
+Date Reported15/11/2025
+OccupationSalaried
+Income₹30,000
+Monthly / Annual Income IndicatorMonthly
+Net / Gross Income IndicatorNet Income
+Credit Limit-
+Sanctioned Amount₹17,32,798
+Current Balance₹16,29,294
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Member Name
+CHOLA INVST FIN
+Account Type
+Personal Loan
+Account Number
+PLTLBORI000010590602
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true4/79
+
+Repayment Tenure84
+EMI Amount₹35,412
+Payment FrequencyMonthly
+Actual Payment Amount-
+Date Opened / Disbursed12/04/2025
+Date Closed-
+Date of Last Payment-
+Date Reported And Certified28/02/2026
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/04/2025
+Payment End Date
+01/02/2026
+Payment History
+Feb 20260
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true5/79
+
+Jan 20260
+Dec 20250
+Nov 20250
+Oct 20250
+Sep 20250
+Aug 20250
+Jul 20250
+Jun 20250
+May 20250
+Apr 20250
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Member Name
+ADBIRLACAP
+Account Type
+Personal Loan
+Account Number
+ABMUM0PL000000655402
+Ownership
+Joint
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true6/79
+
+Credit Limit-
+Sanctioned Amount₹36,70,000
+Current Balance₹25,41,654
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure-
+EMI Amount-
+Payment FrequencyMonthly
+Actual Payment Amount-
+Date Opened / Disbursed20/02/2023
+Date Closed-
+Date of Last Payment06/02/2026
+Date Reported And Certified15/02/2026
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true7/79
+
+Payment Start Date
+01/03/2023
+Payment End Date
+01/02/2026
+Payment History
+Feb 20260
+Jan 20260
+Dec 20250
+Nov 20250
+Oct 20250
+Sep 20250
+Aug 20250
+Jul 20250
+Jun 20250
+May 20250
+Apr 20250
+Mar 20250
+Feb 20250
+Jan 20250
+Dec 20240
+Nov 20240
+Oct 20240
+Sep 20240
+Aug 20240
+Jul 20240
+Jun 20240
+May 20240
+Apr 20240
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true8/79
+
+Mar 20240
+Feb 20240
+Jan 20240
+Dec 20230
+Nov 20230
+Oct 20230
+Sep 20230
+Aug 20230
+Jul 20230
+Jun 20230
+May 20230
+Apr 20230
+Mar 20230
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Member Name
+SAMMAANCAP
+Account Type
+Housing Loan
+Account Number
+HHLKAL00445061
+Ownership
+Joint
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true9/79
+
+Credit Limit-
+Sanctioned Amount₹33,78,226
+Current Balance₹33,16,868
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure358
+EMI Amount-
+Payment FrequencyMonthly
+Actual Payment Amount₹24,73,445
+Date Opened / Disbursed08/06/2018
+Date Closed-
+Date of Last Payment10/02/2026
+Date Reported And Certified15/02/2026
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true10/79
+
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/03/2023
+Payment End Date
+01/02/2026
+Payment History
+Feb 20260
+Jan 20260
+Dec 20250
+Nov 20250
+Oct 20250
+Sep 20250
+Aug 20250
+Jul 20250
+Jun 20250
+May 20250
+Apr 20250
+Mar 202522
+Feb 20250
+Jan 20250
+Dec 20240
+Nov 20240
+Oct 20240
+Sep 20240
+Aug 20240
+Jul 20240
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true11/79
+
+Jun 20240
+May 20240
+Apr 20240
+Mar 20240
+Feb 20240
+Jan 20240
+Dec 20230
+Nov 20230
+Oct 20230
+Sep 20230
+Aug 20230
+Jul 20230
+Jun 20230
+May 20230
+Apr 20230
+Mar 20230
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true12/79
+
+Credit Limit₹21,000
+High Credit₹29,304
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure-
+EMI Amount-
+Payment FrequencyMonthly
+Actual Payment Amount₹590
+Date Opened / Disbursed29/10/2017
+Date Closed-
+Date of Last Payment07/01/2026
+Date Reported And Certified15/02/2026
+Member Name
+KOTAK BANK
+Account Type
+Credit Card
+Account Number
+9406150002156663
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true13/79
+
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/03/2023
+Payment End Date
+01/02/2026
+Payment History
+Feb 20260
+Jan 20260
+Dec 20250
+Nov 20250
+Oct 20250
+Sep 20250
+Aug 20250
+Jul 20250
+Jun 20250
+May 20250
+Apr 20250
+Mar 20250
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true14/79
+
+Feb 20250
+Jan 20250
+Dec 20240
+Nov 20240
+Oct 20240
+Sep 20240
+Aug 20240
+Jul 20240
+Jun 20240
+May 20240
+Apr 20240
+Mar 20240
+Feb 20240
+Jan 20240
+Dec 20230
+Nov 20230
+Oct 20230
+Sep 20230
+Aug 20230
+Jul 20230
+Jun 20230
+May 20230
+Apr 20230
+Mar 20230
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true15/79
+
+CLOSED ACCOUNTS
+SUB:Substandard
+Credit Limit-
+Sanctioned Amount₹56,000
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure-
+EMI Amount-
+Payment FrequencyMonthly
+Member Name
+EARLYSALARY
+Account Type
+Personal Loan
+Account Number
+FIBELAI1011294176
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true16/79
+
+Actual Payment Amount₹56,840
+Date Opened / Disbursed10/11/2025
+Date Closed28/11/2025
+Date of Last Payment28/11/2025
+Date Reported And Certified31/01/2026
+Value of Collateral-
+Type of CollateralNo Collateral
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/11/2025
+Payment End Date
+01/01/2026
+Payment History
+Jan 20260
+Dec 20250
+Nov 20250
+PAYMENT STATUS
+STD: Standard
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true17/79
+
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Credit Limit-
+Sanctioned Amount₹1,81,000
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure18
+EMI Amount₹11,766
+Member Name
+KRAZYBEE
+Account Type
+Personal Loan
+Account Number
+KB250503DARFI
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true18/79
+
+Payment FrequencyMonthly
+Actual Payment Amount-
+Date Opened / Disbursed03/05/2025
+Date Closed29/11/2025
+Date of Last Payment29/11/2025
+Date Reported And Certified30/11/2025
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/05/2025
+Payment End Date
+01/11/2025
+Payment History
+Nov 20250
+Oct 20250
+Sep 20250
+Aug 20250
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true19/79
+
+Jul 20250
+Jun 20250
+May 20250
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Credit Limit-
+Sanctioned Amount₹11,200
+Current Balance₹0
+Cash Limit-
+Member Name
+EARLYSALARY
+Account Type
+Personal Loan
+Account Number
+FIBELAI1009171887
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true20/79
+
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure-
+EMI Amount-
+Payment Frequency-
+Actual Payment Amount-
+Date Opened / Disbursed15/12/2024
+Date Closed19/04/2025
+Date of Last Payment19/04/2025
+Date Reported And Certified15/06/2025
+Value of Collateral-
+Type of CollateralNo Collateral
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/12/2024
+Payment End Date
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true21/79
+
+01/06/2025
+Payment History
+Jun 20250
+May 20250
+Apr 20250
+Mar 20250
+Feb 20250
+Jan 20250
+Dec 20240
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Member Name
+KISETSU
+Account Type
+Personal Loan
+Account Number
+LAI1009171887
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true22/79
+
+Credit Limit-
+Sanctioned Amount₹44,800
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure5
+EMI Amount₹8,133
+Payment FrequencyMonthly
+Actual Payment Amount-
+Date Opened / Disbursed15/12/2024
+Date Closed21/04/2025
+Date of Last Payment-
+Date Reported And Certified31/05/2025
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true23/79
+
+Payment Start Date
+01/12/2024
+Payment End Date
+01/05/2025
+Payment History
+May 20250
+Apr 20250
+Mar 20250
+Feb 20250
+Jan 20250
+Dec 20240
+PAYMENT STATUS
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Member Name
+EARLYSALARY
+Account Type
+Personal Loan
+Account Number
+FIBELAI1008462285
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true24/79
+
+Credit Limit-
+Sanctioned Amount₹11,663
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure-
+EMI Amount-
+Payment Frequency-
+Actual Payment Amount-
+Date Opened / Disbursed14/09/2024
+Date Closed15/12/2024
+Date of Last Payment15/12/2024
+Date Reported And Certified15/02/2025
+Value of Collateral-
+Type of CollateralNo Collateral
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true25/79
+
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/09/2024
+Payment End Date
+01/02/2025
+Payment History
+Feb 20250
+Jan 20250
+Dec 20240
+Nov 20240
+Oct 20240
+Sep 20240
+PAYMENT STATUS
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true26/79
+
+Credit Limit-
+Sanctioned Amount₹46,650
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure4
+EMI Amount-
+Payment FrequencyMonthly
+Actual Payment Amount-
+Date Opened / Disbursed14/09/2024
+Date Closed15/12/2024
+Date of Last Payment-
+Date Reported And Certified31/01/2025
+Member Name
+KISETSU
+Account Type
+Personal Loan
+Account Number
+LAI1008462285
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true27/79
+
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/09/2024
+Payment End Date
+01/01/2025
+Payment History
+Jan 20250
+Dec 20240
+Nov 20240
+Oct 20240
+Sep 20240
+PAYMENT STATUS
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true28/79
+
+SUB:Substandard
+Credit Limit-
+Sanctioned Amount₹1,81,000
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure18
+EMI Amount₹11,635
+Payment FrequencyMonthly
+Actual Payment Amount-
+Date Opened / Disbursed11/09/2024
+Member Name
+KRAZYBEE
+Account Type
+Personal Loan
+Account Number
+KB240911DAAEF
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true29/79
+
+Date Closed03/05/2025
+Date of Last Payment03/05/2025
+Date Reported And Certified15/05/2025
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/09/2024
+Payment End Date
+01/05/2025
+Payment History
+May 20250
+Apr 20250
+Mar 20250
+Feb 20250
+Jan 20250
+Dec 20240
+Nov 20240
+Oct 20240
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true30/79
+
+Sep 20240
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Credit Limit-
+Sanctioned Amount₹11,663
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Member Name
+EARLYSALARY
+Account Type
+Personal Loan
+Account Number
+FIBELAI1007848459
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true31/79
+
+Rate of Interest0.00%
+Repayment Tenure-
+EMI Amount-
+Payment Frequency-
+Actual Payment Amount-
+Date Opened / Disbursed17/06/2024
+Date Closed14/09/2024
+Date of Last Payment14/09/2024
+Date Reported And Certified31/10/2024
+Value of Collateral-
+Type of CollateralNo Collateral
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/06/2024
+Payment End Date
+01/10/2024
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true32/79
+
+Payment History
+Oct 20240
+Sep 20240
+Aug 20240
+Jul 20240
+Jun 20240
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Credit Limit-
+Sanctioned Amount₹46,650
+Member Name
+KISETSU
+Account Type
+Personal Loan
+Account Number
+LAI1007848459
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true33/79
+
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure6
+EMI Amount-
+Payment Frequency-
+Actual Payment Amount-
+Date Opened / Disbursed17/06/2024
+Date Closed14/09/2024
+Date of Last Payment-
+Date Reported And Certified31/10/2024
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true34/79
+
+Payment Start Date
+01/06/2024
+Payment End Date
+01/10/2024
+Payment History
+Oct 20240
+Sep 20240
+Aug 20240
+Jul 20240
+Jun 20240
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Member Name
+SMICC
+Account Type
+Personal Loan
+Account Number
+36102211679930
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true35/79
+
+Credit Limit-
+Sanctioned Amount₹2,49,046
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure-
+EMI Amount-
+Payment FrequencyMonthly
+Actual Payment Amount-
+Date Opened / Disbursed30/03/2024
+Date Closed24/04/2025
+Date of Last Payment23/04/2025
+Date Reported And Certified30/06/2025
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true36/79
+
+Payment Start Date
+01/03/2024
+Payment End Date
+01/06/2025
+Payment History
+Jun 20250
+May 20250
+Apr 20250
+Mar 20250
+Feb 20250
+Jan 20250
+Dec 20240
+Nov 20240
+Oct 20240
+Sep 20240
+Aug 20240
+Jul 20240
+Jun 20240
+May 20240
+Apr 20240
+Mar 20240
+PAYMENT STATUS
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true37/79
+
+XXX: Not Reported
+SUB:Substandard
+Credit Limit-
+Sanctioned Amount₹57,500
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure12
+EMI Amount-
+Payment Frequency-
+Actual Payment Amount₹57,500
+Date Opened / Disbursed15/02/2024
+Member Name
+MUTHOOTNAN
+Account Type
+Other
+Account Number
+4892MMS00000108
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true38/79
+
+Date Closed21/09/2024
+Date of Last Payment21/09/2024
+Date Reported And Certified15/10/2024
+Value of Collateral₹57550
+Type of CollateralGold
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/02/2024
+Payment End Date
+01/10/2024
+Payment History
+Oct 20240
+Sep 20240
+Aug 20240
+Jul 20240
+Jun 20240
+May 20240
+Apr 20240
+Mar 20240
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true39/79
+
+Feb 20240
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Credit Limit-
+Sanctioned Amount₹11,630
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Member Name
+EARLYSALARY
+Account Type
+Personal Loan
+Account Number
+FIBELAI1006739639
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true40/79
+
+Rate of Interest0.00%
+Repayment Tenure-
+EMI Amount-
+Payment Frequency-
+Actual Payment Amount-
+Date Opened / Disbursed13/01/2024
+Date Closed04/04/2024
+Date of Last Payment04/04/2024
+Date Reported And Certified31/05/2024
+Value of Collateral-
+Type of CollateralNo Collateral
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/01/2024
+Payment End Date
+01/05/2024
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true41/79
+
+Payment History
+May 20240
+Apr 20240
+Mar 20240
+Feb 20240
+Jan 20240
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Credit Limit-
+Sanctioned Amount₹1,10,000
+Member Name
+KRAZYBEE
+Account Type
+Personal Loan
+Account Number
+KB231216EMIPF
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true42/79
+
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure12
+EMI Amount₹10,508
+Payment FrequencyMonthly
+Actual Payment Amount-
+Date Opened / Disbursed16/12/2023
+Date Closed11/09/2024
+Date of Last Payment11/09/2024
+Date Reported And Certified30/09/2024
+Value of Collateral-
+Type of CollateralNo Collateral
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true43/79
+
+Payment Start Date
+01/12/2023
+Payment End Date
+01/09/2024
+Payment History
+Sep 20240
+Aug 20240
+Jul 20240
+Jun 20240
+May 20240
+Apr 20240
+Mar 20240
+Feb 20240
+Jan 20240
+Dec 20230
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Member Name
+BAJAJ FIN LTD
+Account Type
+Consumer Loan
+Account Number
+577DPFKJ805946
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true44/79
+
+Credit Limit-
+Sanctioned Amount₹36,999
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure8
+EMI Amount₹4,625
+Payment FrequencyMonthly
+Actual Payment Amount-
+Date Opened / Disbursed06/11/2023
+Date Closed06/07/2024
+Date of Last Payment02/06/2024
+Date Reported And Certified31/08/2024
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true45/79
+
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/11/2023
+Payment End Date
+01/08/2024
+Payment History
+Aug 20240
+Jul 20240
+Jun 20240
+May 20240
+Apr 20240
+Mar 20240
+Feb 20240
+Jan 20240
+Dec 20230
+Nov 20230
+PAYMENT STATUS
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true46/79
+
+SUB:Substandard
+Credit Limit-
+Sanctioned Amount₹6,15,881
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure60
+EMI Amount₹13,700
+Payment FrequencyMonthly
+Actual Payment Amount-
+Date Opened / Disbursed28/09/2023
+Member Name
+KOTAK BANK
+Account Type
+Personal Loan
+Account Number
+SPLN77532976
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true47/79
+
+Date Closed23/04/2025
+Date of Last Payment23/04/2025
+Date Reported And Certified30/04/2025
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/09/2023
+Payment End Date
+01/04/2025
+Payment History
+Apr 20250
+Mar 20250
+Feb 20250
+Jan 20250
+Dec 20240
+Nov 20240
+Oct 20240
+Sep 20240
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true48/79
+
+Aug 20240
+Jul 20240
+Jun 20240
+May 20240
+Apr 20240
+Mar 20240
+Feb 20240
+Jan 20240
+Dec 20230
+Nov 20230
+Oct 20230
+Sep 20230
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Member Name
+INCRED FINANCE
+Account Type
+Personal Loan
+Account Number
+DXMUM47223-242927258
+Ownership
+Individual
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true49/79
+
+Credit Limit-
+Sanctioned Amount₹58,495
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure-
+EMI Amount-
+Payment Frequency-
+Actual Payment Amount-
+Date Opened / Disbursed03/08/2023
+Date Closed06/10/2023
+Date of Last Payment06/10/2023
+Date Reported And Certified30/04/2024
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true50/79
+
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/08/2023
+Payment End Date
+01/04/2024
+Payment History
+Apr 20240
+Mar 20240
+Feb 20240
+Jan 20240
+Dec 20230
+Nov 20230
+Oct 20230
+Sep 20230
+Aug 20230
+PAYMENT STATUS
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true51/79
+
+Credit Limit-
+Sanctioned Amount₹11,699
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure-
+EMI Amount-
+Payment Frequency-
+Actual Payment Amount-
+Date Opened / Disbursed03/08/2023
+Date Closed29/09/2023
+Date of Last Payment29/09/2023
+Date Reported And Certified30/11/2023
+Member Name
+EARLYSALARY
+Account Type
+Personal Loan
+Account Number
+FIBELAI1005569487
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true52/79
+
+Value of Collateral-
+Type of CollateralNo Collateral
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/09/2023
+Payment End Date
+01/11/2023
+Payment History
+Nov 20230
+Oct 20230
+Sep 20230
+PAYMENT STATUS
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true53/79
+
+SUB:Substandard
+Credit Limit-
+Sanctioned Amount₹73,000
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure9
+EMI Amount-
+Payment FrequencyMonthly
+Actual Payment Amount-
+Date Opened / Disbursed25/07/2023
+Member Name
+KRAZYBEE
+Account Type
+Personal Loan
+Account Number
+KB230725BDBAK
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true54/79
+
+Date Closed26/09/2023
+Date of Last Payment26/09/2023
+Date Reported And Certified30/09/2023
+Value of Collateral-
+Type of CollateralNo Collateral
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/07/2023
+Payment End Date
+01/09/2023
+Payment History
+Sep 20230
+Aug 20230
+Jul 20230
+PAYMENT STATUS
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true55/79
+
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Credit Limit-
+Sanctioned Amount₹18,000
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure1
+EMI Amount₹18,015
+Payment Frequency-
+Member Name
+KOTAK BANK
+Account Type
+Personal Loan
+Account Number
+PDL6641291
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true56/79
+
+Actual Payment Amount-
+Date Opened / Disbursed23/07/2023
+Date Closed05/08/2023
+Date of Last Payment26/07/2023
+Date Reported And Certified31/08/2023
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/07/2023
+Payment End Date
+01/08/2023
+Payment History
+Aug 20230
+Jul 20230
+PAYMENT STATUS
+STD: Standard
+DBT:Doubtful
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true57/79
+
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Credit Limit-
+Sanctioned Amount₹82,500
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure36
+EMI Amount₹2,876
+Member Name
+IDFC FIRST BANK
+Account Type
+Two-wheeler Loan
+Account Number
+113726125
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true58/79
+
+Payment FrequencyMonthly
+Actual Payment Amount₹1,03,937
+Date Opened / Disbursed09/05/2023
+Date Closed28/11/2025
+Date of Last Payment28/11/2025
+Date Reported And Certified30/11/2025
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/05/2023
+Payment End Date
+01/11/2025
+Payment History
+Nov 20250
+Oct 20250
+Sep 20250
+Aug 20250
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true59/79
+
+Jul 20250
+Jun 20250
+May 20250
+Apr 20250
+Mar 20250
+Feb 20250
+Jan 20250
+Dec 20240
+Nov 20240
+Oct 20240
+Sep 20240
+Aug 20240
+Jul 20240
+Jun 20240
+May 20240
+Apr 20240
+Mar 20240
+Feb 20240
+Jan 20240
+Dec 20230
+Nov 20230
+Oct 20230
+Sep 20230
+Aug 20230
+Jul 20230
+Jun 20230
+May 20230
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true60/79
+
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Credit Limit-
+Sanctioned Amount₹2,60,000
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure36
+EMI Amount₹9,531
+Payment FrequencyMonthly
+Actual Payment Amount-
+Member Name
+KOTAK BANK
+Account Type
+Personal Loan
+Account Number
+SPLN72915466
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true61/79
+
+Date Opened / Disbursed13/03/2023
+Date Closed23/04/2025
+Date of Last Payment23/04/2025
+Date Reported And Certified30/04/2025
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/03/2023
+Payment End Date
+01/04/2025
+Payment History
+Apr 20250
+Mar 20250
+Feb 20250
+Jan 20250
+Dec 20240
+Nov 20240
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true62/79
+
+Oct 20240
+Sep 20240
+Aug 20240
+Jul 20240
+Jun 20240
+May 20240
+Apr 20240
+Mar 20240
+Feb 20240
+Jan 20240
+Dec 20230
+Nov 20230
+Oct 20230
+Sep 20230
+Aug 20230
+Jul 20230
+Jun 20230
+May 20230
+Apr 20230
+Mar 20230
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true63/79
+
+Credit Limit-
+Sanctioned Amount₹29,000
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure9
+EMI Amount₹3,497
+Payment FrequencyMonthly
+Actual Payment Amount-
+Date Opened / Disbursed06/08/2022
+Date Closed08/05/2023
+Date of Last Payment05/05/2023
+Date Reported And Certified31/05/2023
+Member Name
+KOTAK BANK
+Account Type
+Consumer Loan
+Account Number
+CFB16021122
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true64/79
+
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/08/2022
+Payment End Date
+01/05/2023
+Payment History
+May 20230
+Apr 20230
+Mar 20230
+Feb 20230
+Jan 20230
+Dec 20220
+Nov 20220
+Oct 20220
+Sep 20220
+Aug 20220
+PAYMENT STATUS
+STD: Standard
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true65/79
+
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Credit Limit-
+Sanctioned Amount₹2,35,609
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure-
+EMI Amount-
+Member Name
+SMICC
+Account Type
+Personal Loan
+Account Number
+36102211134379
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true66/79
+
+Payment FrequencyMonthly
+Actual Payment Amount-
+Date Opened / Disbursed15/07/2022
+Date Closed31/03/2023
+Date of Last Payment31/03/2023
+Date Reported And Certified31/05/2023
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/07/2022
+Payment End Date
+01/05/2023
+Payment History
+May 20230
+Apr 2023XXX
+Mar 20230
+Feb 20230
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true67/79
+
+Jan 20230
+Dec 20220
+Nov 20220
+Oct 20220
+Sep 20220
+Aug 20220
+Jul 20220
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Credit Limit-
+Member Name
+HDFC BANK
+Account Type
+Personal Loan
+Account Number
+117470609
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true68/79
+
+Sanctioned Amount₹5,00,000
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure-
+EMI Amount-
+Payment FrequencyMonthly
+Actual Payment Amount₹3,62,621
+Date Opened / Disbursed17/03/2021
+Date Closed24/03/2023
+Date of Last Payment24/03/2023
+Date Reported And Certified31/03/2023
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true69/79
+
+Payment Start Date
+01/03/2021
+Payment End Date
+01/03/2023
+Payment History
+Mar 20230
+Feb 20230
+Jan 20230
+Dec 20220
+Nov 20220
+Oct 20220
+Sep 20220
+Aug 20220
+Jul 20220
+Jun 20220
+May 20220
+Apr 20220
+Mar 20220
+Feb 20220
+Jan 20220
+Dec 20210
+Nov 20210
+Oct 20210
+Sep 20210
+Aug 20210
+Jul 20210
+Jun 20210
+May 20210
+Apr 20210
+Mar 20210
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true70/79
+
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+Credit Limit-
+Sanctioned Amount₹3,00,000
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure64
+Member Name
+HDB
+Account Type
+Personal Loan
+Account Number
+7253341
+Ownership
+Joint
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true71/79
+
+EMI Amount₹7,137
+Payment FrequencyMonthly
+Actual Payment Amount₹2,44,845
+Date Opened / Disbursed25/04/2019
+Date Closed04/04/2021
+Date of Last Payment25/03/2021
+Date Reported And Certified30/04/2021
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/04/2019
+Payment End Date
+01/04/2021
+Payment History
+Apr 20210
+Mar 20210
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true72/79
+
+Feb 20210
+Jan 20210
+Dec 20200
+Nov 20200
+Oct 20200
+Sep 20200
+Aug 20200
+Jul 20200
+Jun 20200
+May 20200
+Apr 20200
+Mar 20200
+Feb 20200
+Jan 20200
+Dec 20190
+Nov 20190
+Oct 20190
+Sep 20190
+Aug 20190
+Jul 20190
+Jun 20190
+May 20190
+Apr 20190
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true73/79
+
+SUB:Substandard
+Credit Limit-
+Sanctioned Amount₹1,01,552
+Current Balance₹0
+Cash Limit-
+Amount Overdue₹0
+Rate of Interest0.00%
+Repayment Tenure-
+EMI Amount-
+Payment Frequency-
+Actual Payment Amount-
+Date Opened / Disbursed15/11/2017
+Member Name
+KOTAK BANK
+Account Type
+Personal Loan
+Account Number
+SPLN60706552
+Ownership
+Individual
+ACCOUNT DETAILS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true74/79
+
+Date Closed28/04/2021
+Date of Last Payment27/04/2021
+Date Reported And Certified30/04/2021
+Value of Collateral-
+Type of Collateral-
+Suit - Filed / Wilful Default-
+Credit Facility Status-
+Written-off Amount (Total)-
+Written-off Amount (Principal)-
+Settlement Amount-
+Payment Start Date
+01/05/2018
+Payment End Date
+01/04/2021
+Payment History
+Apr 20210
+Mar 20210
+Feb 20210
+Jan 20210
+Dec 20200
+Nov 20200
+Oct 20200
+Sep 20200
+PAYMENT STATUS
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true75/79
+
+Aug 20200
+Jul 20200
+Jun 20200
+May 20200
+Apr 20200
+Mar 20200
+Feb 20200
+Jan 20200
+Dec 20190
+Nov 20190
+Oct 20190
+Sep 20190
+Aug 20190
+Jul 20190
+Jun 20190
+May 20190
+Apr 20190
+Mar 20190
+Feb 20190
+Jan 20190
+Dec 201822
+Nov 20180
+Oct 20180
+Sep 20180
+Aug 20180
+Jul 20180
+Jun 20180
+May 20180
+STD: Standard
+DBT:Doubtful
+###: Number of days past due
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true76/79
+
+SMA:Special Mention account
+LSS:Loss
+XXX: Not Reported
+SUB:Substandard
+ENQUIRY DETAILS
+(e) Indicates the value provided by bank when you applied for a credit facility.
+Member NameCHOLA INVST FIN
+Date Of Enquiry09/04/2025
+Enquiry PurposePersonal Loan
+Member NameKISETSU
+Date Of Enquiry12/02/2025
+Enquiry PurposePersonal Loan
+Member NameMHIL
+Date Of Enquiry02/12/2024
+Enquiry PurposeHousing Loan
+Member NameSHRIRAM HFC
+Date Of Enquiry05/09/2024
+Enquiry PurposeHousing Loan
+Member NameKOTAK BANK
+Date Of Enquiry24/08/2024
+Enquiry PurposePersonal Loan
+Member NameSBI
+Date Of Enquiry23/01/2024
+Enquiry PurposeOther
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true77/79
+
+Disclaimer: All information contained in this credit report has been collated by TransUnion CIBIL Limited (
+TU CIBIL) based on information provided/ submitted by its various members("Members"), as part of
+periodic data submission and Members are required to ensure accuracy, completeness and veracity of the
+information submitted. The credit report is generated using the proprietary search and match logic of TU
+CIBIL. TU CIBIL uses its best efforts to ensure accuracy, completeness and veracity of the information
+contained in the Report and shall only be liable and / or responsible if any discrepancies are directly
+attributable to TU CIBIL. The use of this report is governed by the terms and conditions of the Operating
+Rules for TU CIBIL and its Members.
+Member NameBAJAJ FIN LTD
+Date Of Enquiry06/11/2023
+Enquiry PurposeConsumer Loan
+Member NameKOTAK BANK
+Date Of Enquiry16/09/2023
+Enquiry PurposePersonal Loan
+Member NameKOTAK BANK
+Date Of Enquiry15/09/2023
+Enquiry PurposePersonal Loan
+Member NameAXIS FIN
+Date Of Enquiry13/09/2023
+Enquiry PurposePersonal Loan
+Member NameKOTAK BANK
+Date Of Enquiry04/09/2023
+Enquiry PurposePersonal Loan
+Member NameIDFC FIRST BANK
+Date Of Enquiry08/05/2023
+Enquiry PurposeTwo-wheeler Loan
+End of report
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true78/79
+
+In case of any discrepancy in Personal / Account Information pertaining to Loan Accounts / Credit
+Cards, concerned Financial Institutions / Credit Card Company (CCC) may also please be contacted for
+required clarification.
+COPYRIGHT 2026 TRANSUNION CIBIL. ALL RIGHTS RESERVED.
+For more information, please visit our website at www.cibil.com
+3/7/26, 3:28 PMCIBIL Report
+https://myscore.cibil.com/CreditView/creditReportPrint.page?print=true79/79
