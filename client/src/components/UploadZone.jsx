@@ -15,6 +15,7 @@ const SAMPLE = `Date,Description,Debit,Credit,Balance
 export default function UploadZone({ mode = 'statement', onAnalyze, onTextAnalyze, error }) {
   const [dragging, setDragging] = useState(false)
   const [file, setFile] = useState(null)
+  const [statementPassword, setStatementPassword] = useState('')
   const [cibilFile, setCibilFile] = useState(null)
   const [cibilPassword, setCibilPassword] = useState('')
   const [textMode, setTextMode] = useState(false)
@@ -27,6 +28,7 @@ export default function UploadZone({ mode = 'statement', onAnalyze, onTextAnalyz
   useEffect(() => {
     setDragging(false)
     setFile(null)
+    setStatementPassword('')
     setCibilFile(null)
     setCibilPassword('')
     setTextMode(false)
@@ -105,7 +107,7 @@ export default function UploadZone({ mode = 'statement', onAnalyze, onTextAnalyz
             onClick={()=>fileRef.current.click()}
             style={{ border:`2px dashed ${dragging?'var(--blue)':file?'var(--green)':'var(--border-bright)'}`, borderRadius:14, padding:'44px 32px', textAlign:'center', cursor:'pointer', background:dragging?'rgba(59,130,246,.05)':file?'rgba(34,197,94,.03)':'var(--bg-card)', transition:'all .2s' }}
           >
-            <input ref={fileRef} type="file" accept=".pdf,.csv,.xlsx,.xls,.txt" style={{display:'none'}} onChange={e=>e.target.files[0]&&setFile(e.target.files[0])} />
+            <input ref={fileRef} type="file" accept=".pdf,.csv,.xlsx,.xls,.txt" style={{display:'none'}} onChange={e=>{ if (e.target.files[0]) { setFile(e.target.files[0]); setStatementPassword('') } }} />
             {file ? (
               <><div style={{fontSize:32,marginBottom:10}}>✓</div>
               <div style={{color:'var(--green)',fontWeight:500,marginBottom:4}}>{file.name}</div>
@@ -116,6 +118,24 @@ export default function UploadZone({ mode = 'statement', onAnalyze, onTextAnalyz
               <div style={{color:'var(--text-muted)',fontSize:12}}>PDF · CSV · XLSX · XLS · TXT · up to 25MB</div></>
             )}
           </div>
+
+          {file && file.name.toLowerCase().endsWith('.pdf') && (
+            <div className="card" style={{padding:'12px 14px'}}>
+              <div style={{fontSize:12,fontWeight:600,color:'var(--text-primary)',marginBottom:6}}>PDF password (if any)</div>
+              <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}}>
+                <input
+                  className="ctrl"
+                  value={statementPassword}
+                  onChange={e=>setStatementPassword(e.target.value)}
+                  type="password"
+                  placeholder="Enter password if the PDF is locked"
+                  style={{minWidth:320}}
+                />
+                <button className="ctrl-btn" onClick={()=>setStatementPassword('')} disabled={!statementPassword}>Clear</button>
+              </div>
+              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:6}}>If the PDF is password-protected, enter the password here so it can be read.</div>
+            </div>
+          )}
         </div>
       ) : (
         <div>
@@ -133,7 +153,7 @@ export default function UploadZone({ mode = 'statement', onAnalyze, onTextAnalyz
         onClick={() => {
           if (isCibil) return onAnalyze && onAnalyze(cibilFile, cibilPassword)
           if (textMode) return onTextAnalyze && onTextAnalyze(text)
-          return onAnalyze && onAnalyze(file)
+          return onAnalyze && onAnalyze(file, statementPassword)
         }}
         disabled={!canSubmit}
         style={{ width:'100%', marginTop:14, padding:'13px 24px', background:canSubmit?'var(--blue)':'var(--bg-card)', color:canSubmit?'#fff':'var(--text-muted)', border:'none', borderRadius:10, fontSize:15, fontWeight:600, cursor:canSubmit?'pointer':'not-allowed', transition:'all .2s' }}>

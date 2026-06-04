@@ -301,11 +301,11 @@ async function extractPdfTextOcr(filePath) {
   }
 }
 
-async function parseFile(filePath, originalName) {
+async function parseFile(filePath, originalName, password) {
   const ext = path.extname(originalName).toLowerCase();
   switch (ext) {
     case ".pdf":
-      return await parsePDF(filePath);
+      return await parsePDF(filePath, password);
     case ".csv":
       return toParsedResult(await parseCSV(filePath), "csv");
     case ".xlsx":
@@ -351,11 +351,12 @@ function toParsedResult(transactions, source, rawText = "", extraMetadata = {}) 
 //   return tx2;
 // }
 
-async function parsePDF(filePath) {
+async function parsePDF(filePath, password) {
   let raw = "";
   let rawAlt = "";
   let pageClassification = null;
   const metadataWarnings = [];
+  const normPw = (password || '').toString().trim();
 
   try {
     pageClassification = await classifyPdfPages(filePath);
@@ -373,32 +374,34 @@ async function parsePDF(filePath) {
   try {
     const pdfParse = require("pdf-parse");
     const data = await pdfParse(fs.readFileSync(filePath), {
-      // Use page render to get better text extraction
       pagerender: render_page,
+      password: normPw || undefined,
     });
     raw = data.text;
   } catch (e) {
     console.error("[PDF] pdf-parse error:", e.message);
-    // Try without custom renderer
     try {
       const pdfParse = require("pdf-parse");
-      const data = await pdfParse(fs.readFileSync(filePath));
+      const data = await pdfParse(fs.readFileSync(filePath), {
+        password: normPw || undefined,
+      });
       raw = data.text;
     } catch (e2) {
       throw new Error(`PDF parsing failed: ${e2.message}`);
     }
   }
 
-  // Alternate extraction (some PDFs parse worse with pagerender)
   try {
     const pdfParse = require("pdf-parse");
-    const data2 = await pdfParse(fs.readFileSync(filePath));
+    const data2 = await pdfParse(fs.readFileSync(filePath), {
+      password: normPw || undefined,
+    });
     rawAlt = data2.text || "";
   } catch { }
 
   if ((raw || "").trim().length < 50) {
     try {
-      raw = await extractPdfTextPdfjs(filePath);
+      raw = await extractPdfTextPdfjs(filePath, normPw);
     } catch (e) {
       console.error("[PDF] pdfjs text extraction error:", e?.message || e);
     }

@@ -12,12 +12,14 @@ export default function App() {
   const [uploadedStatementFile, setUploadedStatementFile] = useState(null)
   const [uploadedCibilFile, setUploadedCibilFile] = useState(null)
   const apiUrl = 'http://localhost:5000/api/';
-  async function handleAnalyzeStatement(file) {
+  //const apiUrl = "http://10.10.10.99:5000/api/";
+  async function handleAnalyzeStatement(file, statementPassword) {
     setUploadedStatementFile(file)
     setUploadedCibilFile(null)
     setLoading(true); setError(null); setResult(null)
     const formData = new FormData()
     if (file) formData.append('statement', file)
+    if (statementPassword) formData.append('statement_password', statementPassword)
     try {
       const res = await fetch(apiUrl + 'analyze', { method: 'POST', body: formData })
       const data = await res.json()

@@ -14,8 +14,23 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use((req, res, next) => { res.setTimeout(0); next(); });
 
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, 'uploads/'),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const base = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+    let finalName = file.originalname;
+    let counter = 1;
+    while (fs.existsSync(path.join('uploads', finalName))) {
+      finalName = `${base}_${counter}${ext}`;
+      counter++;
+    }
+    cb(null, finalName);
+  }
+});
+
 const upload = multer({
-  dest: 'uploads/',
+  storage,
   limits: { fileSize: 25 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = ['.pdf', '.csv', '.xlsx', '.xls', '.txt'];
@@ -81,11 +96,12 @@ app.post('/api/analyze', upload.single('statement'), async (req, res) => {
   console.log(1);
   const statementFile = req.file;
   const filePath = statementFile?.path;
+  const statementPassword = normStr(req.body?.statement_password);
   try {
     if (!statementFile) return res.status(400).json({ error: 'No statement file uploaded' });
     console.log(`\n[Analyze] ${statementFile.originalname} (${(statementFile.size / 1024).toFixed(1)} KB)`);
 
-    const parsed = await parseFile(filePath, statementFile.originalname);
+    const parsed = await parseFile(filePath, statementFile.originalname, statementPassword);
     const transactions = parsed.transactions || [];
     const extraction = parsed.metadata || {};
     console.log(`[Parse] Extracted ${transactions.length} transactions`);
@@ -117,8 +133,6 @@ app.post('/api/analyze', upload.single('statement'), async (req, res) => {
       return res.status(400).json({ error: err.message, error_code: err.code });
     }
     res.status(500).json({ error: err.message });
-  } finally {
-    if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
   }
 });
 
@@ -146,8 +160,6 @@ app.post('/api/analyze-cibil', upload.single('cibil'), async (req, res) => {
     const msg = (err?.message || 'Failed to parse CIBIL report').toString();
     if (/password/i.test(msg) || /CIBIL/i.test(msg)) return res.status(400).json({ error: msg });
     res.status(500).json({ error: msg });
-  } finally {
-    if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
   }
 });
 
@@ -611,8 +623,6 @@ app.post('/api/parse-only', upload.single('statement'), async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
-  } finally {
-    if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
   }
 });
 
@@ -649,8 +659,6 @@ app.post('/api/debug-pdf-text', upload.single('statement'), async (req, res) => 
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
-  } finally {
-    if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
   }
 });
 
