@@ -3,9 +3,33 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { PDFDocument } = require('pdf-lib');
 const { parseFile } = require('./parser');
 const { analyzeTransactions } = require('./analyzer');
 const { parseCibilText, assessUnderwriting } = require('./cibil_parser');
+
+async function compressPdf(inputPath) {
+  try {
+    const ext = path.extname(inputPath).toLowerCase();
+    if (ext !== '.pdf') return;
+
+    const existingBytes = fs.statSync(inputPath).size;
+    const existingPdfBytes = fs.readFileSync(inputPath);
+    const pdfDoc = await PDFDocument.load(existingPdfBytes, { ignoreEncryption: true });
+
+    const compressedPdfBytes = await pdfDoc.save({ useObjectStreams: true });
+
+    if (compressedPdfBytes.length < existingBytes) {
+      fs.writeFileSync(inputPath, compressedPdfBytes);
+      const ratio = ((1 - compressedPdfBytes.length / existingBytes) * 100).toFixed(1);
+      console.log(`[Compress] ${path.basename(inputPath)}: ${(existingBytes/1024).toFixed(0)}KB → ${(compressedPdfBytes.length/1024).toFixed(0)}KB (${ratio}% reduced)`);
+    } else {
+      console.log(`[Compress] ${path.basename(inputPath)}: already optimal, skipping`);
+    }
+  } catch (e) {
+    console.error(`[Compress] Failed for ${path.basename(inputPath)}:`, e.message);
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -101,6 +125,8 @@ app.post('/api/analyze', upload.single('statement'), async (req, res) => {
     if (!statementFile) return res.status(400).json({ error: 'No statement file uploaded' });
     console.log(`\n[Analyze] ${statementFile.originalname} (${(statementFile.size / 1024).toFixed(1)} KB)`);
 
+    await compressPdf(filePath);
+
     const parsed = await parseFile(filePath, statementFile.originalname, statementPassword);
     const transactions = parsed.transactions || [];
     const extraction = parsed.metadata || {};
@@ -142,6 +168,8 @@ app.post('/api/analyze-cibil', upload.single('cibil'), async (req, res) => {
   const cibilPassword = normStr(req.body?.cibil_password);
   try {
     if (!req.file) return res.status(400).json({ error: 'No CIBIL file uploaded' });
+
+    await compressPdf(filePath);
 
     const ext = path.extname(req.file.originalname).toLowerCase();
     if (ext !== '.pdf' && ext !== '.txt') return res.status(400).json({ error: 'CIBIL report must be PDF or TXT' });
