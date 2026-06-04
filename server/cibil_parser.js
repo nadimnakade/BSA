@@ -2311,6 +2311,7 @@ function assessEligibility(bankAnalysis, cibil) {
       : undefined;
   const dpdMax =
     cibil && Number.isFinite(Number(cibil.dpd_max)) ? Number(cibil.dpd_max) : 0;
+  const accounts = Array.isArray(cibil?.accounts) ? cibil.accounts : [];
   const bounceCount = (bankAnalysis.bounce_charges || []).length;
   const monthKey = (dateStr) => {
     if (!dateStr) return "";
@@ -2347,10 +2348,44 @@ function assessEligibility(bankAnalysis, cibil) {
   );
   const months = Object.keys(salaryByMonth).sort();
   const salaryMonths = months.filter((m) => (salaryByMonth[m] || 0) > 0);
-  const avgSalary = salaryMonths.length
+  let avgSalary = salaryMonths.length
     ? salaryMonths.reduce((s, m) => s + (salaryByMonth[m] || 0), 0) /
     salaryMonths.length
     : 0;
+
+  // Estimate income from CIBIL when no bank statement salary data
+  let incomeSource = 'bank_statement';
+  if (!avgSalary || avgSalary === 0) {
+    incomeSource = 'cibil_estimate';
+    let totalEmi = 0;
+    let totalCreditLimit = 0;
+    let totalSanctioned = 0;
+    let activeCount = 0;
+    for (const a of accounts) {
+      const st = (a.account_status || '').toUpperCase();
+      if (/CLOSED|SETTLED|WRITTEN|CHARGEOFF|SUIT/i.test(st)) continue;
+      activeCount++;
+      const emi = Number(a.emi) || 0;
+      const limit = Number(a.credit_limit) || 0;
+      const sanctioned = Number(a.sanctioned_amount) || Number(a.high_credit) || 0;
+      totalEmi += emi;
+      totalCreditLimit += limit;
+      totalSanctioned += sanctioned;
+    }
+    // Method 1: Credit card limit * 3 (Indian norm: limit is ~3x monthly income)
+    if (totalCreditLimit > 0) {
+      avgSalary = totalCreditLimit * 3;
+    }
+    // Method 2: Total EMIs / 0.4 (assuming 40% FOIR)
+    else if (totalEmi > 0) {
+      avgSalary = totalEmi / 0.4;
+    }
+    // Method 3: Sanctioned amount / 60 (5-year loan EMI proxy)
+    else if (totalSanctioned > 0) {
+      avgSalary = totalSanctioned / 60 * 1.1;
+    }
+  }
+
   const avgOverMonths = (byMonth) => {
     const ms = salaryMonths.length ? salaryMonths : Object.keys(byMonth);
     if (!ms.length) return 0;
@@ -2361,8 +2396,19 @@ function assessEligibility(bankAnalysis, cibil) {
   const monthlyApy = avgOverMonths(apyByMonth);
   const monthlyApp = avgOverMonths(appRepayByMonth);
   const monthlyCc = avgOverMonths(ccByMonth);
+
+  // Also sum EMIs from CIBIL accounts if bank statement has none
+  let cibilEmi = 0;
+  if (monthlyEmi === 0) {
+    for (const a of accounts) {
+      const st = (a.account_status || '').toUpperCase();
+      if (/CLOSED|SETTLED|WRITTEN|CHARGEOFF|SUIT/i.test(st)) continue;
+      cibilEmi += Number(a.emi) || 0;
+    }
+  }
+
   const obligations =
-    monthlyEmi + monthlyRent + monthlyApy + monthlyApp + monthlyCc;
+    (monthlyEmi || cibilEmi) + monthlyRent + monthlyApy + monthlyApp + monthlyCc;
   const foir = avgSalary > 0 ? obligations / avgSalary : undefined;
   const reasons = [];
   let decision = "Needs Review";
@@ -2380,6 +2426,8 @@ function assessEligibility(bankAnalysis, cibil) {
     reasons.push(
       `FOIR (fixed obligations / income) ~ ${(foir * 100).toFixed(0)}%`,
     );
+  if (incomeSource === 'cibil_estimate')
+    reasons.push('Income estimated from CIBIL data (no bank statement)');
   if (score !== undefined && score < 650) decision = "Unlikely";
   else if (dpdMax >= 30) decision = "Unlikely";
   else if (foir !== undefined && foir > 0.6) decision = "Unlikely";
@@ -2399,6 +2447,7 @@ function assessEligibility(bankAnalysis, cibil) {
     avg_monthly_obligations: obligations || undefined,
     foir: foir !== undefined ? Number(foir.toFixed(4)) : undefined,
     bounce_count: bounceCount,
+    income_source: incomeSource,
     reasons,
   };
 }
@@ -2554,6 +2603,182 @@ function assessUnderwriting(bankAnalysis, cibil) {
       product("VL", "Vehicle Loan", 680, false),
       product("CC", "Credit Card", 720, false),
     ],
+    loan_eligibility: buildLoanEligibility(score, dpdMax, hasSevere, recentEnq, ccUtil, avgIncome, avgObl, maxFoir, maxEmi, active, unsecured, creditCards, bounceCount),
+  };
+}
+
+function buildLoanEligibility(score, dpdMax, hasSevere, recentEnq, ccUtil, avgIncome, avgObl, maxFoir, maxEmi, active, unsecured, creditCards, bounceCount) {
+  const s = score || 0;
+  const income = avgIncome || 0;
+  const obligations = avgObl || 0;
+  const netIncome = Math.max(0, income - obligations);
+
+  const scoreBand = s >= 800 ? 'Excellent' : s >= 750 ? 'Very Good' : s >= 700 ? 'Good' : s >= 650 ? 'Fair' : s > 0 ? 'Poor' : 'Unknown';
+
+  const riskFactors = [];
+  if (s > 0 && s < 650) riskFactors.push({ factor: 'Low CIBIL Score', impact: 'high', detail: `Score ${s} is below the minimum threshold for most loans` });
+  else if (s >= 650 && s < 700) riskFactors.push({ factor: 'Moderate CIBIL Score', impact: 'medium', detail: `Score ${s} may limit loan options and increase interest rates` });
+  if (dpdMax >= 90) riskFactors.push({ factor: 'Severe Delinquency', impact: 'high', detail: `DPD max ${dpdMax} days — indicates serious payment default` });
+  else if (dpdMax >= 30) riskFactors.push({ factor: 'Delinquency History', impact: 'high', detail: `DPD max ${dpdMax} days — recent payment delays detected` });
+  else if (dpdMax > 0) riskFactors.push({ factor: 'Minor Delinquency', impact: 'low', detail: `DPD max ${dpdMax} days — minor delay, likely resolved` });
+  if (hasSevere) riskFactors.push({ factor: 'Derogatory Marks', impact: 'high', detail: 'Written-off, settled, or wilful default accounts found' });
+  if (recentEnq >= 6) riskFactors.push({ factor: 'High Credit Enquiries', impact: 'high', detail: `${recentEnq} enquiries in last 30-90 days — suggests credit hunger` });
+  else if (recentEnq >= 3) riskFactors.push({ factor: 'Moderate Enquiries', impact: 'medium', detail: `${recentEnq} recent enquiries — may raise lender concerns` });
+  if (ccUtil !== undefined && ccUtil > 0.8) riskFactors.push({ factor: 'High Credit Utilization', impact: 'high', detail: `Credit card utilization at ${(ccUtil*100).toFixed(0)}% — above 80% threshold` });
+  else if (ccUtil !== undefined && ccUtil > 0.6) riskFactors.push({ factor: 'Elevated Utilization', impact: 'medium', detail: `Credit card utilization at ${(ccUtil*100).toFixed(0)}% — above ideal 50%` });
+  if (bounceCount >= 3) riskFactors.push({ factor: 'Frequent Bounces', impact: 'high', detail: `${bounceCount} bounce/return charges — indicates cash flow instability` });
+  else if (bounceCount >= 1) riskFactors.push({ factor: 'Account Bounces', impact: 'medium', detail: `${bounceCount} bounce/return charge(s) detected` });
+  if (maxFoir !== undefined && maxFoir > 0.55) riskFactors.push({ factor: 'High FOIR', impact: 'medium', detail: `Fixed Obligation Income Ratio at ${(maxFoir*100).toFixed(0)}%` });
+
+  const positiveFactors = [];
+  if (s >= 750) positiveFactors.push({ factor: 'Strong Credit Score', detail: `Score ${s} meets premium lending thresholds` });
+  else if (s >= 700) positiveFactors.push({ factor: 'Good Credit Score', detail: `Score ${s} qualifies for most standard loan products` });
+  if (dpdMax === 0) positiveFactors.push({ factor: 'Clean Payment History', detail: 'No delinquencies detected' });
+  if (recentEnq <= 2) positiveFactors.push({ factor: 'Low Enquiry Activity', detail: `${recentEnq} recent enquiries — not credit-hungry` });
+  if (ccUtil !== undefined && ccUtil <= 0.5) positiveFactors.push({ factor: 'Healthy Utilization', detail: `Credit card utilization at ${(ccUtil*100).toFixed(0)}% — well managed` });
+  if (income > 0 && obligations / income < 0.4) positiveFactors.push({ factor: 'Low Obligations', detail: `FOIR at ${(obligations/income*100).toFixed(0)}% — strong repayment capacity` });
+  if (bounceCount === 0) positiveFactors.push({ factor: 'No Bounces', detail: 'No bounce/return charges in statement' });
+  if (unsecured.length <= 2) positiveFactors.push({ factor: 'Low Unsecured Debt', detail: `${unsecured.length} active unsecured loan(s)` });
+
+  const loanProducts = [
+    {
+      name: 'Personal Loan',
+      code: 'PL',
+      icon: '💰',
+      minScore: 700,
+      typicalApr: '10.5% – 24%',
+      maxTenure: '5 years',
+      maxMultiplier: s >= 750 ? 24 : s >= 700 ? 18 : 12,
+    },
+    {
+      name: 'Home Loan',
+      code: 'HL',
+      icon: '🏠',
+      minScore: 650,
+      typicalApr: '8.5% – 11%',
+      maxTenure: '30 years',
+      maxMultiplier: s >= 750 ? 60 : s >= 700 ? 48 : 36,
+    },
+    {
+      name: 'Vehicle Loan',
+      code: 'VL',
+      icon: '🚗',
+      minScore: 650,
+      typicalApr: '8% – 14%',
+      maxTenure: '7 years',
+      maxMultiplier: s >= 750 ? 48 : s >= 700 ? 36 : 24,
+    },
+    {
+      name: 'Business Loan',
+      code: 'BL',
+      icon: '💼',
+      minScore: 700,
+      typicalApr: '11% – 24%',
+      maxTenure: '5 years',
+      maxMultiplier: s >= 750 ? 24 : s >= 700 ? 18 : 12,
+    },
+    {
+      name: 'Gold Loan',
+      code: 'GL',
+      icon: '🪙',
+      minScore: 600,
+      typicalApr: '7% – 12%',
+      maxTenure: '3 years',
+      maxMultiplier: 0,
+    },
+    {
+      name: 'Credit Card',
+      code: 'CC',
+      icon: '💳',
+      minScore: 700,
+      typicalApr: '18% – 42%',
+      maxTenure: 'Revolving',
+      maxMultiplier: s >= 750 ? 3 : s >= 700 ? 2 : 1,
+    },
+  ];
+
+  const eligible = [];
+  const conditionallyEligible = [];
+  const notEligible = [];
+
+  for (const p of loanProducts) {
+    const okScore = s >= p.minScore;
+    const okDpd = dpdMax < 30;
+    const okDerog = !hasSevere;
+    const okEnq = recentEnq < 6;
+    const okUtil = ccUtil === undefined || ccUtil <= 0.8;
+    const okBounce = bounceCount < 3;
+    const okFoir = maxFoir === undefined || maxFoir <= 0.6;
+
+    let status, reason, maxAmount, estimatedEmi, maxLtv;
+
+    if (okScore && okDpd && okDerog && okEnq && okBounce && okFoir) {
+      status = 'eligible';
+      maxAmount = income > 0 ? Math.round(income * p.maxMultiplier) : null;
+      if (p.code === 'CC') {
+        maxAmount = income > 0 ? Math.round(income * p.maxMultiplier) : null;
+        estimatedEmi = null;
+        maxLtv = null;
+      } else if (p.code === 'HL') {
+        maxLtv = s >= 750 ? 0.8 : s >= 700 ? 0.75 : 0.7;
+        estimatedEmi = maxAmount && p.maxTenure !== 'Revolving' ? Math.round(maxAmount / (parseInt(p.maxTenure) * 12) * 1.1) : null;
+      } else if (p.code === 'VL') {
+        maxLtv = s >= 750 ? 0.85 : s >= 700 ? 0.8 : 0.75;
+        estimatedEmi = maxAmount ? Math.round(maxAmount / (parseInt(p.maxTenure) * 12) * 1.1) : null;
+      } else {
+        estimatedEmi = maxAmount && p.maxTenure !== 'Revolving' ? Math.round(maxAmount / (parseInt(p.maxTenure) * 12) * 1.1) : null;
+        maxLtv = null;
+      }
+      reason = 'Meets all eligibility criteria';
+      eligible.push({ ...p, status, reason, maxAmount, estimatedEmi, maxLtv });
+    } else if (okScore && okDpd && okDerog) {
+      status = 'conditional';
+      const issues = [];
+      if (!okEnq) issues.push(`${recentEnq} recent enquiries`);
+      if (!okBounce) issues.push(`${bounceCount} bounces`);
+      if (!okFoir) issues.push(`High FOIR`);
+      maxAmount = income > 0 ? Math.round(income * p.maxMultiplier * 0.7) : null;
+      estimatedEmi = maxAmount && p.maxTenure !== 'Revolving' ? Math.round(maxAmount / (parseInt(p.maxTenure) * 12) * 1.1) : null;
+      reason = `Conditional — ${issues.join(', ')}`;
+      conditionallyEligible.push({ ...p, status, reason, maxAmount, estimatedEmi });
+    } else {
+      status = 'not_eligible';
+      const blockers = [];
+      if (!okScore) blockers.push(`Score ${s} < ${p.minScore}`);
+      if (!okDpd) blockers.push(`DPD ${dpdMax} days`);
+      if (!okDerog) blockers.push('Derogatory marks');
+      maxAmount = null;
+      estimatedEmi = null;
+      reason = `Not eligible — ${blockers.join(', ')}`;
+      notEligible.push({ ...p, status, reason });
+    }
+  }
+
+  const improvementTips = [];
+  if (s < 750) improvementTips.push({ tip: 'Improve CIBIL Score', detail: 'Pay all EMIs on time, reduce credit utilization below 30%, avoid multiple loan applications', impact: 'high', timeline: '3-6 months' });
+  if (ccUtil !== undefined && ccUtil > 0.5) improvementTips.push({ tip: 'Reduce Credit Utilization', detail: `Current utilization ${(ccUtil*100).toFixed(0)}% — aim for below 30% by paying down balances`, impact: 'high', timeline: '1-3 months' });
+  if (recentEnq >= 3) improvementTips.push({ tip: 'Avoid New Credit Applications', detail: `${recentEnq} recent enquiries — wait 6 months before applying for new credit`, impact: 'medium', timeline: '6 months' });
+  if (bounceCount > 0) improvementTips.push({ tip: 'Maintain Sufficient Balance', detail: `${bounceCount} bounce(s) detected — ensure adequate balance before EMI debit dates`, impact: 'medium', timeline: 'Immediate' });
+  if (maxFoir !== undefined && maxFoir > 0.5) improvementTips.push({ tip: 'Reduce Existing Obligations', detail: `Current FOIR ${(maxFoir*100).toFixed(0)}% — prepay small loans to free up EMI capacity`, impact: 'high', timeline: '3-6 months' });
+  if (unsecured.length > 3) improvementTips.push({ tip: 'Consolidate Unsecured Debt', detail: `${unsecured.length} unsecured loans — consider consolidating into a single lower-rate loan`, impact: 'medium', timeline: '1-3 months' });
+  if (hasSevere) improvementTips.push({ tip: 'Resolve Derogatory Accounts', detail: 'Settle or close written-off/settled accounts to improve creditworthiness', impact: 'high', timeline: '6-12 months' });
+  improvementTips.push({ tip: 'Build Credit History', detail: 'Use credit card for small purchases and pay full balance monthly to build positive history', impact: 'low', timeline: 'Ongoing' });
+
+  return {
+    score_band: scoreBand,
+    cibil_score: s,
+    risk_factors: riskFactors,
+    positive_factors: positiveFactors,
+    loan_products: loanProducts.map(p => ({
+      ...p,
+      ...(eligible.find(e => e.code === p.code) || conditionallyEligible.find(e => e.code === p.code) || notEligible.find(e => e.code === p.code) || { status: 'unknown', reason: 'Insufficient data' }),
+    })),
+    eligible_count: eligible.length,
+    conditional_count: conditionallyEligible.length,
+    not_eligible_count: notEligible.length,
+    additional_emi_capacity: maxEmi !== undefined ? Number(maxEmi.toFixed(0)) : undefined,
+    max_foir: maxFoir,
+    improvement_tips: improvementTips,
   };
 }
 

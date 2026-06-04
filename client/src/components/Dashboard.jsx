@@ -7,6 +7,7 @@ import TransfersTab from './TransfersTab'
 import InsightsTab from './InsightsTab'
 import MonthlyTab from './MonthlyTab'
 import TxModal from './TxModal'
+import LoanEligibilityTab from './LoanEligibilityTab'
 
 const STATEMENT_TABS = [
   {id:'overview',label:'📊 Overview'},
@@ -27,7 +28,8 @@ const STATEMENT_TABS = [
 const CIBIL_TABS = [
   {id:'personal',label:'👤 Personal Information'},
   {id:'score',label:'✅ CIBIL Score'},
-  {id:'loans',label:'🏦 Active Loans'},
+  {id:'eligibility',label:'🏦 Loan Eligibility'},
+  {id:'loans',label:'📋 Active Loans'},
   {id:'closedLoans',label:'Closed Loans'},
   {id:'inquiry',label:'🔎 Inquiry'},
 ]
@@ -1244,6 +1246,7 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
           <>
             {tab==='personal' && <PersonalTab />}
             {tab==='score' && <ScoreTab />}
+            {tab==='eligibility' && <LoanEligibilityTab underwriting={a.underwriting} />}
             {tab==='loans' && <LoansTab />}
             {tab==='closedLoans' && <ClosedLoansTab />}
             {tab==='inquiry' && <InquiryTab />}

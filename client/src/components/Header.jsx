@@ -61,6 +61,20 @@ export default function Header({ onReset, mode = 'statement', onModeChange }) {
             >
               CIBIL
             </button>
+            <button
+              onClick={() => onModeChange('both')}
+              style={{
+                background: mode === 'both' ? 'var(--bg-card)' : 'transparent',
+                border:'1px solid var(--border)',
+                color:'var(--text-secondary)',
+                padding:'5px 10px',
+                borderRadius:6,
+                fontSize:12,
+                cursor:'pointer'
+              }}
+            >
+              Both
+            </button>
           </div>
         )}
         <button

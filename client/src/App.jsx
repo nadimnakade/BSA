@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import UploadZone from './components/UploadZone'
+import CombinedUpload from './components/CombinedUpload'
 import Dashboard from './components/Dashboard'
 import Header from './components/Header'
 import LoadingScreen from './components/LoadingScreen'
@@ -13,6 +14,7 @@ export default function App() {
   const [uploadedCibilFile, setUploadedCibilFile] = useState(null)
   const apiUrl = 'http://localhost:5000/api/';
   //const apiUrl = "http://10.10.10.99:5000/api/";
+
   async function handleAnalyzeStatement(file, statementPassword) {
     setUploadedStatementFile(file)
     setUploadedCibilFile(null)
@@ -45,6 +47,24 @@ export default function App() {
     finally { setLoading(false) }
   }
 
+  async function handleAnalyzeBoth(cibilFile, stmtFile, cibilPassword, stmtPassword) {
+    setUploadedCibilFile(cibilFile || null)
+    setUploadedStatementFile(stmtFile || null)
+    setLoading(true); setError(null); setResult(null)
+    const formData = new FormData()
+    if (cibilFile) formData.append('cibil', cibilFile)
+    if (stmtFile) formData.append('statement', stmtFile)
+    if (cibilPassword) formData.append('cibil_password', cibilPassword)
+    if (stmtPassword) formData.append('statement_password', stmtPassword)
+    try {
+      const res = await fetch(apiUrl + 'analyze-both', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Analysis failed')
+      setResult(data)
+    } catch (err) { setError(err.message) }
+    finally { setLoading(false) }
+  }
+
   async function handleTextAnalyze(text) {
     setUploadedStatementFile(null)
     setUploadedCibilFile(null)
@@ -61,6 +81,8 @@ export default function App() {
     finally { setLoading(false) }
   }
 
+  const resetAll = () => { setResult(null); setError(null); setUploadedStatementFile(null); setUploadedCibilFile(null) }
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
       <Header
@@ -72,11 +94,14 @@ export default function App() {
           setUploadedStatementFile(null)
           setUploadedCibilFile(null)
         }}
-        onReset={result ? () => { setResult(null); setError(null); setUploadedStatementFile(null); setUploadedCibilFile(null) } : null}
+        onReset={result ? resetAll : null}
       />
       <main style={{ maxWidth: 1300, margin: '0 auto', padding: '24px 20px' }}>
         {loading && <LoadingScreen />}
-        {!loading && !result && (
+        {!loading && !result && mode === 'both' && (
+          <CombinedUpload onAnalyze={handleAnalyzeBoth} error={error} />
+        )}
+        {!loading && !result && mode !== 'both' && (
           <UploadZone
             mode={mode}
             onAnalyze={mode === 'cibil' ? handleAnalyzeCibil : handleAnalyzeStatement}
@@ -86,11 +111,11 @@ export default function App() {
         )}
         {!loading && result && (
           <Dashboard
-            mode={mode}
+            mode={result.mode === 'both' ? 'cibil' : mode}
             result={result}
             uploadedStatementFile={uploadedStatementFile}
             uploadedCibilFile={uploadedCibilFile}
-            onReset={() => { setResult(null); setError(null); setUploadedStatementFile(null); setUploadedCibilFile(null) }}
+            onReset={resetAll}
           />
         )}
       </main>

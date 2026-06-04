@@ -191,6 +191,70 @@ app.post('/api/analyze-cibil', upload.single('cibil'), async (req, res) => {
   }
 });
 
+// --- COMBINED CIBIL + STATEMENT ANALYZE ---
+app.post('/api/analyze-both', upload.fields([
+  { name: 'cibil', maxCount: 1 },
+  { name: 'statement', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const cibilFile = req.files?.cibil?.[0];
+    const statementFile = req.files?.statement?.[0];
+    if (!cibilFile) return res.status(400).json({ error: 'CIBIL report is required' });
+    if (!statementFile) return res.status(400).json({ error: 'Bank statement is required' });
+
+    const cibilPassword = normStr(req.body?.cibil_password);
+    const statementPassword = normStr(req.body?.statement_password);
+    const cibilExt = path.extname(cibilFile.originalname).toLowerCase();
+    const stmtExt = path.extname(statementFile.originalname).toLowerCase();
+
+    if (cibilExt !== '.pdf' && cibilExt !== '.txt') return res.status(400).json({ error: 'CIBIL report must be PDF or TXT' });
+    if (!['.pdf', '.csv', '.xlsx', '.xls', '.txt'].includes(stmtExt)) return res.status(400).json({ error: 'Statement must be PDF, CSV, XLSX, XLS, or TXT' });
+
+    console.log(`\n[Analyze Both] CIBIL: ${cibilFile.originalname} | Statement: ${statementFile.originalname}`);
+
+    await compressPdf(cibilFile.path);
+    await compressPdf(statementFile.path);
+
+    // Parse CIBIL
+    const cibilText = await extractCibilText(cibilFile.path, cibilFile.originalname, cibilPassword);
+    const cibil = parseCibilText(cibilText);
+    console.log(`[CIBIL] Score: ${cibil.score}, Accounts: ${cibil.accounts?.length || 0}`);
+
+    // Parse Statement
+    const parsed = await parseFile(statementFile.path, statementFile.originalname, statementPassword);
+    const transactions = parsed.transactions || [];
+    const extraction = parsed.metadata || {};
+    console.log(`[Statement] Transactions: ${transactions.length}`);
+
+    // Analyze
+    const analysis = analyzeTransactions(transactions);
+    analysis.cibil = { filename: cibilFile.originalname, ...cibil };
+    analysis.underwriting = assessUnderwriting(analysis, analysis.cibil);
+
+    console.log(`[Analyze Both] Done — Grade: ${analysis.underwriting.grade}, Score: ${cibil.score}`);
+
+    res.json({
+      success: true,
+      mode: 'both',
+      filename: `${cibilFile.originalname} + ${statementFile.originalname}`,
+      cibil_filename: cibilFile.originalname,
+      statement_filename: statementFile.originalname,
+      transaction_count: transactions.length,
+      extraction,
+      analysis,
+    });
+  } catch (err) {
+    console.error('[Error]', err.message);
+    if (['PDF_SCANNED', 'PDF_PARSE_NO_ROWS', 'OCR_NOT_AVAILABLE', 'OCR_TIMEOUT', 'OCR_FAILED', 'PDF_PASSWORD'].includes(err?.code)) {
+      return res.status(400).json({ error: err.message, error_code: err.code });
+    }
+    if (/password/i.test(err?.message || '') || /CIBIL/i.test(err?.message || '')) {
+      return res.status(400).json({ error: err.message });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- TEXT PASTE ANALYZE ---
 app.post('/api/analyze-text', async (req, res) => {
   try {
