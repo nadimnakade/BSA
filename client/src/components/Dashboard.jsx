@@ -8,6 +8,12 @@ import InsightsTab from './InsightsTab'
 import MonthlyTab from './MonthlyTab'
 import TxModal from './TxModal'
 import LoanEligibilityTab from './LoanEligibilityTab'
+import ObligationsEligibilityTab from './ObligationsEligibilityTab'
+import ProfileTab from './ProfileTab'
+import EmiLoansTab from './EmiLoansTab'
+import CreditCardsCombinedTab from './CreditCardsCombinedTab'
+import BouncesChargesTab from './BouncesChargesTab'
+import InsightsCombinedTab from './InsightsCombinedTab'
 
 const STATEMENT_TABS = [
   {id:'overview',label:'📊 Overview'},
@@ -34,9 +40,19 @@ const CIBIL_TABS = [
   {id:'inquiry',label:'🔎 Inquiry'},
 ]
 
+const BOTH_TABS = [
+  {id:'obligations',label:'🏦 Obligations & Eligibility'},
+  {id:'profile',label:'👤 Profile'},
+  {id:'emiLoans',label:'📋 EMI & Loans'},
+  {id:'creditCards',label:'💳 Credit Cards'},
+  {id:'bounces',label:'⚠️ Bounces/Charges'},
+  {id:'insights',label:'🔍 Insights'},
+]
+
 export default function Dashboard({ mode = 'statement', result, onReset, uploadedStatementFile, uploadedCibilFile }) {
   const isCibil = mode === 'cibil'
-  const [tab, setTab] = useState(isCibil ? 'score' : 'overview')
+  const isBoth = mode === 'both'
+  const [tab, setTab] = useState(isBoth ? 'obligations' : isCibil ? 'score' : 'overview')
   const a = result?.analysis || {}
   const filename = result?.filename
   const transaction_count = result?.transaction_count
@@ -49,7 +65,7 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
   const [selectedTx, setSelectedTx] = useState(null)
 
   const openTx = (tx) => { setSelectedTx(tx); setTxOpen(true) }
-  const tabs = isCibil ? CIBIL_TABS : STATEMENT_TABS
+  const tabs = isBoth ? BOTH_TABS : isCibil ? CIBIL_TABS : STATEMENT_TABS
 
   const tabBarRef = useRef(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
@@ -1181,9 +1197,9 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
     <div className="slide-up">
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20, flexWrap:'wrap', gap:8 }}>
         <div>
-          <div style={{ fontSize:19, fontWeight:600, color:'var(--text-primary)' }}>{isCibil ? 'CIBIL Analysis' : 'Statement Analysis'}</div>
+          <div style={{ fontSize:19, fontWeight:600, color:'var(--text-primary)' }}>{isBoth ? 'Combined Analysis' : isCibil ? 'CIBIL Analysis' : 'Statement Analysis'}</div>
           <div style={{ fontSize:12, color:'var(--text-muted)', fontFamily:'JetBrains Mono,monospace', marginTop:2 }}>
-            {isCibil ? (cibil?.filename || filename || '—') : `${filename} · ${transaction_count} transactions ${as?.period ? `· ${as.period}` : ''}`}
+            {isBoth ? `${result?.cibil_filename || 'CIBIL'} + ${result?.statement_filename || 'Statement'} · ${transaction_count} transactions` : isCibil ? (cibil?.filename || filename || '—') : `${filename} · ${transaction_count} transactions ${as?.period ? `· ${as.period}` : ''}`}
           </div>
         </div>
         <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
@@ -1223,11 +1239,22 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
               </button>
             </>
           )}
+          {isBoth && (
+            <>
+              <button
+                onClick={()=>exportCibil('xlsx')}
+                disabled={exporting}
+                style={{ background:'var(--bg-card)', border:'1px solid var(--border)', color:'var(--text-secondary)', padding:'6px 12px', borderRadius:8, fontSize:12, cursor:exporting?'not-allowed':'pointer', opacity:exporting?.6:1 }}
+              >
+                {exporting ? 'Exporting...' : 'Export CIBIL XLSX'}
+              </button>
+            </>
+          )}
           <button onClick={onReset} style={{ background:'var(--bg-card)', border:'1px solid var(--border)', color:'var(--text-secondary)', padding:'6px 14px', borderRadius:8, fontSize:12, cursor:'pointer' }}>← New Analysis</button>
         </div>
       </div>
 
-      {!isCibil && <SummaryCards a={a} />}
+      {!isCibil && !isBoth && <SummaryCards a={a} />}
 
       <div className="tab-wrapper">
         {!canScrollLeft && <div className="tab-arrow left hidden">‹</div>}
@@ -1242,7 +1269,16 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
       </div>
 
       <div className="card" style={{ padding:0, overflow:'hidden' }}>
-        {isCibil ? (
+        {isBoth ? (
+          <>
+            {tab==='obligations' && <ObligationsEligibilityTab a={a} />}
+            {tab==='profile' && <ProfileTab a={a} />}
+            {tab==='emiLoans' && <EmiLoansTab a={a} />}
+            {tab==='creditCards' && <CreditCardsCombinedTab a={a} />}
+            {tab==='bounces' && <BouncesChargesTab a={a} />}
+            {tab==='insights' && <InsightsCombinedTab a={a} />}
+          </>
+        ) : isCibil ? (
           <>
             {tab==='personal' && <PersonalTab />}
             {tab==='score' && <ScoreTab />}

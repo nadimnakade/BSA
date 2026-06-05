@@ -100,17 +100,19 @@ async function extractCibilText(filePath, originalName, password) {
   const ext = path.extname(originalName).toLowerCase();
   if (ext === '.txt') return fs.readFileSync(filePath, 'utf-8');
   const buffer = fs.readFileSync(filePath);
+  const p = normStr(password);
   try {
     const pdfParse = require('pdf-parse');
-    const data = await pdfParse(buffer);
+    const opts = p ? { password: p } : {};
+    const data = await pdfParse(buffer, opts);
     const text = data.text || '';
     if (text.trim().length > 20) return text;
   } catch (e) {
     const msg = (e?.message || '').toString();
     const isPassword = /password/i.test(msg) || /encrypted/i.test(msg);
-    if (!isPassword && !normStr(password)) throw e;
+    if (!isPassword && !p) throw e;
   }
-  return extractPdfTextPdfjs(buffer, password);
+  return extractPdfTextPdfjs(buffer, p);
 }
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', mode: 'rule-based', version: '2.0' }));
@@ -125,7 +127,7 @@ app.post('/api/analyze', upload.single('statement'), async (req, res) => {
     if (!statementFile) return res.status(400).json({ error: 'No statement file uploaded' });
     console.log(`\n[Analyze] ${statementFile.originalname} (${(statementFile.size / 1024).toFixed(1)} KB)`);
 
-    await compressPdf(filePath);
+    if (!statementPassword) await compressPdf(filePath);
 
     const parsed = await parseFile(filePath, statementFile.originalname, statementPassword);
     const transactions = parsed.transactions || [];
@@ -169,7 +171,7 @@ app.post('/api/analyze-cibil', upload.single('cibil'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No CIBIL file uploaded' });
 
-    await compressPdf(filePath);
+    if (!cibilPassword) await compressPdf(filePath);
 
     const ext = path.extname(req.file.originalname).toLowerCase();
     if (ext !== '.pdf' && ext !== '.txt') return res.status(400).json({ error: 'CIBIL report must be PDF or TXT' });
@@ -212,8 +214,8 @@ app.post('/api/analyze-both', upload.fields([
 
     console.log(`\n[Analyze Both] CIBIL: ${cibilFile.originalname} | Statement: ${statementFile.originalname}`);
 
-    await compressPdf(cibilFile.path);
-    await compressPdf(statementFile.path);
+    if (!cibilPassword) await compressPdf(cibilFile.path);
+    if (!statementPassword) await compressPdf(statementFile.path);
 
     // Parse CIBIL
     const cibilText = await extractCibilText(cibilFile.path, cibilFile.originalname, cibilPassword);
