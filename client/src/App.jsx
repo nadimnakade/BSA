@@ -90,7 +90,7 @@ export default function App() {
     setUploadedCibilFile(null)
   }
 
-  const isCibilMode = mode === 'cibil' || (result?.mode === 'both')
+  const isCibilMode = mode === 'cibil'
 
   return (
     <div className="app-layout">
@@ -98,7 +98,7 @@ export default function App() {
       <div className="app-main">
         <div className="app-main-header">
           <div style={{fontSize:12, color:'var(--text-muted)'}}>
-            {result ? (isCibilMode ? 'CIBIL Analysis' : 'Statement Analysis') : mode === 'both' ? 'Combined Mode' : mode === 'cibil' ? 'CIBIL Mode' : 'Statement Mode'}
+            {result ? (mode === 'both' ? 'Combined Analysis' : isCibilMode ? 'CIBIL Analysis' : 'Statement Analysis') : mode === 'both' ? 'Combined Mode' : mode === 'cibil' ? 'CIBIL Mode' : 'Statement Mode'}
           </div>
           <div style={{display:'flex', gap:8, alignItems:'center'}}>
             {result && (
@@ -124,7 +124,7 @@ export default function App() {
           )}
           {!loading && result && (
             <Dashboard
-              mode={isCibilMode ? 'cibil' : 'statement'}
+              mode={mode}
               result={result}
               uploadedStatementFile={uploadedStatementFile}
               uploadedCibilFile={uploadedCibilFile}

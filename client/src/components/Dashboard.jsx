@@ -9,11 +9,6 @@ import MonthlyTab from './MonthlyTab'
 import TxModal from './TxModal'
 import LoanEligibilityTab from './LoanEligibilityTab'
 import ObligationsEligibilityTab from './ObligationsEligibilityTab'
-import ProfileTab from './ProfileTab'
-import EmiLoansTab from './EmiLoansTab'
-import CreditCardsCombinedTab from './CreditCardsCombinedTab'
-import BouncesChargesTab from './BouncesChargesTab'
-import InsightsCombinedTab from './InsightsCombinedTab'
 
 const STATEMENT_TABS = [
   {id:'overview',label:'📊 Overview'},
@@ -42,11 +37,8 @@ const CIBIL_TABS = [
 
 const BOTH_TABS = [
   {id:'obligations',label:'🏦 Obligations & Eligibility'},
-  {id:'profile',label:'👤 Profile'},
-  {id:'emiLoans',label:'📋 EMI & Loans'},
-  {id:'creditCards',label:'💳 Credit Cards'},
-  {id:'bounces',label:'⚠️ Bounces/Charges'},
-  {id:'insights',label:'🔍 Insights'},
+  ...STATEMENT_TABS,
+  ...CIBIL_TABS,
 ]
 
 export default function Dashboard({ mode = 'statement', result, onReset, uploadedStatementFile, uploadedCibilFile }) {
@@ -1254,7 +1246,7 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
         </div>
       </div>
 
-      {!isCibil && !isBoth && <SummaryCards a={a} />}
+      {!isCibil && <SummaryCards a={a} />}
 
       <div className="tab-wrapper">
         {!canScrollLeft && <div className="tab-arrow left hidden">‹</div>}
@@ -1272,11 +1264,25 @@ export default function Dashboard({ mode = 'statement', result, onReset, uploade
         {isBoth ? (
           <>
             {tab==='obligations' && <ObligationsEligibilityTab a={a} />}
-            {tab==='profile' && <ProfileTab a={a} />}
-            {tab==='emiLoans' && <EmiLoansTab a={a} />}
-            {tab==='creditCards' && <CreditCardsCombinedTab a={a} />}
-            {tab==='bounces' && <BouncesChargesTab a={a} />}
-            {tab==='insights' && <InsightsCombinedTab a={a} />}
+            {tab==='overview' && <OverviewTab a={a} />}
+            {tab==='salary' && <SalaryTab />}
+            {tab==='pf' && <PFTab />}
+            {tab==='emi' && <EMITab />}
+            {tab==='disbursement' && <DisbursementTab />}
+            {tab==='creditCard' && <CreditCardTab />}
+            {tab==='bounces' && <BouncesTab />}
+            {tab==='stock' && <StockMarketTab />}
+            {tab==='investments' && <InvestmentsTab a={a} onTx={openTx} />}
+            {tab==='appLoans' && <AppLoansTab a={a} onTx={openTx} />}
+            {tab==='transfers' && <TransfersTab a={a} onTx={openTx} />}
+            {tab==='monthly' && <MonthlyTab a={a} />}
+            {tab==='insights' && <InsightsTab a={a} onTx={openTx} />}
+            {tab==='personal' && <PersonalTab />}
+            {tab==='score' && <ScoreTab />}
+            {tab==='eligibility' && <LoanEligibilityTab underwriting={a.underwriting} />}
+            {tab==='loans' && <LoansTab />}
+            {tab==='closedLoans' && <ClosedLoansTab />}
+            {tab==='inquiry' && <InquiryTab />}
           </>
         ) : isCibil ? (
           <>
